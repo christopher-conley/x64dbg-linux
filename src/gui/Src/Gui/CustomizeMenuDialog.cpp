@@ -28,7 +28,7 @@ CustomizeMenuDialog::CustomizeMenuDialog(QWidget* parent) :
         else // Invalid or unsupported type. Continue
             continue;
         // Get localized string for the name of individual views
-        if(id == "CPUDisassembly")
+        if(id == "CPUDisassemblyV2")
             viewName = tr("Disassembler");
         else if(id == "CPUDump")
             viewName = tr("Dump");

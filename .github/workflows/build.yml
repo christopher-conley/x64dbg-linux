@@ -2,6 +2,11 @@ name: Build
 
 on: [push, pull_request]
 
+# Automatically cancel previous runs of this workflow on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cmake:
     # Skip building pull requests from the same repository
