@@ -805,6 +805,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${gui_SOURCES})
 target_compile_definitions(gui PRIVATE
 	BUILD_LIB
 	NOMINMAX
+	X64DBG
 )
 
 target_include_directories(gui PRIVATE

@@ -100,7 +100,7 @@ CPUWidget::CPUWidget(Architecture* architecture, QWidget* parent)
     mInfo->setAccessibleName(tr("InfoBox"));
 
     // load column config
-    mDisassembly->loadColumnFromConfig("CPUDisassembly");
+    mDisassembly->loadColumnFromConfig("CPUDisassemblyV2");
     mStack->loadColumnFromConfig("CPUStack");
 }
 

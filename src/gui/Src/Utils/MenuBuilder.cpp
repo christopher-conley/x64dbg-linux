@@ -6,9 +6,9 @@
  * @brief MenuBuilder::loadFromConfig Set the menu builder to be customizable
  * @param id The id of menu builder. It should be the same on every same menu.
  */
-void MenuBuilder::loadFromConfig()
+void MenuBuilder::loadFromConfig(const char* id)
 {
-    this->id = parent()->metaObject()->className(); // Set the ID first because the following subroutine will use it
+    this->id = id ? id : parent()->metaObject()->className(); // Set the ID first because the following subroutine will use it
     if(Config()->registerMenuBuilder(this, _containers.size())) // Register it to the config so the customization dialog can get the text of actions here.
         connect(this, SIGNAL(destroyed()), this, SLOT(unregisterMenuBuilder())); // Remember to unregister menu builder
 }

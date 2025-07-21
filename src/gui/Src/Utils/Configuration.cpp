@@ -295,7 +295,7 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     guiBool.insert("CPUStackStartFromSelect", true);
     guiBool.insert("AutoTraceDump", false);
     //Named menu settings
-    insertMenuBuilderBools(&guiBool, "CPUDisassembly", 50); //CPUDisassembly
+    insertMenuBuilderBools(&guiBool, "CPUDisassemblyV2", 50); //CPUDisassembly
     insertMenuBuilderBools(&guiBool, "CPUDump", 50); //CPUDump
     insertMenuBuilderBools(&guiBool, "WatchView", 50); //Watch
     insertMenuBuilderBools(&guiBool, "CallStackView", 50); //CallStackView
@@ -318,7 +318,7 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     defaultBools.insert("Gui", guiBool);
 
     QMap<QString, duint> guiUint;
-    AbstractTableView::setupColumnConfigDefaultValue(guiUint, "CPUDisassembly", 5);
+    AbstractTableView::setupColumnConfigDefaultValue(guiUint, "CPUDisassemblyV2", 5);
     AbstractTableView::setupColumnConfigDefaultValue(guiUint, "CPUStack", 3);
     for(int i = 1; i <= 5; i++)
         AbstractTableView::setupColumnConfigDefaultValue(guiUint, QString("CPUDump%1").arg(i), 4);
@@ -352,7 +352,7 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     defaultBools.insert("HexDump", hexdumpBool);
 
     QMap<QString, duint> disasmUint;
-    disasmUint.insert("0xPrefixValues", ValueStyleDefault);
+    disasmUint.insert("0xPrefixValues", DisasmValueNotationNone);
     disasmUint.insert("MaxModuleSize", -1);
     defaultUints.insert("Disassembler", disasmUint);
 
@@ -431,7 +431,6 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     defaultShortcuts.insert("DebugTraceIntoConditional", Shortcut({tr("Debug"), tr("Trace into...")}, "Ctrl+Alt+F7", true));
     defaultShortcuts.insert("DebugTraceOverConditional", Shortcut({tr("Debug"), tr("Trace over...")}, "Ctrl+Alt+F8", true));
     defaultShortcuts.insert("DebugEnableTraceRecordBit", Shortcut({tr("Debug"), tr("Trace coverage"), tr("Bit")}, "", true));
-    defaultShortcuts.insert("DebugTraceRecordNone", Shortcut({tr("Debug"), tr("Trace coverage"), tr("None")}, "", true));
     defaultShortcuts.insert("DebugInstrUndo", Shortcut({tr("Debug"), tr("Undo instruction")}, "Alt+U", true));
     defaultShortcuts.insert("DebugAnimateInto", Shortcut({tr("Debug"), tr("Animate into")}, "Ctrl+F7", true));
     defaultShortcuts.insert("DebugAnimateOver", Shortcut({tr("Debug"), tr("Animate over")}, "Ctrl+F8", true));
@@ -440,6 +439,7 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     defaultShortcuts.insert("DebugTraceOverIntoTracerecord", Shortcut({tr("Debug"), tr("Step over until reaching uncovered code")}, "", true));
     defaultShortcuts.insert("DebugTraceIntoBeyondTracerecord", Shortcut({tr("Debug"), tr("Step into until reaching covered code")}, "", true));
     defaultShortcuts.insert("DebugTraceOverBeyondTracerecord", Shortcut({tr("Debug"), tr("Step over until reaching covered code")}, "", true));
+    defaultShortcuts.insert("DebugTraceRecordNone", Shortcut({ tr("Tracing"), tr("Trace coverage"), tr("Disable") }, "", true));
 
     defaultShortcuts.insert("PluginsScylla", Shortcut({tr("Plugins"), tr("Scylla")}, "Ctrl+I", true));
 

@@ -182,6 +182,7 @@ private-include-directories = [
 private-compile-definitions = [
     "BUILD_LIB",
     "NOMINMAX",
+    "X64DBG",
 ]
 include-after = ["cmake/deps.cmake"]
 
