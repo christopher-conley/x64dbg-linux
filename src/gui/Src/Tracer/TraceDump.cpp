@@ -1180,7 +1180,13 @@ void TraceDump::binarySaveToFileSlot()
 void TraceDump::findPattern()
 {
     HexEditDialog hexEdit(this);
-    hexEdit.showEntireBlock(true);
+
+    // Setup find mode for trace dump - use current memory page range
+    duint rangeStart = mMemoryPage->getBase();
+    duint rangeEnd = rangeStart + mMemoryPage->getSize();
+    duint selectionStart = rvaToVa(getSelectionStart());
+    hexEdit.setupFindMode(rangeStart, rangeEnd, selectionStart, false);
+
     hexEdit.isDataCopiable(false);
     hexEdit.mHexEdit->setOverwriteMode(false);
     hexEdit.setWindowTitle(tr("Find Pattern..."));
