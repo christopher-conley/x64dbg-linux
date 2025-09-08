@@ -15,8 +15,6 @@
 #include "WinInet-Downloader/downslib.h"
 #include <shlwapi.h>
 
-void GetModuleInfo(MODINFO& Info, ULONG_PTR FileMapVA);
-
 duint symbolDownloadingBase = 0;
 
 struct SYMBOLCBDATA
@@ -506,36 +504,22 @@ bool SymbolFromAddressExact(duint address, SYMBOLINFO* info)
         auto modImport = modInfo->findImport(rva);
         if(modImport != nullptr)
         {
-            if(modImport->ordinal != -1 && modImport->moduleIndex < modInfo->importModules.size())
+            if(modImport->ordinal != -1)
             {
-                const auto& targetModuleName = modInfo->importModules[modImport->moduleIndex];
-                auto targetBase = ModBaseFromName(targetModuleName.c_str());
-                auto targetModInfo = ModInfoFromAddr(targetBase);
-                if(targetModInfo)
+                duint exportAddress = 0;
+                if(DbgMemRead(address, &exportAddress, sizeof(exportAddress)) && exportAddress != 0)
                 {
-                    if(targetModInfo->exports.empty() && targetModInfo->fileMapVA != 0)
+                    SYMBOLINFO exportInfo = {};
+                    if(SymbolFromAddressExact(exportAddress, &exportInfo))
                     {
-                        GetModuleInfo(*targetModInfo, targetModInfo->fileMapVA);
-                    }
-                    if(!targetModInfo->exports.empty())
-                    {
-                        auto exportIndex = modImport->ordinal - targetModInfo->exportOrdinalBase;
-                        if(exportIndex < targetModInfo->exports.size() && exportIndex >= 0)
-                        {
-                            const auto& exportEntry = targetModInfo->exports[exportIndex];
-                            if(targetModInfo->symbols->isOpen())
-                            {
-                                SymbolInfo symInfo;
-                                if(targetModInfo->symbols->findSymbolExact(exportEntry.rva, symInfo))
-                                {
-                                    MODIMPORT resolvedImport = *modImport;
-                                    resolvedImport.name = symInfo.decoratedName;
-                                    resolvedImport.undecoratedName = symInfo.undecoratedName;
-                                    resolvedImport.copyToGuiSymbol(base, info);
-                                    return true;
-                                }
-                            }
-                        }
+                        info->addr = address;
+                        info->decoratedSymbol = exportInfo.decoratedSymbol;
+                        info->undecoratedSymbol = exportInfo.undecoratedSymbol;
+                        info->type = exportInfo.type;
+                        info->freeDecorated = exportInfo.freeDecorated;
+                        info->freeUndecorated = exportInfo.freeUndecorated;
+                        info->ordinal = exportInfo.ordinal;
+                        return true;
                     }
                 }
             }
