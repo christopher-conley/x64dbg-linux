@@ -3,7 +3,7 @@
 Function description.
 
 ```c++
-Function definition.
+void GuiScriptMessage(const char* message);
 ```
 
 ## Parameters
@@ -12,7 +12,7 @@ Function definition.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 

@@ -185,6 +185,7 @@ public slots:
 
     void searchConstantSlot();
     void searchMemRefSlot();
+    void searchCallsSlot();
 
     void updateSlot();
 

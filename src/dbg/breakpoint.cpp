@@ -559,7 +559,7 @@ bool BpSetSingleshoot(duint Address, BP_TYPE Type, bool singleshoot)
         {
             if(!RemoveMemoryBPX(Address, bpInfo->memsize))
                 dprintf(QT_TRANSLATE_NOOP("DBG", "Delete memory breakpoint failed (RemoveMemoryBPX): %p\n"), Address);
-            if(!SetMemoryBPXEx(Address, bpInfo->memsize, bpInfo->titantype, !singleshoot, cbMemoryBreakpoint))
+            if(!SetMemoryBPXEx(Address, bpInfo->memsize, (TitanMemoryBreakpointType)bpInfo->titantype, !singleshoot, cbMemoryBreakpoint))
                 dprintf(QT_TRANSLATE_NOOP("DBG", "Could not enable memory breakpoint %p (SetMemoryBPXEx)\n"), Address);
         }
         break;

@@ -1,18 +1,18 @@
 # GuiAddQWidgetTab
 
-Function description.
+Add a Qt QWidget object as a new tab in the GUI.
 
 ```c++
-Function definition.
+void GuiAddQWidgetTab(QWidget* qWidget);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`qWidget` The Qt QWidget object.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
@@ -22,4 +22,4 @@ Example code.
 
 ## Related functions
 
-- List of related functions
+- [GuiCloseQWidgetTab](./GuiCloseQWidgetTab.md)

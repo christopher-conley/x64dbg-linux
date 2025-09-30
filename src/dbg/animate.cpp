@@ -8,7 +8,7 @@ HANDLE hAnimateThread = nullptr;
 
 static DWORD WINAPI animateThread(void* arg1)
 {
-    auto ignoreError = settingboolget("Misc", "AnimateIgnoreError");
+    auto ignoreError = settingboolget("Misc", "AnimateIgnoreError", false);
     while(animate_command[0] != 0)
     {
         auto beforeTime = GetTickCount();

@@ -307,3 +307,139 @@ int TraceFileSearchMemPattern(TraceFileReader* file, const QString & pattern)
     });
     return count;
 }
+
+int TraceFileSearchCalls(TraceFileReader* file, bool findIntermodularCalls)
+{
+    Zydis zy;
+    QString title;
+    // Setting up references view
+    if(findIntermodularCalls)
+    {
+        title = QCoreApplication::translate("TraceFileSearch", "Intermodular Calls (Trace)");
+        if(!DbgIsDebugging())
+        {
+
+            GuiAddLogMessage(QCoreApplication::translate("TraceFileSearch", "Warning: No debugging session is active, cannot load module information while searching for intermodular calls. Searching for inter-page calls instead.\n").toUtf8().constData());
+        }
+    }
+    else
+        title = QCoreApplication::translate("TraceFileSearch", "Calls (Trace)");
+    GuiReferenceInitialize(title.toUtf8().constData());
+    GuiReferenceAddColumn(sizeof(duint) * 2, QCoreApplication::translate("TraceFileSearch", "Address").toUtf8().constData());
+    GuiReferenceAddColumn(20, QCoreApplication::translate("TraceFileSearch", "Index").toUtf8().constData());
+    GuiReferenceAddColumn(100, QCoreApplication::translate("TraceFileSearch", "Disassembly").toUtf8().constData());
+    GuiReferenceAddColumn(0, QCoreApplication::translate("TraceFileSearch", "Destination").toUtf8().constData());
+    GuiReferenceSetRowCount(0);
+    GuiReferenceAddCommand(QCoreApplication::translate("TraceFileSearch", "Follow index in trace").toUtf8().constData(), "gototrace 0x$1");
+    // Start searching loop
+    int count = 0;
+    for(TRACEINDEX index = 0; index < file->Length(); index++)
+    {
+        duint address = 0;
+        auto registers = file->Registers(index);
+        unsigned char data[16];
+        int opcodeSize = 0;
+        file->OpCode(index, data, &opcodeSize);
+        if(!zy.Disassemble(registers.regcontext.cip, data, opcodeSize))
+            continue; // Unknown instruction is not a call instruction
+        // Find call instructions
+        if(zy.IsCall())
+        {
+            // Call instruction should have 1 operand
+            if(zy.OpCount() > 0)
+            {
+                if(zy[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE || zy[0].type == ZYDIS_OPERAND_TYPE_REGISTER)
+                {
+                    // The operand is immediate or register
+                    address = zy.ResolveOpValue(0, [&registers](ZydisRegister reg)
+                    {
+                        return resolveZydisRegister(registers, reg);
+                    });
+                }
+                else if(zy[0].type == ZYDIS_OPERAND_TYPE_MEMORY)
+                {
+                    // The operand is in memory, look up from trace
+                    duint memAddr[MAX_MEMORY_OPERANDS];
+                    duint memOldContent[MAX_MEMORY_OPERANDS];
+                    duint memNewContent[MAX_MEMORY_OPERANDS];
+                    bool isValid[MAX_MEMORY_OPERANDS];
+                    int memAccessCount = file->MemoryAccessCount(index);
+                    if(memAccessCount > 0)
+                    {
+                        file->MemoryAccessInfo(index, memAddr, memOldContent, memNewContent, isValid);
+                        address = memOldContent[0];
+                    }
+                }
+                else   // This should not happen?
+                {
+                    continue;
+                }
+            }
+            else
+                continue; // Why a call has no operands?
+        }
+        else
+            continue; // In a trace, all instructions in the form of "call [edi]" will be found above, no need to find the previous "mov edi, API".
+        if(findIntermodularCalls)
+        {
+            // Find and compare module base address
+            duint base = 0, size = 0;
+            base = DbgFunctions()->ModBaseFromAddr(registers.regcontext.cip);
+            if(!base)
+                base = DbgMemFindBaseAddr(registers.regcontext.cip, &size);
+            else
+                size = DbgFunctions()->ModSizeFromAddr(base);
+            if(!base || !size)
+            {
+                // Cannot get module from anywhere, probably user-allocated. When trace file supports module list, update here.
+                base = registers.regcontext.cip & ~(PAGE_SIZE - 1);
+                size = PAGE_SIZE;
+            }
+            if(!(address < base || address >= base + size))  // Skip intramodular calls
+                continue;
+        }
+        GuiReferenceSetRowCount(count + 1);
+        GuiReferenceSetCellContent(count, 0, ToPtrString(registers.regcontext.cip).toUtf8().constData());
+        GuiReferenceSetCellContent(count, 1, file->getIndexText(index).toUtf8().constData());
+        GuiReferenceSetCellContent(count, 2, zy.InstructionText(true).c_str());
+        // Label formatting
+        char label[MAX_LABEL_SIZE] = "";
+        char label2[MAX_LABEL_SIZE + MAX_MODULE_SIZE + 32];
+        if(DbgGetLabelAt(address, SEG_DEFAULT, label) && label[0] != '\0')
+        {
+            char moduleName[MAX_MODULE_SIZE] = "";
+            if(DbgGetModuleAt(address, moduleName) && moduleName[0] != '\0')
+            {
+                sprintf_s(label2, "%s.%s", moduleName, label);
+                GuiReferenceSetCellContent(count, 3, label2);
+            }
+            else
+                GuiReferenceSetCellContent(count, 3, label);
+        }
+        else
+        {
+            duint start;
+            if(DbgFunctionGet(address, &start, nullptr) && DbgGetLabelAt(start, SEG_DEFAULT, label) && start != address && label[0] != '\0')
+            {
+                char moduleName[MAX_MODULE_SIZE] = "";
+                if(DbgGetModuleAt(address, moduleName) && moduleName[0] != '\0')
+                {
+                    sprintf_s(label2, ArchValue("%s.%s+%X", "%s.%s+%llX"), moduleName, label, address - start);
+                }
+                else
+                {
+                    sprintf_s(label2, ArchValue("%s+%X", "%s+%llX"), label, address - start);
+                }
+                GuiReferenceSetCellContent(count, 3, label2);
+            }
+            else
+            {
+                sprintf_s(label2, ArchValue("%X", "%llX"), address);
+                GuiReferenceSetCellContent(count, 3, label2);
+            }
+        }
+        //GuiReferenceSetCurrentTaskProgress; GuiReferenceSetProgress
+        count++;
+    }
+    return count;
+}

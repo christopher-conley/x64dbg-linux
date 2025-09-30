@@ -470,7 +470,7 @@ void PatchDialog::on_btnPatchFile_clicked()
     strcpy_s(szDirName, szModName);
     szDirName[len] = '\0';
 
-    QString filename = QFileDialog::getSaveFileName(this, tr("Save file"), szDirName, tr("All files (*.*)"));
+    QString filename = QFileDialog::getSaveFileName(this, tr("Save file"), szDirName);
     if(!filename.length())
         return;
     filename = QDir::toNativeSeparators(filename); //convert to native path format (with backlashes)

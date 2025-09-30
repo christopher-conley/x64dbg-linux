@@ -495,7 +495,7 @@ void stackgetcallstack(duint csp, CALLSTACK* callstack)
 
 void stackupdatesettings()
 {
-    ShowSuspectedCallStack = settingboolget("Engine", "ShowSuspectedCallStack");
+    ShowSuspectedCallStack = settingboolget("Engine", "ShowSuspectedCallStack", false);
     std::vector<CALLSTACKENTRY> dummy;
     if(hActiveThread)
         stackgetcallstack(GetContextDataEx(hActiveThread, UE_CSP), dummy, false);

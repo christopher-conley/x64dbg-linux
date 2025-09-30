@@ -18,7 +18,7 @@ public:
     void restore();
 
 protected:
-    TITAN_ENGINE_CONTEXT_t registers;
+    TITAN_ENGINE_CONTEXT_t registers = {};
     struct ChangedData
     {
         duint addr;

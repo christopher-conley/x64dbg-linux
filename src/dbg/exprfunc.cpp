@@ -468,12 +468,7 @@ namespace Exprfunc
 
     duint gettickcount()
     {
-#ifdef _WIN64
-        static auto GTC64 = (ULONGLONG(*)())GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetTickCount64");
-        if(GTC64)
-            return GTC64();
-#endif //_WIN64
-        return GetTickCount();
+        return (duint)GetTickCount64();
     }
 
     duint rdtsc()

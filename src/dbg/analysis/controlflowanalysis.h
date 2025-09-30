@@ -10,8 +10,7 @@
 class ControlFlowAnalysis : public Analysis
 {
 public:
-    explicit ControlFlowAnalysis(duint base, duint size, bool exceptionDirectory);
-    ~ControlFlowAnalysis();
+    ControlFlowAnalysis(duint base, duint size, bool exceptionDirectory);
     void Analyse() override;
     void SetMarkers() override;
 
@@ -46,9 +45,7 @@ private:
 
     typedef std::unordered_set<duint> UintSet;
 
-    duint mModuleBase;
-    duint mFunctionInfoSize;
-    void* mFunctionInfoData;
+    duint mModuleBase = 0;
 
     UintSet mBlockStarts;
     UintSet mFunctionStarts;
@@ -70,7 +67,7 @@ private:
     duint getReferenceOperand() const;
 
 #ifdef _WIN64
-    void enumerateFunctionRuntimeEntries64(const std::function<bool(PRUNTIME_FUNCTION)> & Callback) const;
+    std::vector<RUNTIME_FUNCTION> mRuntimeFunctions;
 #endif // _WIN64
 };
 

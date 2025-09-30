@@ -150,7 +150,7 @@ PLUG_IMPEXP void _plugin_startscript(CBPLUGINSCRIPT cbScript)
 
 PLUG_IMPEXP bool _plugin_waituntilpaused()
 {
-    while(DbgIsDebugging() && dbgisrunning()) //wait until the debugger paused
+    while(bIsDebugging && dbgisrunning()) //wait until the debugger paused
     {
         Sleep(1);
         GuiProcessEvents(); //workaround for scripts being executed on the GUI thread

@@ -32,6 +32,7 @@
 #include "database.h"
 #include "dbghelp_safe.h"
 #include "types.h"
+#include "label.h"
 
 static DBGFUNCTIONS _dbgfunctions;
 
@@ -51,7 +52,7 @@ static int SymAutoComplete(const char* Search, char** Buffer, int MaxSymbols)
 
     std::unordered_set<std::string> visited;
 
-    static const bool caseSensitiveAutoComplete = settingboolget("Gui", "CaseSensitiveAutoComplete");
+    static const bool caseSensitiveAutoComplete = settingboolget("Gui", "CaseSensitiveAutoComplete", false);
 
     int count = 0;
     std::string prefix(Search);
@@ -89,6 +90,17 @@ static int SymAutoComplete(const char* Search, char** Buffer, int MaxSymbols)
             {
                 return addName(symInfo.decoratedName);
             }, caseSensitiveAutoComplete);
+        }
+    }
+
+    if(count < MaxSymbols)
+    {
+        auto labels = LabelFindPrefix(prefix, MaxSymbols - count, caseSensitiveAutoComplete);
+        for(auto & label : labels)
+        {
+            Buffer[count] = (char*)BridgeAlloc(label.size() + 1);
+            memcpy(Buffer[count], label.c_str(), label.size() + 1);
+            count++;
         }
     }
 

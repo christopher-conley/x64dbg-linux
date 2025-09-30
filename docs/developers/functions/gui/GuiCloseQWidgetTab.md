@@ -1,18 +1,18 @@
 # GuiCloseQWidgetTab
 
-Function description.
+Close a Qt QWidget tab added by a plugin.
 
 ```c++
-Function definition.
+void GuiCloseQWidgetTab(QWidget* qWidget);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`qWidget` The Qt QWidget object of the tab to close.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
@@ -22,4 +22,4 @@ Example code.
 
 ## Related functions
 
-- List of related functions
+- [GuiAddQWidgetTab](./GuiAddQWidgetTab.md)

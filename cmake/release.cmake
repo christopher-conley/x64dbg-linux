@@ -11,11 +11,8 @@ file(MAKE_DIRECTORY "${RELEASE_DIR}")
 # Setup pluginsdk directories
 set(PLUGINSDK_DIR "${RELEASE_DIR}/pluginsdk")
 file(MAKE_DIRECTORY "${PLUGINSDK_DIR}")
-file(MAKE_DIRECTORY "${PLUGINSDK_DIR}/dbghelp")
-file(MAKE_DIRECTORY "${PLUGINSDK_DIR}/DeviceNameResolver")
 file(MAKE_DIRECTORY "${PLUGINSDK_DIR}/jansson")
 file(MAKE_DIRECTORY "${PLUGINSDK_DIR}/lz4")
-file(MAKE_DIRECTORY "${PLUGINSDK_DIR}/TitanEngine")
 file(MAKE_DIRECTORY "${PLUGINSDK_DIR}/XEDParse")
 
 # Setup release directories
@@ -28,15 +25,9 @@ file(MAKE_DIRECTORY "${RELEASE_DIR}/release/x64")
 set(PLUGINSDK_DIR "${RELEASE_DIR}/pluginsdk")
 
 # Copy directories
-file(COPY "${ROOT_DIR}/src/dbg/dbghelp/" DESTINATION "${PLUGINSDK_DIR}/dbghelp")
-file(COPY "${ROOT_DIR}/src/dbg/DeviceNameResolver/" DESTINATION "${PLUGINSDK_DIR}/DeviceNameResolver")
 file(COPY "${ROOT_DIR}/src/dbg/jansson/" DESTINATION "${PLUGINSDK_DIR}/jansson")
 file(COPY "${ROOT_DIR}/src/dbg/lz4/" DESTINATION "${PLUGINSDK_DIR}/lz4")
-file(COPY "${ROOT_DIR}/src/dbg/TitanEngine/" DESTINATION "${PLUGINSDK_DIR}/TitanEngine")
 file(COPY "${ROOT_DIR}/src/dbg/XEDParse/" DESTINATION "${PLUGINSDK_DIR}/XEDParse")
-
-# Remove TitanEngine.txt
-file(REMOVE "${PLUGINSDK_DIR}/TitanEngine/TitanEngine.txt")
 
 # Copy headers
 file(GLOB PLUGIN_HEADERS

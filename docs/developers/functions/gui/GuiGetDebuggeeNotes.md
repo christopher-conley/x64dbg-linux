@@ -3,7 +3,7 @@
 Returns into a variable a pointer to a string containing notes and information that a user has made relating to the target being debugged (the debuggee). The function GuiGetGlobalNotes can be used to get the global notes stored by a user.
 
 ```c++
-void GuiGetDebuggeeNotes(char** text)
+void GuiGetDebuggeeNotes(char** text);
 ```
 
 ## Parameters

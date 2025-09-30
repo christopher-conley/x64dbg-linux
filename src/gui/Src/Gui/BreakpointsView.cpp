@@ -604,7 +604,7 @@ void BreakpointsView::followBreakpointSlot()
         GuiAddStatusBarMessage(tr("Cannot follow this breakpoint.\n").toUtf8().constData());
         return;
     }
-    if(DbgFunctions()->MemIsCodePage(addr, false))
+    if(DbgFunctions()->MemIsCodePage(addr, true))
         DbgCmdExecDirect(QString("disasm %1").arg(ToPtrString(addr)));
     else
     {

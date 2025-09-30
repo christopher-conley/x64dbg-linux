@@ -278,7 +278,7 @@ void ReferenceView::followGenericAddress()
     auto addr = DbgValFromString(mCurList->getCellContent(mCurList->getInitialSelection(), 0).toUtf8().constData());
     if(!addr)
         return;
-    if(DbgFunctions()->MemIsCodePage(addr, false))
+    if(DbgFunctions()->MemIsCodePage(addr, true))
         followAddress();
     else
     {

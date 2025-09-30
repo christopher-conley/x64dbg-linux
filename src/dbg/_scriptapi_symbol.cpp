@@ -2,16 +2,15 @@
 #include "_scriptapi_label.h"
 #include "symbolinfo.h"
 
-using namespace Script::Symbol;
-
 struct cbSymbolEnumCtx
 {
     const SYMBOLMODULEINFO* module;
-    std::vector<SymbolInfo>* symbols;
+    std::vector<Script::Symbol::SymbolInfo>* symbols;
 };
 
 static bool cbSymbolEnum(const SYMBOLPTR* ptr, void* user)
 {
+
     auto ctx = (cbSymbolEnumCtx*)user;
     SYMBOLINFO info;
     DbgGetSymbolInfo(ptr, &info);
@@ -19,7 +18,7 @@ static bool cbSymbolEnum(const SYMBOLPTR* ptr, void* user)
     const bool hasUndecoratedName = (0 != info.undecoratedSymbol) && (0 != info.undecoratedSymbol[0]);
     const char* symbolName = hasUndecoratedName ? info.undecoratedSymbol : info.decoratedSymbol;
 
-    SymbolInfo symbol = {};
+    Script::Symbol::SymbolInfo symbol = {};
     strncpy_s(symbol.mod, sizeof(symbol.mod), ctx->module->name, sizeof(symbol.mod) - 1);
     symbol.rva = info.addr - ctx->module->base;
     strncpy_s(symbol.name, sizeof(symbol.name), symbolName, sizeof(symbol.name) - 1);
@@ -27,13 +26,13 @@ static bool cbSymbolEnum(const SYMBOLPTR* ptr, void* user)
     switch(info.type)
     {
     case sym_import:
-        symbol.type = Import;
+        symbol.type = Script::Symbol::Import;
         break;
     case sym_export:
-        symbol.type = Export;
+        symbol.type = Script::Symbol::Export;
         break;
     case sym_symbol:
-        symbol.type = Function;
+        symbol.type = Script::Symbol::Function;
         break;
     default:
         __debugbreak();

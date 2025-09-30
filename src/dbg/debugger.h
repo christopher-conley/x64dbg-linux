@@ -10,6 +10,13 @@
 #include <tlhelp32.h>
 #include <psapi.h>
 
+enum LibraryBreakpointType
+{
+    UE_ON_LIB_LOAD = 1,
+    UE_ON_LIB_UNLOAD = 2,
+    UE_ON_LIB_ALL = 3,
+};
+
 //enums
 enum class ExceptionBreakOn
 {
@@ -31,8 +38,10 @@ struct INIT_STRUCT
     std::string exe;
     std::string commandline;
     std::string currentfolder;
+    uint32_t entryPointRva = 0;
     DWORD pid = 0;
     bool attach = false;
+    bool isDll = false;
 };
 
 struct ExceptionRange
@@ -163,5 +172,6 @@ extern HANDLE mProcHandle;
 extern HANDLE mForegroundHandle;
 extern duint gRtrPreviousCSP;
 extern HANDLE hDebugLoopThread;
+extern std::atomic_bool bIsDebugging;
 
 #endif // _DEBUGGER_H

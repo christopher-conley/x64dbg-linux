@@ -15,7 +15,7 @@ struct MESSAGE
 };
 
 // Message stack structure
-class MESSAGE_STACK
+class MESSAGE_QUEUE
 {
 public:
     moodycamel::BlockingConcurrentQueue<MESSAGE> msgs;
@@ -25,10 +25,10 @@ public:
 };
 
 // Function definitions
-MESSAGE_STACK* MsgAllocStack();
-void MsgFreeStack(MESSAGE_STACK* Stack);
-bool MsgSend(MESSAGE_STACK* Stack, int Msg, duint Param1, duint Param2);
-bool MsgGet(MESSAGE_STACK* Stack, MESSAGE* Msg);
-void MsgWait(MESSAGE_STACK* Stack, MESSAGE* Msg);
+MESSAGE_QUEUE* MsgAllocQueue();
+void MsgFreeQueue(MESSAGE_QUEUE* Stack);
+bool MsgSend(MESSAGE_QUEUE* Stack, int Msg, duint Param1, duint Param2);
+bool MsgGet(MESSAGE_QUEUE* Stack, MESSAGE* Msg);
+void MsgWait(MESSAGE_QUEUE* Stack, MESSAGE* Msg);
 
 #endif // _MSGQUEUE_H

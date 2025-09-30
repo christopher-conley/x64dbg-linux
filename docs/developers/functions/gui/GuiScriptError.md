@@ -1,18 +1,20 @@
 # GuiScriptError
 
-Function description.
+Pop up a message box to alert the user about script error.
 
 ```c++
-Function definition.
+void GuiScriptError(int line, const char* message);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`line` Line number where the script error occurred.
+
+`message` The error message.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 

@@ -1,11 +1,7 @@
 #pragma once
 
 #ifndef _WIN32_WINNT
-#ifdef _WIN64
-#define _WIN32_WINNT 0x0502 // XP x64 is version 5.2
-#else
-#define _WIN32_WINNT 0x0501
-#endif
+#define _WIN32_WINNT 0x0601 // XP x64 is version 5.2, Vista is version 6.0, Windows 7 is version 6.1
 #endif // _WIN32_WINNT
 
 #ifdef WINVER // Overwrite WINVER if given on command line
@@ -14,7 +10,7 @@
 #define WINVER _WIN32_WINNT
 
 #ifndef _WIN32_IE
-#define _WIN32_IE 0x0500
+#define _WIN32_IE _WIN32_IE_WIN7
 #endif //_WIN32_IE
 
 #ifdef __cplusplus

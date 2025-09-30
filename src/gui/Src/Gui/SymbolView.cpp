@@ -561,7 +561,7 @@ void SymbolView::symbolFollowImport()
     auto addr = DbgValFromString(QString("[%1]").arg(addrText).toUtf8().constData());
     if(!DbgMemIsValidReadPtr(addr))
         return;
-    if(DbgFunctions()->MemIsCodePage(addr, false))
+    if(DbgFunctions()->MemIsCodePage(addr, true))
     {
         DbgCmdExec(QString("disasm %1").arg(ToPtrString(addr)));
     }
@@ -621,7 +621,7 @@ void SymbolView::enterPressedSlot()
         return;
     if(mSymbolList->mCurList->getCellContent(mSymbolList->mCurList->getInitialSelection(), 1) == tr("Import"))
         symbolFollowImport();
-    else if(DbgFunctions()->MemIsCodePage(addr, false))
+    else if(DbgFunctions()->MemIsCodePage(addr, true))
         symbolFollow();
     else
     {

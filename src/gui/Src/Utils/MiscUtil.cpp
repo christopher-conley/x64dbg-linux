@@ -187,14 +187,35 @@ QIcon getFileIcon(QString file)
     return result;
 }
 
+static QString encodeCSVfield(QString cell, bool addSeparators, bool isTSV)
+{
+    if(isTSV)
+    {
+        if(addSeparators)
+            cell.append('\t');
+    }
+    else
+    {
+        if(cell.contains('"') || cell.contains(',') || cell.contains('\r') || cell.contains('\n'))
+        {
+            if(cell.contains('"'))
+                cell = cell.replace("\"", "\"\"");
+            cell = "\"" + cell + "\"";
+        }
+        if(addSeparators)
+            cell.append(',');
+    }
+    return cell;
+}
+
 //Export table in CSV. TODO: Display a dialog where the user choose what column to export and in which encoding
 bool ExportCSV(dsint rows, dsint columns, std::vector<QString> headers, std::function<QString(dsint, dsint)> getCellContent)
 {
     BrowseDialog browse(
         nullptr,
-        QApplication::translate("ExportCSV", "Export data in CSV format"),
-        QApplication::translate("ExportCSV", "Enter the CSV file name to export"),
-        QApplication::translate("ExportCSV", "CSV files (*.csv);;All files (*.*)"),
+        QApplication::translate("ExportCSV", "Export data in CSV/TSV format"),
+        QApplication::translate("ExportCSV", "Enter the CSV/TSV file name to export"),
+        QApplication::translate("ExportCSV", "CSV files (*.csv);;TSV files (*.tsv);;All files (*.*)"),
         getDbPath("export.csv", true),
         true
     );
@@ -203,19 +224,20 @@ bool ExportCSV(dsint rows, dsint columns, std::vector<QString> headers, std::fun
     {
         FILE* csv;
         bool utf16;
+        bool isTSV;
+        isTSV = browse.path.endsWith(".tsv", Qt::CaseInsensitive);
         csv = _wfopen(browse.path.toStdWString().c_str(), L"wb");
         if(csv == NULL)
         {
-            GuiAddLogMessage(QApplication::translate("ExportCSV", "CSV export error\n").toUtf8().constData());
-            return false;
+            goto FAILED_NOFCLOSE;
         }
         else
         {
             duint setting;
             if(BridgeSettingGetUint("Misc", "Utf16LogRedirect", &setting))
-                utf16 = !!setting;
+                utf16 = !!setting; // UTF-16 encoding with BOM and CR/LF line ending
             else
-                utf16 = false;
+                utf16 = false; // UTF-8 encoding with LF line ending without BOM
             if(utf16 && ftell(csv) == 0)
             {
                 unsigned short BOM = 0xfeff;
@@ -223,43 +245,25 @@ bool ExportCSV(dsint rows, dsint columns, std::vector<QString> headers, std::fun
             }
             dsint row, column;
             QString text;
-            QString cell;
             if(headers.size() > 0)
             {
                 for(column = 0; column < columns; column++)
                 {
-                    cell = headers.at(column);
-                    if(cell.contains('"') || cell.contains(',') || cell.contains('\r') || cell.contains('\n'))
-                    {
-                        if(cell.contains('"'))
-                            cell = cell.replace("\"", "\"\"");
-                        cell = "\"" + cell + "\"";
-                    }
-                    if(column != columns - 1)
-                        cell = cell + ",";
-                    text = text + cell;
+                    text = text + encodeCSVfield(headers.at(column), column != columns - 1, isTSV);
                 }
                 if(utf16)
                 {
-                    text = text + "\r\n";
+                    text.append("\r\n");
                     if(!fwrite(text.utf16(), text.length(), 2, csv))
-                    {
-                        fclose(csv);
-                        GuiAddLogMessage(QApplication::translate("ExportCSV", "CSV export error\n").toUtf8().constData());
-                        return false;
-                    }
+                        goto FAILED;
                 }
                 else
                 {
-                    text = text + "\n";
+                    text.append("\n");
                     QByteArray utf8;
                     utf8 = text.toUtf8();
                     if(!fwrite(utf8.constData(), utf8.size(), 1, csv))
-                    {
-                        fclose(csv);
-                        GuiAddLogMessage(QApplication::translate("ExportCSV", "CSV export error\n").toUtf8().constData());
-                        return false;
-                    }
+                        goto FAILED;
                 }
             }
             for(row = 0; row < rows; row++)
@@ -267,44 +271,32 @@ bool ExportCSV(dsint rows, dsint columns, std::vector<QString> headers, std::fun
                 text.clear();
                 for(column = 0; column < columns; column++)
                 {
-                    cell = getCellContent(row, column);
-                    if(cell.contains('"') || cell.contains(',') || cell.contains('\r') || cell.contains('\n'))
-                    {
-                        if(cell.contains('"'))
-                            cell = cell.replace("\"", "\"\"");
-                        cell = "\"" + cell + "\"";
-                    }
-                    if(column != columns - 1)
-                        cell = cell + ",";
-                    text = text + cell;
+                    text.append(encodeCSVfield(getCellContent(row, column), column != columns - 1, isTSV));
                 }
                 if(utf16)
                 {
-                    text = text + "\r\n";
+                    text.append("\r\n");
                     if(!fwrite(text.utf16(), text.length(), 2, csv))
-                    {
-                        fclose(csv);
-                        GuiAddLogMessage(QApplication::translate("ExportCSV", "CSV export error\n").toUtf8().constData());
-                        return false;
-                    }
+                        goto FAILED;
                 }
                 else
                 {
-                    text = text + "\n";
+                    text.append("\n");
                     QByteArray utf8;
                     utf8 = text.toUtf8();
                     if(!fwrite(utf8.constData(), utf8.size(), 1, csv))
-                    {
-                        fclose(csv);
-                        GuiAddLogMessage(QApplication::translate("ExportCSV", "CSV export error\n").toUtf8().constData());
-                        return false;
-                    }
+                        goto FAILED;
                 }
             }
             fclose(csv);
-            GuiAddLogMessage(QApplication::translate("ExportCSV", "Saved CSV data at %1\n").arg(browse.path).toUtf8().constData());
+            GuiAddLogMessage((isTSV ? QApplication::translate("ExportCSV", "Saved TSV data at %1\n") : QApplication::translate("ExportCSV", "Saved CSV data at %1\n")).arg(browse.path).toUtf8().constData());
             return true;
         }
+FAILED: // I/O failure handler, print error message to log and return.
+        fclose(csv);
+FAILED_NOFCLOSE:
+        GuiAddLogMessage((isTSV ? QApplication::translate("ExportCSV", "TSV export error\n") : QApplication::translate("ExportCSV", "CSV export error\n")).toUtf8().constData());
+        return false;
     }
     else
         return false;

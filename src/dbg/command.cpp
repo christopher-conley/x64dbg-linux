@@ -204,8 +204,6 @@ bool cmddel(const char* name)
     return true;
 }
 
-bool cbCommandProvider(char* cmd, int maxlen);
-
 void cmdsplit(const char* cmd, StringList & commands)
 {
     // Allow prefixing commands with $ to format them
@@ -254,7 +252,7 @@ void cmdsplit(const char* cmd, StringList & commands)
         commands.push_back(split);
 }
 
-bool cmdexeccallback(COMMAND* cmd, const std::string & command)
+static bool cmdexeccallback(COMMAND* cmd, const std::string & command)
 {
     Command commandParsed(command);
     int argcount = commandParsed.GetArgCount();
@@ -272,6 +270,9 @@ bool cmdexeccallback(COMMAND* cmd, const std::string & command)
     efree(argv, "cmdloop:argv");
     return res;
 }
+
+// Defined in x64dbg.cpp
+bool cbCommandProvider(char* cmd, int maxlen);
 
 /**
 \brief Initiates the command loop. This function will not return until a command returns ::STATUS_EXIT.

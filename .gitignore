@@ -5,6 +5,8 @@
 /bin/*.ini
 /bin/*.chm
 /bin/*.zip
+/bin/release-notes.md
+!/bin/themes/
 /src/**/x64/
 /src/**/Win32/
 /src/gui_build/

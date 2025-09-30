@@ -4,6 +4,7 @@ cmkr-include = "cmake/cmkr.cmake"
 
 [options]
 X64DBG_BUILD_IN_TREE = true
+X64DBG_RELEASE = false
 
 [variables]
 CMAKE_MODULE_PATH = "${CMAKE_SOURCE_DIR}/cmake"
@@ -26,24 +27,8 @@ x64 = "CMAKE_SIZEOF_VOID_P EQUAL 8"
 [find-package]
 Qt5 = { components = ["Widgets", "WinExtras"] }
 
-[target.zydis_wrapper]
-type = "static"
-sources = [
-    "src/zydis_wrapper/*.cpp",
-    "src/zydis_wrapper/*.h",
-    "src/zydis_wrapper/Zydis/Zydis.h",
-    "src/zydis_wrapper/zydis/Zydis.c",
-]
-include-directories = [
-    "src/zydis_wrapper",
-]
-private-include-directories = [
-    "src/zydis_wrapper/Zydis",
-]
-compile-definitions = [
-    "ZYCORE_STATIC_BUILD",
-    "ZYDIS_STATIC_BUILD",
-]
+[subdir."src/zydis_wrapper"]
+[subdir."src/gui/Src/ThirdPartyLibs/md4c"]
 
 [target.bridge]
 type = "shared"
@@ -105,6 +90,7 @@ private-link-libraries = [
     "Shlwapi",
     "Ws2_32",
     "Wininet",
+    "Iphlpapi",
 ]
 x86.private-link-libraries = [
     "src/dbg/dbghelp/dbghelp_x86.lib",
@@ -128,6 +114,7 @@ x64.private-link-libraries = [
 ]
 private-compile-definitions = [
     "BUILD_DBG",
+    "NOMINMAX",
 ]
 private-include-directories = [
     "src/dbg",
@@ -158,6 +145,7 @@ private-link-libraries = [
     "Qt5::WinExtras",
     "::zydis_wrapper",
     "::bridge",
+    "::md4c-html",
     "winmm",
     "wininet",
 ]
@@ -184,6 +172,7 @@ private-compile-definitions = [
     "NOMINMAX",
     "X64DBG",
 ]
+X64DBG_RELEASE.compile-definitions = ["X64DBG_RELEASE"]
 include-after = ["cmake/deps.cmake"]
 
 [target.gui.properties]
@@ -236,6 +225,8 @@ msvc.link-options = [
     "/DELAYLOAD:user32.dll",
     "/DELAYLOAD:wintrust.dll",
     "/DELAYLOAD:$<TARGET_FILE_NAME:bridge>",
+    "/NOIMPLIB",
+    "/NOEXP",
 ]
 msvc.link-libraries = [
     "Delayimp",

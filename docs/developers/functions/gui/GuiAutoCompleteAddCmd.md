@@ -1,25 +1,20 @@
 # GuiAutoCompleteAddCmd
 
-Function description.
+Add a command to the auto-completion list of the command bar. This function is automatically called by x64dbg when a command is registered, therefore plugin developers do not need to call this function.
 
 ```c++
-Function definition.
+void GuiAutoCompleteAddCmd(const char* cmd);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`cmd` The command that is added to the auto-completion list of the command bar.
 
 ## Return Value
 
-Return value description.
-
-## Example
-
-```c++
-Example code.
-```
+This function does not return a value.
 
 ## Related functions
 
-- List of related functions
+- [GuiAutoCompleteDelCmd](./GuiAutoCompleteDelCmd.md)
+- [GuiAutoCompleteClearAll](./GuiAutoCompleteClearAll.md)

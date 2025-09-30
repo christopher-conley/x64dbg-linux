@@ -896,6 +896,8 @@ void TraceBrowser::setupRightClickContextMenu()
     MenuBuilder* searchMenu = new MenuBuilder(this, mTraceFileNotNull);
     searchMenu->addAction(makeAction(DIcon("search_for_constant"), tr("Address/Constant"), SLOT(searchConstantSlot())));
     searchMenu->addAction(makeAction(DIcon("memory-map"), tr("Memory Reference"), SLOT(searchMemRefSlot())));
+    searchMenu->addAction(makeAction(DIcon("call"), tr("&Intermodular Calls"), SLOT(searchCallsSlot())))->setData(QVariant(true));
+    searchMenu->addAction(makeAction(DIcon("call"), tr("&All Calls"), SLOT(searchCallsSlot())))->setData(QVariant(false));
     mMenuBuilder->addMenu(makeMenu(DIcon("search"), tr("&Search")), searchMenu);
 
     // The following code adds a menu to view the information about currently selected instruction. When info box is completed, remove me.
@@ -1910,6 +1912,15 @@ void TraceBrowser::searchMemRefSlot()
         GuiShowReferences();
         GuiAddLogMessage(tr("%1 result(s) in %2ms\n").arg(count).arg(ticks.elapsed()).toUtf8().constData());
     }
+}
+
+void TraceBrowser::searchCallsSlot()
+{
+    QTime ticks;
+    ticks.start();
+    int count = TraceFileSearchCalls(getTraceFile(), qobject_cast<QAction*>(sender())->data().toBool());
+    GuiShowReferences();
+    GuiAddLogMessage(tr("%1 result(s) in %2ms\n").arg(count).arg(ticks.elapsed()).toUtf8().constData());
 }
 
 void TraceBrowser::updateSlot()

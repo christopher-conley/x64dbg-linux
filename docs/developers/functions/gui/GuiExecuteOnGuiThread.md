@@ -1,18 +1,20 @@
 # GuiExecuteOnGuiThread
 
-Function description.
+Execute a callback function on the GUI thread.
 
 ```c++
-Function definition.
+typedef void (*GUICALLBACK)();
+
+void GuiExecuteOnGuiThread(GUICALLBACK cbGuiThread);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`cbGuiThread` A function pointer to the callback function.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
@@ -22,4 +24,4 @@ Example code.
 
 ## Related functions
 
-- List of related functions
+- [GuiExecuteOnGuiThreadEx](./GuiExecuteOnGuiThreadEx.md)

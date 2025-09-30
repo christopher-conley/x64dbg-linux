@@ -1,6 +1,6 @@
 # GuiAddLogMessage
 
-Adds a message to the log. The message will be shown in the log window and on the status bar at the bottom of x64dbg.
+Adds a message to the log. The message will be shown in the log window and on the status bar at the bottom of x64dbg. The message is shown in plain text. To show formatted message, use [GuiAddLogMessageHtml](./GuiAddLogMessageHtml.md).
 
 ```c++
 void GuiAddLogMessage(
@@ -32,5 +32,6 @@ Invoke GuiAddLogMessage, Addr szMsg
 
 ## Related functions
 
+- [GuiAddLogMessageHtml](./GuiAddLogMessageHtml.md)
 - [GuiLogClear](./GuiLogClear.md)
 - [GuiAddStatusBarMessage](./GuiAddStatusBarMessage.md)

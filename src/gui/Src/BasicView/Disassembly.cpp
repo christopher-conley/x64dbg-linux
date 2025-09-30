@@ -1,12 +1,12 @@
 #include "Disassembly.h"
 #include "Configuration.h"
-#include "CodeFolding.h"
-#include "EncodeMap.h"
+#include <Utils/CodeFolding.h>
+#include <Utils/EncodeMap.h>
 #include "Bridge.h"
-#include "CachedFontMetrics.h"
-#include "QZydis.h"
-#include "MemoryPage.h"
-#include "DisassemblyPopup.h"
+#include <Utils/CachedFontMetrics.h>
+#include <Disassembler/QZydis.h>
+#include <Memory/MemoryPage.h>
+#include <Gui/DisassemblyPopup.h>
 
 Disassembly::Disassembly(Architecture* architecture, bool isMain, QWidget* parent)
     : AbstractTableView(parent),
@@ -736,11 +736,11 @@ duint Disassembly::getAddressForPosition(int mousex, int mousey)
         if(ZydisTokenizer::TokenFromX(instruction.tokens, token, mousex, mFontMetrics))
         {
             duint addr = token.value.value;
-            bool isCodePage = DbgFunctions()->MemIsCodePage(addr, false);
+            bool isCodePage = DbgFunctions()->MemIsCodePage(addr, true);
             if(!isCodePage && instruction.branchDestination)
             {
                 addr = instruction.branchDestination;
-                isCodePage = DbgFunctions()->MemIsCodePage(addr, false);
+                isCodePage = DbgFunctions()->MemIsCodePage(addr, true);
             }
             if(isCodePage && (addr - mMemPage->getBase() < mInstBuffer.front().rva || addr - mMemPage->getBase() > mInstBuffer.back().rva))
             {
@@ -2360,7 +2360,7 @@ bool Disassembly::followInstruction(duint rva)
             dest = instr.arg[op].value;
             if(DbgMemIsValidReadPtr(dest))
             {
-                if(DbgFunctions()->MemIsCodePage(dest, false))
+                if(DbgFunctions()->MemIsCodePage(dest, true))
                     gotoAddress(dest);
                 else if(instr.arg[op].segment == SEG_SS)
                     DbgCmdExec(QString("sdump %1").arg(ToPtrString(dest)));
@@ -2378,7 +2378,7 @@ bool Disassembly::followInstruction(duint rva)
             dest = instr.arg[op].value;
             if(DbgMemIsValidReadPtr(dest))
             {
-                if(DbgFunctions()->MemIsCodePage(dest, false))
+                if(DbgFunctions()->MemIsCodePage(dest, true))
                     gotoAddress(dest);
                 else
                     DbgCmdExec(QString("dump %1").arg(ToPtrString(dest)));

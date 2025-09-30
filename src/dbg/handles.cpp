@@ -163,36 +163,15 @@ bool HandlesGetName(HANDLE remoteHandle, String & name, String & typeName)
         }
         else if(strcmp(typeName.c_str(), "Thread") == 0)
         {
-            auto getTidPid = [](HANDLE hThread, DWORD & TID, DWORD & PID)
-            {
-                static auto pGetThreadId = (DWORD(__stdcall*)(HANDLE))GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetThreadId");
-                static auto pGetProcessIdOfThread = (DWORD(__stdcall*)(HANDLE))GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetProcessIdOfThread");
-                if(pGetThreadId != NULL && pGetProcessIdOfThread != NULL) //Vista or Server 2003 only
-                {
-                    TID = pGetThreadId(hThread);
-                    PID = pGetProcessIdOfThread(hThread);
-                }
-                else //Windows XP
-                {
-                    THREAD_BASIC_INFORMATION threadInfo;
-                    ULONG threadInfoSize = 0;
-                    NTSTATUS isok = NtQueryInformationThread(hThread, ThreadBasicInformation, &threadInfo, sizeof(threadInfo), &threadInfoSize);
-                    if(NT_SUCCESS(isok))
-                    {
-                        TID = (DWORD)(duint)threadInfo.ClientId.UniqueThread;
-                        PID = (DWORD)(duint)threadInfo.ClientId.UniqueProcess;
-                    }
-                }
-            };
-
-            DWORD TID, PID;
-            getTidPid(hLocalHandle, TID, PID);
+            auto TID = GetThreadId(hLocalHandle);
+            auto PID = GetProcessIdOfThread(hLocalHandle);
             if(TID == 0 || PID == 0) //The first time could fail because the process didn't specify query permissions.
             {
                 HANDLE hLocalQueryHandle;
                 if(DuplicateHandle(hProcess, remoteHandle, GetCurrentProcess(), &hLocalQueryHandle, THREAD_QUERY_INFORMATION, FALSE, 0))
                 {
-                    getTidPid(hLocalQueryHandle, TID, PID);
+                    TID = GetThreadId(hLocalQueryHandle);
+                    PID = GetProcessIdOfThread(hLocalQueryHandle);
                     CloseHandle(hLocalQueryHandle);
                 }
             }

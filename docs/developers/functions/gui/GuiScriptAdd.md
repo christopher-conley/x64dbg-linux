@@ -1,18 +1,20 @@
 # GuiScriptAdd
 
-Function description.
+Reload the script view with a new script.
 
 ```c++
-Function definition.
+void GuiScriptAdd(int count, const char** lines);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`count` Number of lines;
+
+`lines` A buffer containing `count` pointers to UTF-8 strings, each representing a single line. This buffer is freed by [BridgeFree](../bridge/BridgeFree.md) afterwards.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 

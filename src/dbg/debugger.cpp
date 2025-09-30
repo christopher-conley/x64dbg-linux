@@ -102,6 +102,7 @@ static bool bAbortStepping = false;
 static TITANCBSTEP gStepIntoPartyCallback;
 HANDLE hDebugLoopThread = nullptr;
 DWORD dwDebugFlags = 0;
+std::atomic_bool bIsDebugging;
 
 static duint dbgcleartracestate()
 {
@@ -182,7 +183,7 @@ static DWORD WINAPI memMapThread(void* ptr)
 {
     while(!bStopMemMapThread)
     {
-        while(!DbgIsDebugging())
+        while(!bIsDebugging)
         {
             if(bStopMemMapThread)
                 break;
@@ -214,7 +215,7 @@ static DWORD WINAPI timeWastedCounterThread(void* ptr)
     GuiUpdateTimeWastedCounter();
     while(!bStopTimeWastedCounterThread)
     {
-        while(!DbgIsDebugging() || isUserIdle())
+        while(!bIsDebugging || isUserIdle())
         {
             if(bStopTimeWastedCounterThread)
                 break;
@@ -234,7 +235,7 @@ static DWORD WINAPI dumpRefreshThread(void* ptr)
 {
     while(!bStopDumpRefreshThread)
     {
-        while(!DbgIsDebugging())
+        while(!bIsDebugging)
         {
             if(bStopDumpRefreshThread)
                 break;
@@ -266,7 +267,7 @@ void cbDebuggerPaused()
     stepRepeat = 0;
     // Trace record is not handled by this function currently.
     // Signal thread switch warning
-    if(settingboolget("Engine", "HardcoreThreadSwitchWarning"))
+    if(settingboolget("Engine", "HardcoreThreadSwitchWarning", false))
     {
         static DWORD PrevThreadId = 0;
         if(PrevThreadId == 0)
@@ -479,7 +480,7 @@ void updateSEHChainAsync()
 
 static void DebugUpdateTitle(duint disasm_addr, bool analyzeThreadSwitch)
 {
-    if(GuiIsUpdateDisabled() || !DbgIsDebugging())
+    if(GuiIsUpdateDisabled() || !bIsDebugging)
         return;
 
     char modname[MAX_MODULE_SIZE] = "";
@@ -517,8 +518,26 @@ static void DebugUpdateTitle(duint disasm_addr, bool analyzeThreadSwitch)
 
 void DebugUpdateGui(duint disasm_addr, bool stack)
 {
+    // Handle disabled GUI updates.
+    static duint hiddenDisasmAddr = 0;
+    static bool hiddenStack = false;
+
     if(GuiIsUpdateDisabled())
+    {
+        hiddenDisasmAddr = disasm_addr;
+        hiddenStack = stack;
         return;
+    }
+
+    // Allow passing 0 to use the last hidden call.
+    if(disasm_addr == 0 && hiddenDisasmAddr != 0)
+    {
+        DebugUpdateGui(hiddenDisasmAddr, hiddenStack);
+        hiddenDisasmAddr = 0;
+        hiddenStack = false;
+        return;
+    }
+
     duint cip = GetContextDataEx(hActiveThread, UE_CIP);
     //Check if the addresses are in the memory map and force update if they are not
     if(!MemIsValidReadPtr(disasm_addr, true) || !MemIsValidReadPtr(cip, true))
@@ -758,7 +777,7 @@ static char getConditionValue(const std::string & expression)
 void cbPauseBreakpoint()
 {
     dputs(QT_TRANSLATE_NOOP("DBG", "paused!"));
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     auto CIP = GetContextDataEx(hActiveThread, UE_CIP);
     DeleteBPX(CIP);
     DebugUpdateGuiSetStateAsync(CIP, paused);
@@ -775,7 +794,7 @@ void cbPauseBreakpoint()
     wait(WAITID_RUN);
 }
 
-static void handleBreakCondition(const BREAKPOINT & bp, const void* ExceptionAddress, duint CIP)
+static void handleBreakCondition(const BREAKPOINT & bp, const void* ExceptionAddress, duint CIP, bool forceSilent)
 {
     if(bp.singleshoot)
     {
@@ -786,7 +805,7 @@ static void handleBreakCondition(const BREAKPOINT & bp, const void* ExceptionAdd
                 dprintf(QT_TRANSLATE_NOOP("DBG", "Delete hardware breakpoint failed: %p (DeleteHardwareBreakPoint)\n"), bp.addr);
         }
     }
-    if(!bp.silent)
+    if(!forceSilent && !bp.silent)
     {
         switch(bp.type)
         {
@@ -818,7 +837,7 @@ static void handleBreakCondition(const BREAKPOINT & bp, const void* ExceptionAdd
 
 static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = nullptr)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     auto CIP = GetContextDataEx(hActiveThread, UE_CIP);
 
     //handle process cookie retrieval
@@ -897,8 +916,10 @@ static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = n
     }
     else
         breakCondition = 1; //break if no condition is set
+
     if(bp.fastResume && breakCondition == 0) // fast resume: ignore GUI/Script/Plugin/Other if the debugger would not break
         return;
+
     if(!bp.logCondition.empty())
     {
         logCondition = getConditionValue(bp.logCondition);
@@ -912,6 +933,7 @@ static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = n
     }
     else
         logCondition = 1; //log if no condition is set
+
     if(!bp.commandCondition.empty())
     {
         commandCondition = getConditionValue(bp.commandCondition);
@@ -931,6 +953,10 @@ static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = n
             commandCondition = 0; // Don't execute any command if an error occurs
     }
 
+    // Any script loaded right now is either paused or spinning until this lock gets set.
+    auto scriptState = ScriptAbortAwait();
+
+    // Pause debugger before a potential scriptcmd, which would race otherwise.
     lock(WAITID_RUN);
 
     PLUG_CB_BREAKPOINT bpInfo;
@@ -981,32 +1007,60 @@ static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = n
             dputs_untranslated(formattedText.c_str());
         }
     }
+
     if(!bp.commandText.empty() && commandCondition) //command
     {
         //TODO: commands like run/step etc will fuck up your shit
         varset("$breakpointcondition", (breakCondition != 0) ? 1 : 0, false);
         varset("$breakpointlogcondition", (logCondition != 0) ? 1 : 0, true);
         duint script_breakcondition;
-        if(!cmddirectexec(bp.commandText.c_str()))
+
+        bool commandSuccess = false;
+        if(StringUtils::StartsWith(bp.commandText, "scriptcmd "))
+            commandSuccess = ScriptCmdExecAwait(bp.commandText.substr(10).c_str(), scriptState.gui, &scriptState.state);
+        else
+            commandSuccess = cmddirectexec(bp.commandText.c_str());
+
+        if(!commandSuccess)
         {
             breakCondition = -1; // Error executing the command (The error message is probably already printed)
         }
         else if(varget("$breakpointcondition", &script_breakcondition, nullptr, nullptr))
         {
+            // TODO: You cannot execute multiple commands to set $breakpointcondition, why does this variable exist?
             if(script_breakcondition != 0)
                 breakCondition = 1;
             else
                 breakCondition = 0; // It is safe to clear break condition here because when an error occurs, no command can be executed
         }
     }
+
+    if(dbgisrunning())
+    {
+        // TODO: handle the case where the plugin callback/command has changed the running state
+    }
+
     if(breakCondition != 0) //break the debugger
     {
-        handleBreakCondition(bp, ExceptionAddress, CIP);
+        handleBreakCondition(bp, ExceptionAddress, CIP, breakCondition == -1);
         dbgsetforeground();
         dbgsetskipexceptions(false);
+
+        // Resume script if it was running
+        if(scriptState.state == SCRIPT_RUNNING)
+        {
+            ScriptRunAsync(0, scriptState.gui);
+        }
     }
     else //resume immediately
+    {
         unlock(WAITID_RUN);
+
+        if(scriptState.state == SCRIPT_RUNNING)
+        {
+            // TODO: we cannot resume running the script here (they can only be started while paused). How to handle this?
+        }
+    }
 
     // Make sure the log file error is displayed last
     if(logFileError != ERROR_SUCCESS)
@@ -1021,25 +1075,25 @@ static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = n
 
 void cbUserBreakpoint()
 {
-    lastExceptionInfo = ((DEBUG_EVENT*)GetDebugData())->u.Exception;
+    lastExceptionInfo = GetDebugData()->u.Exception;
     cbGenericBreakpoint(BPNORMAL);
 }
 
 void cbHardwareBreakpoint(const void* ExceptionAddress)
 {
-    lastExceptionInfo = ((DEBUG_EVENT*)GetDebugData())->u.Exception;
+    lastExceptionInfo = GetDebugData()->u.Exception;
     cbGenericBreakpoint(BPHARDWARE, ExceptionAddress);
 }
 
 void cbMemoryBreakpoint(const void* ExceptionAddress)
 {
-    lastExceptionInfo = ((DEBUG_EVENT*)GetDebugData())->u.Exception;
+    lastExceptionInfo = GetDebugData()->u.Exception;
     cbGenericBreakpoint(BPMEMORY, ExceptionAddress);
 }
 
 void cbRunToUserCodeBreakpoint(const void* ExceptionAddress)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     auto CIP = GetContextDataEx(hActiveThread, UE_CIP);
     dprintf(QT_TRANSLATE_NOOP("DBG", "User code reached at %s"), SymGetSymbolicName(CIP).c_str());
     // lock
@@ -1156,7 +1210,7 @@ bool cbSetModuleBreakpoints(const BREAKPOINT* bp)
     {
         duint size = 0;
         MemFindBaseAddr(bp->addr, &size);
-        if(!SetMemoryBPXEx(bp->addr, size, bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
+        if(!SetMemoryBPXEx(bp->addr, size, (TitanMemoryBreakpointType)bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
             dprintf(QT_TRANSLATE_NOOP("DBG", "Could not set memory breakpoint %p! (SetMemoryBPXEx)\n"), bp->addr);
     }
     break;
@@ -1236,7 +1290,7 @@ void DebugSetBreakpoints()
 
 void cbStep()
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     duint CIP = GetContextDataEx(hActiveThread, UE_CIP);
     if(bAbortStepping || !stepRepeat || !--stepRepeat)
     {
@@ -1267,7 +1321,7 @@ static void cbRtrFinalStep(bool checkRepeat)
 {
     if(bAbortStepping || !checkRepeat || !stepRepeat || !--stepRepeat)
     {
-        hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+        hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
         duint CIP = GetContextDataEx(hActiveThread, UE_CIP);
         // Trace record
         dbgtraceexecute(CIP);
@@ -1287,7 +1341,7 @@ static void cbRtrFinalStep(bool checkRepeat)
 
 void cbRtrStep()
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     unsigned char data[MAX_DISASM_BUFFER];
     memset(data, 0x90, sizeof(data));
     duint cip = GetContextDataEx(hActiveThread, UE_CIP);
@@ -1393,13 +1447,13 @@ static void __forceinline cbTraceUniversalConditionalStep(duint cip, STEPFUNCTIO
 
 void cbTraceXConditionalStep(STEPFUNCTION stepFunction, TITANCBSTEP callback)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     cbTraceUniversalConditionalStep(GetContextDataEx(hActiveThread, UE_CIP), stepFunction, callback, false);
 }
 
 static void cbTraceXXTraceRecordStep(STEPFUNCTION stepFunction, bool bInto, TITANCBSTEP callback)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     auto cip = GetContextDataEx(hActiveThread, UE_CIP);
     auto forceBreakTrace = TraceRecord.getTraceRecordType(cip) != TraceRecordManager::TraceRecordNone && (TraceRecord.getHitCount(cip) == 0) ^ bInto;
     cbTraceUniversalConditionalStep(cip, stepFunction, callback, forceBreakTrace);
@@ -1492,7 +1546,7 @@ static void cbCreateProcess(CREATE_PROCESS_DEBUG_INFO* CreateProcessInfo)
     {
         char command[deflen] = "";
 
-        if(settingboolget("Events", "TlsCallbacks"))
+        if(settingboolget("Events", "TlsCallbacks", true))
         {
             SHARED_ACQUIRE(LockModules);
             auto modInfo = ModInfoFromAddr(base);
@@ -1513,7 +1567,7 @@ static void cbCreateProcess(CREATE_PROCESS_DEBUG_INFO* CreateProcessInfo)
                 dprintf(QT_TRANSLATE_NOOP("DBG", "%d invalid TLS callback addresses...\n"), invalidCount);
         }
 
-        if(settingboolget("Events", "EntryBreakpoint") && !bEntryIsInMzHeader)
+        if(settingboolget("Events", "EntryBreakpoint", true) && !bEntryIsInMzHeader)
         {
             sprintf_s(command, "bp %p,\"%s\",ss", (void*)(pDebuggedBase + pDebuggedEntry), GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "entry breakpoint")));
             cmddirectexec(command);
@@ -1531,7 +1585,7 @@ static void cbCreateProcess(CREATE_PROCESS_DEBUG_INFO* CreateProcessInfo)
     threadInfo.lpThreadLocalBase = CreateProcessInfo->lpThreadLocalBase;
     ThreadCreate(&threadInfo);
 
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
 
     //call plugin callback
     PLUG_CB_CREATEPROCESS callbackInfo;
@@ -1582,7 +1636,7 @@ static void cbExitProcess(EXIT_PROCESS_DEBUG_INFO* ExitProcess)
         dprintf(QT_TRANSLATE_NOOP("DBG", "Process stopped with exit code %s\n"), exitDescription.c_str());
     }
 
-    const bool breakHere = settingboolget("Events", "NtTerminateProcess");
+    const bool breakHere = settingboolget("Events", "NtTerminateProcess", false);
     if(breakHere)
     {
         // lock
@@ -1609,7 +1663,7 @@ static void cbExitProcess(EXIT_PROCESS_DEBUG_INFO* ExitProcess)
 static void cbCreateThread(CREATE_THREAD_DEBUG_INFO* CreateThread)
 {
     ThreadCreate(CreateThread); //update thread list
-    DWORD dwThreadId = ((DEBUG_EVENT*)GetDebugData())->dwThreadId;
+    DWORD dwThreadId = GetDebugData()->dwThreadId;
     hActiveThread = ThreadGetHandle(dwThreadId);
 
     PLUG_CB_CREATETHREAD callbackInfo;
@@ -1625,14 +1679,14 @@ static void cbCreateThread(CREATE_THREAD_DEBUG_INFO* CreateThread)
             SymGetSymbolicName(parameter).c_str()
            );
 
-    if(settingboolget("Events", "ThreadEntry"))
+    if(settingboolget("Events", "ThreadEntry", false))
     {
         String command;
         command = StringUtils::sprintf("bp %p,\"%s %X\",ss", entry, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Thread Entry")), dwThreadId);
         cmddirectexec(command.c_str());
     }
 
-    if(settingboolget("Events", "ThreadStart"))
+    if(settingboolget("Events", "ThreadStart", false))
     {
         HistoryClear();
         //update memory map
@@ -1685,7 +1739,7 @@ static void cbExitThread(EXIT_THREAD_DEBUG_INFO* ExitThread)
         else
             dputs(QT_TRANSLATE_NOOP("DBG", "No threads left to switch to (bug?)"));
     }
-    DWORD dwThreadId = ((DEBUG_EVENT*)GetDebugData())->dwThreadId;
+    DWORD dwThreadId = GetDebugData()->dwThreadId;
     PLUG_CB_EXITTHREAD callbackInfo;
     callbackInfo.ExitThread = ExitThread;
     callbackInfo.dwThreadId = dwThreadId;
@@ -1694,7 +1748,7 @@ static void cbExitThread(EXIT_THREAD_DEBUG_INFO* ExitThread)
     ThreadExit(dwThreadId);
     dprintf(QT_TRANSLATE_NOOP("DBG", "Thread %s exit\n"), formatpidtid(dwThreadId).c_str());
 
-    if(settingboolget("Events", "ThreadEnd"))
+    if(settingboolget("Events", "ThreadEnd", false))
     {
         //update GUI
         DebugUpdateGuiSetStateAsync(GetContextDataEx(hActiveThread, UE_CIP), paused);
@@ -1714,22 +1768,12 @@ static DWORD WINAPI cbInitializationScriptThread(void*)
     Memory<char*> script(MAX_SETTING_SIZE + 1);
     if(BridgeSettingGet("Engine", "InitializeScript", script())) // Global script file
     {
-        if(scriptLoadSync(script()))
-        {
-            if(scriptRunSync(0, true))
-                scriptunload();
-        }
-        else
+        if(!ScriptExecAwait(script(), false))
             dputs(QT_TRANSLATE_NOOP("DBG", "Error: Cannot load global initialization script."));
     }
     if(szDebuggeeInitializationScript[0] != 0)
     {
-        if(scriptLoadSync(szDebuggeeInitializationScript))
-        {
-            if(scriptRunSync(0, true))
-                scriptunload();
-        }
-        else
+        if(!ScriptExecAwait(szDebuggeeInitializationScript, false))
             dputs(QT_TRANSLATE_NOOP("DBG", "Error: Cannot load debuggee initialization script."));
     }
     return 0;
@@ -1737,7 +1781,7 @@ static DWORD WINAPI cbInitializationScriptThread(void*)
 
 static void cbSystemBreakpoint(const void* ExceptionData) // TODO: System breakpoint event shouldn't be dropped
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
 
     //Get on top of things
     SetForegroundWindow(GuiGetWindowHandle());
@@ -1760,7 +1804,7 @@ static void cbSystemBreakpoint(const void* ExceptionData) // TODO: System breakp
     plugincbcall(CB_SYSTEMBREAKPOINT, &callbackInfo);
 
     lock(WAITID_RUN); // Allow the user to run a script file now
-    bool systemBreakpoint = settingboolget("Events", "SystemBreakpoint");
+    bool systemBreakpoint = settingboolget("Events", "SystemBreakpoint", true);
     if(!systemBreakpoint && bEntryIsInMzHeader)
     {
         dputs(QT_TRANSLATE_NOOP("DBG", "It has been detected that the debuggee entry point is in the MZ header of the executable. This will cause strange behavior, so the system breakpoint has been enabled regardless of your setting. Be careful!"));
@@ -1786,7 +1830,7 @@ static void cbSystemBreakpoint(const void* ExceptionData) // TODO: System breakp
 
 static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     void* base = LoadDll->lpBaseOfDll;
 
     char DLLDebugFileName[MAX_PATH] = "";
@@ -1816,7 +1860,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
         bIsDebuggingThis = true;
         pDebuggedBase = (duint)base;
         DbCheckHash(ModContentHashFromAddr(pDebuggedBase)); //Check hash mismatch
-        if(settingboolget("Events", "EntryBreakpoint"))
+        if(settingboolget("Events", "EntryBreakpoint", true))
         {
             bAlreadySetEntry = true;
             sprintf_s(command, "bp %p,\"%s\",ss", (void*)(pDebuggedBase + pDebuggedEntry), GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "entry breakpoint")));
@@ -1827,7 +1871,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
 
     int party = ModGetParty(duint(base));
 
-    if(settingboolget("Events", "TlsCallbacks") && party != mod_system || settingboolget("Events", "TlsCallbacksSystem") && party == mod_system)
+    if(settingboolget("Events", "TlsCallbacks", true) && party != mod_system || settingboolget("Events", "TlsCallbacksSystem", false) && party == mod_system)
     {
         SHARED_ACQUIRE(LockModules);
         auto modInfo = ModInfoFromAddr(duint(base));
@@ -1852,7 +1896,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
 
     auto shouldBreakOnDll = dbghandledllbreakpoint(modname, true);
     auto dllEntrySetting = party == mod_system ? "DllEntrySystem" : "DllEntry";
-    if(!bAlreadySetEntry && (shouldBreakOnDll || settingboolget("Events", dllEntrySetting)))
+    if(!bAlreadySetEntry && (shouldBreakOnDll || settingboolget("Events", dllEntrySetting, false)))
     {
         auto entry = ModEntryFromAddr(duint(base));
         if(entry)
@@ -1865,9 +1909,9 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
     auto isNtdll = ModNameFromAddr(duint(base), modname, true) && scmp(modname, "ntdll.dll");
     if(isNtdll)
     {
-        if(settingboolget("Misc", "QueryProcessCookie"))
+        if(settingboolget("Misc", "QueryProcessCookie", false))
             cookie.HandleNtdllLoad(bIsAttached);
-        if(settingboolget("Misc", "TransparentExceptionStepping"))
+        if(settingboolget("Misc", "TransparentExceptionStepping", true))
             exceptionDispatchAddr = DbgValFromString("ntdll:KiUserExceptionDispatcher");
         //set debug flags
         if(dwDebugFlags != 0)
@@ -1937,7 +1981,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
     {
         cbGenericBreakpoint(BPDLL, DLLDebugFileName);
     }
-    else if(!isNtdll && settingboolget("Events", dllLoadSetting))
+    else if(!isNtdll && settingboolget("Events", dllLoadSetting, false))
     {
         //update GUI
         DebugUpdateGuiSetStateAsync(GetContextDataEx(hActiveThread, UE_CIP), paused);
@@ -1954,7 +1998,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
 
 static void cbUnloadDll(UNLOAD_DLL_DEBUG_INFO* UnloadDll)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     PLUG_CB_UNLOADDLL callbackInfo;
     callbackInfo.UnloadDll = UnloadDll;
     plugincbcall(CB_UNLOADDLL, &callbackInfo);
@@ -1972,7 +2016,7 @@ static void cbUnloadDll(UNLOAD_DLL_DEBUG_INFO* UnloadDll)
     {
         cbGenericBreakpoint(BPDLL, modname);
     }
-    else if(settingboolget("Events", dllUnloadSetting))
+    else if(settingboolget("Events", dllUnloadSetting, false))
     {
         //update GUI
         DebugUpdateGuiSetStateAsync(GetContextDataEx(hActiveThread, UE_CIP), paused);
@@ -1994,7 +2038,7 @@ static void cbUnloadDll(UNLOAD_DLL_DEBUG_INFO* UnloadDll)
 
 static void cbOutputDebugString(OUTPUT_DEBUG_STRING_INFO* DebugString)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     PLUG_CB_OUTPUTDEBUGSTRING callbackInfo;
     callbackInfo.DebugString = DebugString;
     plugincbcall(CB_OUTPUTDEBUGSTRING, &callbackInfo);
@@ -2020,7 +2064,7 @@ static void cbOutputDebugString(OUTPUT_DEBUG_STRING_INFO* DebugString)
         //TODO: implement Windows 10 unicode debug string
     }
 
-    if(settingboolget("Events", "DebugStrings"))
+    if(settingboolget("Events", "DebugStrings", false))
     {
         //update GUI
         DebugUpdateGuiSetStateAsync(GetContextDataEx(hActiveThread, UE_CIP), paused);
@@ -2035,23 +2079,9 @@ static void cbOutputDebugString(OUTPUT_DEBUG_STRING_INFO* DebugString)
     }
 }
 
-static bool dbgdetachDisableAllBreakpoints(const BREAKPOINT* bp)
-{
-    if(bp->enabled)
-    {
-        if(bp->type == BPNORMAL)
-            DeleteBPX(bp->addr);
-        else if(bp->type == BPMEMORY)
-            RemoveMemoryBPX(bp->addr, 0);
-        else if(bp->type == BPHARDWARE && TITANDRXVALID(bp->titantype))
-            DeleteHardwareBreakPoint(TITANGETDRX(bp->titantype));
-    }
-    return true;
-}
-
 static void cbException(EXCEPTION_DEBUG_INFO* ExceptionData)
 {
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     PLUG_CB_EXCEPTION callbackInfo;
     callbackInfo.Exception = ExceptionData;
     unsigned int ExceptionCode = ExceptionData->ExceptionRecord.ExceptionCode;
@@ -2069,26 +2099,33 @@ static void cbException(EXCEPTION_DEBUG_INFO* ExceptionData)
             return;
         }
     }
+
+    const ExceptionFilter & filter = dbggetexceptionfilter(ExceptionCode);
     if(ExceptionData->ExceptionRecord.ExceptionCode == MS_VC_EXCEPTION) //SetThreadName exception
     {
         THREADNAME_INFO nameInfo; //has no valid local pointers
         memcpy(&nameInfo, ExceptionData->ExceptionRecord.ExceptionInformation, sizeof(THREADNAME_INFO));
         if(nameInfo.dwThreadID == -1) //current thread
-            nameInfo.dwThreadID = ((DEBUG_EVENT*)GetDebugData())->dwThreadId;
+            nameInfo.dwThreadID = GetDebugData()->dwThreadId;
         if(nameInfo.dwType == 0x1000 && nameInfo.dwFlags == 0 && ThreadIsValid(nameInfo.dwThreadID)) //passed basic checks
         {
             Memory<char*> ThreadName(MAX_THREAD_NAME_SIZE, "cbException:ThreadName");
             if(MemRead((duint)nameInfo.szName, ThreadName(), MAX_THREAD_NAME_SIZE - 1))
             {
                 String ThreadNameEscaped = StringUtils::Escape(ThreadName());
-                dprintf(QT_TRANSLATE_NOOP("DBG", "SetThreadName exception on %p (%X, \"%s\")\n"), addr, nameInfo.dwThreadID, ThreadNameEscaped.c_str());
                 ThreadSetName(nameInfo.dwThreadID, ThreadNameEscaped.c_str());
-                if(!settingboolget("Events", "ThreadNameSet"))
+                if(filter.logException)
+                    dprintf(QT_TRANSLATE_NOOP("DBG", "SetThreadName exception on %p (%X, \"%s\")\n"), addr, nameInfo.dwThreadID, ThreadNameEscaped.c_str());
+                if(!settingboolget("Events", "ThreadNameSet", false))
+                {
+                    // Allow hiding the SetThreadName exception from the debuggee if the user wants to
+                    if(filter.handledBy == ExceptionHandledBy::Debugger)
+                        dbgsetcontinuestatus(DBG_CONTINUE);
                     return;
+                }
             }
         }
     }
-    const ExceptionFilter & filter = dbggetexceptionfilter(ExceptionCode);
     if(bVerboseExceptionLogging && filter.logException)
         DbgCmdExecDirect("exinfo"); //show extended exception information
     auto exceptionName = ExceptionCodeToName(ExceptionCode);
@@ -2139,7 +2176,7 @@ static void cbException(EXCEPTION_DEBUG_INFO* ExceptionData)
 static void cbDebugEvent(DEBUG_EVENT* DebugEvent)
 {
     nextContinueStatus = DBG_EXCEPTION_NOT_HANDLED;
-    hActiveThread = ThreadGetHandle(((DEBUG_EVENT*)GetDebugData())->dwThreadId);
+    hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     InterlockedIncrement((volatile long*)&DbgEvents);
     PLUG_CB_DEBUGEVENT debugEventInfo;
     debugEventInfo.DebugEvent = DebugEvent;
@@ -2720,7 +2757,7 @@ void dbgstartscriptthread(CBPLUGINSCRIPT cbScript)
     CloseHandle(CreateThread(0, 0, scriptThread, (LPVOID)cbScript, 0, 0));
 }
 
-static void* InitDLLDebugW(const wchar_t* szFileName, const wchar_t* szCommandLine, const wchar_t* szCurrentFolder)
+static PROCESS_INFORMATION* InitDLLDebugW(const wchar_t* szFileName, const wchar_t* szCommandLine, const wchar_t* szCurrentFolder)
 {
     WString loaderFilename = StringUtils::sprintf(L"\\DLLLoader" ArchValue(L"32", L"64") L"_%04X.exe", GetTickCount() & 0xFFFF);
     WString debuggeeLoaderPath = szFileName;
@@ -2742,7 +2779,7 @@ static void* InitDLLDebugW(const wchar_t* szFileName, const wchar_t* szCommandLi
         }
     }
 
-    PPROCESS_INFORMATION ReturnValue = (PPROCESS_INFORMATION)InitDebugW(debuggeeLoaderPath.c_str(), szCommandLine, szCurrentFolder);
+    PPROCESS_INFORMATION ReturnValue = InitDebugW(debuggeeLoaderPath.c_str(), szCommandLine, szCurrentFolder);
     WString mappingName = StringUtils::sprintf(L"Local\\szLibraryName%X", ReturnValue->dwProcessId);
     const auto mappingSize = 512;
     DebugDLLFileMapping = CreateFileMappingW(INVALID_HANDLE_VALUE, 0, PAGE_READWRITE, 0, mappingSize * sizeof(wchar_t), mappingName.c_str());
@@ -2771,7 +2808,7 @@ static void debugLoopFunction(INIT_STRUCT* init)
     {
         gInitExe = StringUtils::Utf8ToUtf16(szDebuggeePath);
         static PROCESS_INFORMATION pi_attached;
-        memset(&pi_attached, 0, sizeof(pi_attached));
+        pi_attached = {};
         fdProcessInfo = &pi_attached;
     }
     else
@@ -2780,10 +2817,10 @@ static void debugLoopFunction(INIT_STRUCT* init)
         strncpy_s(szDebuggeePath, init->exe.c_str(), _TRUNCATE);
     }
 
-    pDebuggedEntry = GetPE32DataW(gInitExe.c_str(), 0, UE_OEP);
+    pDebuggedEntry = init->entryPointRva;
     bEntryIsInMzHeader = pDebuggedEntry == 0 || pDebuggedEntry == 1;
 
-    bFileIsDll = IsFileDLLW(StringUtils::Utf8ToUtf16(szDebuggeePath).c_str(), 0);
+    bFileIsDll = init->isDll;
     if(bFileIsDll && !FileExists(szDllLoaderPath))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "Error debugging DLL (loaddll.exe not found)\n"));
@@ -2808,11 +2845,12 @@ static void debugLoopFunction(INIT_STRUCT* init)
         gInitDir = StringUtils::Utf8ToUtf16(init->currentfolder);
 
         //start the process
+        PROCESS_INFORMATION* processInfo = nullptr;
         if(bFileIsDll)
-            fdProcessInfo = (PROCESS_INFORMATION*)InitDLLDebugW(gInitExe.c_str(), gInitCmd.c_str(), gInitDir.c_str());
+            processInfo = InitDLLDebugW(gInitExe.c_str(), gInitCmd.c_str(), gInitDir.c_str());
         else
-            fdProcessInfo = (PROCESS_INFORMATION*)InitDebugW(gInitExe.c_str(), gInitCmd.c_str(), gInitDir.c_str());
-        if(!fdProcessInfo)
+            processInfo = InitDebugW(gInitExe.c_str(), gInitCmd.c_str(), gInitDir.c_str());
+        if(processInfo == nullptr)
         {
             auto lastError = GetLastError();
             auto isElevated = BridgeIsProcessElevated();
@@ -2825,7 +2863,6 @@ static void debugLoopFunction(INIT_STRUCT* init)
                 wchar_t wszProgramPath[MAX_PATH] = L"";
                 if(answer == IDYES && dbgrestartadmin())
                 {
-                    fdProcessInfo = &g_pi;
                     GuiCloseApplication();
                     return;
                 }
@@ -2837,10 +2874,10 @@ static void debugLoopFunction(INIT_STRUCT* init)
                 //https://blogs.techsmith.com/inside-techsmith/devcorner-debug-uiaccess
                 error += ", uiAccess=\"true\"";
             }
-            fdProcessInfo = &g_pi;
             dprintf(QT_TRANSLATE_NOOP("DBG", "Error starting process (CreateProcess, %s)!\n"), error.c_str());
             return;
         }
+        fdProcessInfo = processInfo;
 
         //check for WOW64
         BOOL wow64 = false, mewow64 = false;
@@ -2877,16 +2914,16 @@ static void debugLoopFunction(INIT_STRUCT* init)
     init->event = nullptr;
 
     //set custom handlers
-    SetCustomHandler(UE_CH_CREATEPROCESS, (TITANCBCH)cbCreateProcess);
-    SetCustomHandler(UE_CH_EXITPROCESS, (TITANCBCH)cbExitProcess);
-    SetCustomHandler(UE_CH_CREATETHREAD, (TITANCBCH)cbCreateThread);
-    SetCustomHandler(UE_CH_EXITTHREAD, (TITANCBCH)cbExitThread);
-    SetCustomHandler(UE_CH_SYSTEMBREAKPOINT, (TITANCBCH)cbSystemBreakpoint);
-    SetCustomHandler(UE_CH_LOADDLL, (TITANCBCH)cbLoadDll);
-    SetCustomHandler(UE_CH_UNLOADDLL, (TITANCBCH)cbUnloadDll);
-    SetCustomHandler(UE_CH_OUTPUTDEBUGSTRING, (TITANCBCH)cbOutputDebugString);
-    SetCustomHandler(UE_CH_UNHANDLEDEXCEPTION, (TITANCBCH)cbException);
-    SetCustomHandler(UE_CH_DEBUGEVENT, (TITANCBCH)cbDebugEvent);
+    SetCustomHandler(UE_CH_CREATEPROCESS, (TITANCALLBACKARG)cbCreateProcess);
+    SetCustomHandler(UE_CH_EXITPROCESS, (TITANCALLBACKARG)cbExitProcess);
+    SetCustomHandler(UE_CH_CREATETHREAD, (TITANCALLBACKARG)cbCreateThread);
+    SetCustomHandler(UE_CH_EXITTHREAD, (TITANCALLBACKARG)cbExitThread);
+    SetCustomHandler(UE_CH_SYSTEMBREAKPOINT, (TITANCALLBACKARG)cbSystemBreakpoint);
+    SetCustomHandler(UE_CH_LOADDLL, (TITANCALLBACKARG)cbLoadDll);
+    SetCustomHandler(UE_CH_UNLOADDLL, (TITANCALLBACKARG)cbUnloadDll);
+    SetCustomHandler(UE_CH_OUTPUTDEBUGSTRING, (TITANCALLBACKARG)cbOutputDebugString);
+    SetCustomHandler(UE_CH_UNHANDLEDEXCEPTION, (TITANCALLBACKARG)cbException);
+    SetCustomHandler(UE_CH_DEBUGEVENT, (TITANCALLBACKARG)cbDebugEvent);
 
     //inform GUI we started without problems
     GuiSetDebugState(initialized);
@@ -2964,6 +3001,7 @@ static void debugLoopFunction(INIT_STRUCT* init)
     WatchClear();
     TraceRecord.clear();
     TraceRecord.enableTraceRecording(false, nullptr); // Stop trace recording
+    bIsDebugging = false;
     GuiSetDebugState(stopped);
     GuiUpdateAllViews();
     dputs(QT_TRANSLATE_NOOP("DBG", "Debugging stopped!"));
@@ -3013,7 +3051,7 @@ void dbgsetforeground()
 
 void dbgcreatedebugthread(INIT_STRUCT* init)
 {
-    if(settingboolget("Misc", "CheckForAntiCheatDrivers"))
+    if(settingboolget("Misc", "CheckForAntiCheatDrivers", true))
     {
         auto loadedDrivers = LoadedAntiCheatDrivers();
         if(!loadedDrivers.empty())
@@ -3030,7 +3068,10 @@ void dbgcreatedebugthread(INIT_STRUCT* init)
     hDebugLoopThread = CreateThread(nullptr, 0, [](LPVOID lpParameter) -> DWORD
     {
         auto init = (INIT_STRUCT*)lpParameter;
+
+        bIsDebugging = true;
         debugLoopFunction(init);
+        bIsDebugging = false;
 
         // Set the event in case debugLoopFunction returned early to prevent a deadlock
         if(init->event)
@@ -3038,6 +3079,7 @@ void dbgcreatedebugthread(INIT_STRUCT* init)
             SetEvent(init->event);
             init->event = nullptr;
         }
+
         return 0;
     }, init, 0, nullptr);
     WaitForSingleObject(event, INFINITE);

@@ -2,6 +2,7 @@
 #include "TraceRegisters.h"
 #include "TraceWidget.h"
 #include "TraceDump.h"
+#include "TraceStack.h"
 #include "TraceBrowser.h"
 #include "Configuration.h"
 #include "EditFloatRegister.h"
@@ -21,12 +22,23 @@ TraceRegisters::TraceRegisters(TraceWidget* parent) : RegistersView(parent)
     wCM_FollowInDump = new QAction(DIcon("dump"), tr("Follow in Dump"), this);
     connect(wCM_FollowInDump, SIGNAL(triggered()), this, SLOT(onFollowInDump()));
 
+    wCM_FollowInStack = new QAction(DIcon("stack"), tr("Follow in Stack"), this);
+    connect(wCM_FollowInStack, SIGNAL(triggered()), this, SLOT(onFollowInStack()));
+
     wCM_Highlight = setupAction(DIcon("highlight"), tr("Highlight"));
     connect(wCM_Highlight, SIGNAL(triggered()), this, SLOT(onHighlightSlot()));
 
     delete SIMDAlwaysShowAVX512; // Currently it doesn't support AVX512
     SIMDAlwaysShowAVX512 = nullptr;
     mXMMModeYMMOnly = true;
+
+    wCM_Highlight->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_Highlight);
+    wCM_FollowInDump->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_FollowInDump);
+    wCM_FollowInStack->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_FollowInStack);
+    refreshShortcutsSlot();
 }
 
 void TraceRegisters::setRegisters(REGDUMP* registers)
@@ -53,6 +65,8 @@ void TraceRegisters::displayCustomContextMenuSlot(QPoint pos)
         if(mCANSTOREADDRESS.contains(mSelected))
         {
             menu.addAction(wCM_FollowInDump);
+            if(mSelected == CSP || mSelected == CBP) // TODO: Proper support stack detection
+                menu.addAction(wCM_FollowInStack);
         }
         menu.addAction(wCM_CopyToClipboard);
         if(mFPUx87_80BITSDISPLAY.contains(mSelected))
@@ -113,6 +127,14 @@ void TraceRegisters::displayCustomContextMenuSlot(QPoint pos)
         if(mFpuMode != 2)
             menu.addAction(mDisplayMMX);
     }
+}
+
+void TraceRegisters::refreshShortcutsSlot()
+{
+    wCM_Highlight->setShortcut(ConfigShortcut("ActionHighlightingMode"));
+    wCM_FollowInDump->setShortcut(ConfigShortcut("ActionFollowDwordQwordDump"));
+    wCM_FollowInStack->setShortcut(ConfigShortcut("ActionFollowStack"));
+    RegistersView::refreshShortcutsSlot();
 }
 
 static void showCopyFloatRegister(int bits, QWidget* parent, const QString & title, char* registerData)
@@ -193,6 +215,16 @@ void TraceRegisters::onFollowInDump()
             return;
     duint value = *((const duint*)registerValue(&mRegDumpStruct, mSelected));
     mParent->getTraceDump()->printDumpAt(value, true, true, true);
+}
+
+void TraceRegisters::onFollowInStack()
+{
+    // First check if the dump is loaded
+    if(!mParent->getTraceFile()->getDump()->isEnabled())
+        if(!mParent->loadDump())  // Try to load the dump
+            return;
+    duint value = *((const duint*)registerValue(&mRegDumpStruct, mSelected));
+    mParent->getTraceStack()->printDumpAt(value, true, true, true);
 }
 
 void TraceRegisters::onHighlightSlot()

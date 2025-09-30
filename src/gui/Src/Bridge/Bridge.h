@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <QObject>
 #include <QWidget>
 #include <QMutex>
@@ -202,7 +203,7 @@ private:
     duint mBridgeResults[BridgeResult::Last];
     DWORD mMainThreadId = 0;
     volatile bool mDbgStopped = false;
-    QMap<GUIMSG, DWORD> mLastUpdates;
+    QMap<GUIMSG, std::chrono::steady_clock::time_point> mLastUpdates;
     QMap<GUIMSG, QTimer*> mUpdateTimers;
     QZydis* mDisasm = nullptr;
 };

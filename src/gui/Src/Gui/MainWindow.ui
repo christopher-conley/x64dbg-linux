@@ -16,6 +16,9 @@
   <property name="windowTitle">
    <string>x64dbg</string>
   </property>
+  <property name="toolButtonStyle">
+   <enum>Qt::ToolButtonIconOnly</enum>
+  </property>
   <widget class="QWidget" name="centralWidget"/>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -160,6 +163,7 @@
     <addaction name="actionManual"/>
     <addaction name="actionFaq"/>
     <addaction name="actionAbout"/>
+    <addaction name="actionReleaseNotes"/>
     <addaction name="actionAbout_Qt"/>
     <addaction name="separator"/>
     <addaction name="actionCrashDump"/>
@@ -300,7 +304,7 @@
     <bool>false</bool>
    </property>
    <property name="allowedAreas">
-    <set>Qt::BottomToolBarArea</set>
+    <set>Qt::NoToolBarArea</set>
    </property>
    <attribute name="toolBarArea">
     <enum>BottomToolBarArea</enum>
@@ -1547,6 +1551,15 @@
    </property>
    <property name="statusTip">
     <string>Output the detailed help information about an assembly mnemonic to the log. Equivalent command &quot;mnemonichelp name&quot;.</string>
+   </property>
+  </action>
+  <action name="actionReleaseNotes">
+   <property name="icon">
+    <iconset theme="bug" resource="../../resource.qrc">
+     <normaloff>:/Default/icons/bug.png</normaloff>:/Default/icons/bug.png</iconset>
+   </property>
+   <property name="text">
+    <string>Release Notes</string>
    </property>
   </action>
  </widget>

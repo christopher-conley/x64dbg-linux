@@ -5,12 +5,14 @@
 #include "stackinfo.h"
 #include "debugger.h"
 #include "simplescript.h"
+#include "value.h"
+#include "command.h"
 
 bool cbScriptLoad(int argc, char* argv[])
 {
     if(argc < 2)
         return false;
-    scriptload(argv[1]);
+    ScriptLoadAwait(argv[1], false);
     return true;
 }
 
@@ -39,7 +41,22 @@ bool cbScriptCmd(int argc, char* argv[])
         return false;
     while(isspace(*scriptcmd))
         scriptcmd++;
-    return scriptcmdexec(scriptcmd);
+    return ScriptCmdExecAwait(scriptcmd, false, nullptr);
+}
+
+bool cbScriptRun(int argc, char* argv[])
+{
+    duint destline = 0;
+    if(argc > 2 && !valfromstring(argv[1], &destline, false))
+        return false;
+    return ScriptRunAwait((int)destline, false);
+}
+
+bool cbScriptExec(int argc, char* argv[])
+{
+    if(IsArgumentsLessThan(argc, 2))
+        return false;
+    return ScriptExecAwait(argv[1], false);
 }
 
 static bool cbGenericLog(int argc, char* argv[], void(*logputs)(const char* msg))
@@ -68,7 +85,7 @@ bool cbInstrLog(int argc, char* argv[])
     return cbGenericLog(argc, argv, [](const char* msg)
     {
         dputs_untranslated(msg);
-        scriptlog(msg);
+        ScriptLogLocked(msg);
     });
 }
 

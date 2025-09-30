@@ -22,6 +22,19 @@ CPURegistersView::CPURegistersView(CPUWidget* parent) : RegistersView(parent), m
 
     setupContextMenu();
 
+    wCM_ToggleValue->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_ToggleValue);
+    wCM_Highlight->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_Highlight);
+    wCM_Incrementx87Stack->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_Incrementx87Stack);
+    wCM_Decrementx87Stack->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_Decrementx87Stack);
+    wCM_FollowInDump->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_FollowInDump);
+    wCM_FollowInStack->setShortcutContext(Qt::WidgetShortcut);
+    this->addAction(wCM_FollowInStack);
+
     refreshShortcutsSlot();
 }
 
@@ -89,6 +102,8 @@ void CPURegistersView::refreshShortcutsSlot()
     wCM_Highlight->setShortcut(ConfigShortcut("ActionHighlightingMode"));
     wCM_Incrementx87Stack->setShortcut(ConfigShortcut("ActionIncrementx87Stack"));
     wCM_Decrementx87Stack->setShortcut(ConfigShortcut("ActionDecrementx87Stack"));
+    wCM_FollowInDump->setShortcut(ConfigShortcut("ActionFollowDwordQwordDump"));
+    wCM_FollowInStack->setShortcut(ConfigShortcut("ActionFollowStack"));
     RegistersView::refreshShortcutsSlot();
 }
 

@@ -15,9 +15,11 @@ public:
 
 public slots:
     virtual void displayCustomContextMenuSlot(QPoint pos);
+    virtual void refreshShortcutsSlot();
     void onCopySIMDRegister();
     void onSetCurrentRegister();
     void onFollowInDump();
+    void onFollowInStack();
     void onHighlightSlot();
 
 protected:
@@ -28,5 +30,6 @@ private:
     QAction* wCM_CopySIMDRegister;
     QAction* wCM_SetCurrentRegister;
     QAction* wCM_FollowInDump;
+    QAction* wCM_FollowInStack;
     QAction* wCM_Highlight;
 };

@@ -1,18 +1,18 @@
 # GuiDumpAt
 
-Function description.
+Change the address of the dump window to the given virtual address, to show the dump at this address.
 
 ```c++
-Function definition.
+void GuiDumpAt(duint va);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`va` Virtual address of the pointer to dump.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
@@ -22,4 +22,4 @@ Example code.
 
 ## Related functions
 
-- List of related functions
+- [GuiDumpAtN](./GuiDumpAtN.md)

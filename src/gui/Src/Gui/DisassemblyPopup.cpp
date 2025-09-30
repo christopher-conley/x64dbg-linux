@@ -1,11 +1,11 @@
 #include "DisassemblyPopup.h"
-#include "CachedFontMetrics.h"
-#include "Configuration.h"
-#include "StringUtil.h"
-#include "MiscUtil.h"
+#include <Utils/CachedFontMetrics.h>
+#include <Configuration.h>
+#include <StringUtil.h>
+#include <MiscUtil.h>
 #include <QPainter>
 #include <QStyleOptionFrame>
-#include "Bridge.h"
+#include <Bridge.h>
 
 DisassemblyPopup::DisassemblyPopup(AbstractTableView* parent, Architecture* architecture) :
     QFrame(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus),
@@ -125,7 +125,7 @@ bool DisassemblyPopup::eventFilter(QObject* object, QEvent* event)
                 auto addr = mParent->getAddressForPosition(x, y);
                 if(getAddress() != addr)
                 {
-                    if(DbgFunctions()->MemIsCodePage(addr, false))
+                    if(DbgFunctions()->MemIsCodePage(addr, true))
                     {
                         move(mParent->mapToGlobal(QPoint(x + 20, y + fontMetrics().height() * 2)));
                         setAddress(addr);

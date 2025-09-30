@@ -13,6 +13,7 @@
 
 static HINSTANCE hInst;
 static Utf8Ini settings;
+static wchar_t szWorkingDirectory[MAX_PATH] = L"";
 static wchar_t szUserDirectory[MAX_PATH] = L"";
 static wchar_t szIniFile[MAX_PATH] = L"";
 static CRITICAL_SECTION csIni;
@@ -78,6 +79,9 @@ static const wchar_t* InitializeUserDirectory(HINSTANCE hMainModule, const wchar
         return L"Error getting module directory!";
 
     *backslash = L'\0';
+
+    // Preserve the working directory for the debuggee
+    GetCurrentDirectoryW(_countof(szWorkingDirectory), szWorkingDirectory);
 
     // Set the current directory to the application directory
     SetCurrentDirectoryW(szUserDirectory);
@@ -230,27 +234,6 @@ BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config)
     LOADEXPORT(_dbg_getbranchdestination);
     LOADEXPORT(_dbg_sendmessage);
 
-    // Imported DLLs (GUI)
-    LOADLIBRARY(L"ldconvert.dll");
-    loadIfExists(L"Qt5Core.dll");
-    loadIfExists(L"Qt5Gui.dll");
-    loadIfExists(L"Qt5WinExtras.dll");
-    loadIfExists(L"Qt5Widgets.dll");
-    loadIfExists(L"platforms\\qwindows.dll");
-    loadIfExists(L"imageformats\\qgif.dll");
-    loadIfExists(L"imageformats\\qicns.dll");
-    loadIfExists(L"imageformats\\qico.dll");
-    loadIfExists(L"imageformats\\qjpeg.dll");
-    loadIfExists(L"Qt5Svg.dll");
-    loadIfExists(L"imageformats\\qsvg.dll");
-    loadIfExists(L"imageformats\\qtga.dll");
-    loadIfExists(L"imageformats\\qtiff.dll");
-    loadIfExists(L"imageformats\\qwbmp.dll");
-    loadIfExists(L"imageformats\\qwebp.dll");
-    loadIfExists(L"bearer\\qgenericbearer.dll");
-    loadIfExists(L"bearer\\qnativewifibearer.dll");
-    loadIfExists(L"iconengines\\qsvgicon.dll");
-
     // GUI
     if(config->hGuiModule != nullptr)
     {
@@ -259,6 +242,26 @@ BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config)
     }
     else
     {
+        // Imported DLLs (GUI)
+        LOADLIBRARY(L"ldconvert.dll");
+        loadIfExists(L"Qt5Core.dll");
+        loadIfExists(L"Qt5Gui.dll");
+        loadIfExists(L"Qt5WinExtras.dll");
+        loadIfExists(L"Qt5Widgets.dll");
+        loadIfExists(L"platforms\\qwindows.dll");
+        loadIfExists(L"imageformats\\qgif.dll");
+        loadIfExists(L"imageformats\\qicns.dll");
+        loadIfExists(L"imageformats\\qico.dll");
+        loadIfExists(L"imageformats\\qjpeg.dll");
+        loadIfExists(L"Qt5Svg.dll");
+        loadIfExists(L"imageformats\\qsvg.dll");
+        loadIfExists(L"imageformats\\qtga.dll");
+        loadIfExists(L"imageformats\\qtiff.dll");
+        loadIfExists(L"imageformats\\qwbmp.dll");
+        loadIfExists(L"imageformats\\qwebp.dll");
+        loadIfExists(L"bearer\\qgenericbearer.dll");
+        loadIfExists(L"bearer\\qnativewifibearer.dll");
+        loadIfExists(L"iconengines\\qsvgicon.dll");
         LOADLIBRARY(gui_lib);
     }
     LOADEXPORT(_gui_guiinit);
@@ -472,6 +475,11 @@ BRIDGE_IMPEXP unsigned int BridgeGetNtBuildNumber()
         NtBuildNumber = NtBuildNumber7;
     }
     return NtBuildNumber;
+}
+
+BRIDGE_IMPEXP const wchar_t* BridgeWorkingDirectory()
+{
+    return szWorkingDirectory;
 }
 
 BRIDGE_IMPEXP const wchar_t* BridgeUserDirectory()
@@ -694,7 +702,12 @@ BRIDGE_IMPEXP void DbgClearBookmarkRange(duint start, duint end)
 // FIXME return on success?
 BRIDGE_IMPEXP const char* DbgInit()
 {
-    return _dbg_dbginit();
+    return _dbg_dbginit(false);
+}
+
+BRIDGE_IMPEXP const char* DbgInitBlocking()
+{
+    return _dbg_dbginit(true);
 }
 
 BRIDGE_IMPEXP void DbgExit()
@@ -1579,6 +1592,11 @@ BRIDGE_IMPEXP bool DbgTypeVisit(const TYPEVISITDATA* data)
     return !!_dbg_sendmessage(DBG_TYPE_VISIT, (void*)data, nullptr);
 }
 
+BRIDGE_IMPEXP void DbgUpdateGui(duint disasm_addr, bool stack)
+{
+    _dbg_sendmessage(DBG_UPDATE_GUI, (void*)disasm_addr, (void*)stack);
+}
+
 BRIDGE_IMPEXP const char* GuiTranslateText(const char* Source)
 {
     EnterCriticalSection(&csTranslate);
@@ -1636,7 +1654,10 @@ BRIDGE_IMPEXP void GuiUpdateEnable(bool updateNow)
 {
     bDisableGUIUpdate = false;
     if(updateNow)
+    {
+        DbgUpdateGui(0, false);
         GuiUpdateAllViews();
+    }
 }
 
 BRIDGE_IMPEXP void GuiUpdateDisable()

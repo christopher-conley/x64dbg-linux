@@ -2,6 +2,8 @@
 
 #include <QThread>
 
+class ReleaseNotesDialog;
+
 class UpdateChecker : public QThread
 {
     Q_OBJECT
@@ -20,4 +22,6 @@ private slots:
 
 private:
     QWidget* mParent = nullptr;
+    ReleaseNotesDialog* mReleaseNotes = nullptr;
+    QString mUserAgent;
 };

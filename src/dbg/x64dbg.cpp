@@ -5,6 +5,7 @@
  */
 
 #include "_global.h"
+#include "args.h"
 #include "command.h"
 #include "variable.h"
 #include "debugger.h"
@@ -28,8 +29,10 @@
 #include "stringformat.h"
 #include "dbghelp_safe.h"
 #include <shellapi.h>
+#include <shlwapi.h>
+#include <fstream>
 
-static MESSAGE_STACK* gMsgStack = 0;
+static MESSAGE_QUEUE* gMsgQueue = 0;
 static HANDLE hCommandLoopThread = 0;
 static bool bStopCommandLoopThread = false;
 static char alloctrace[MAX_PATH] = "";
@@ -191,8 +194,8 @@ static void registercommands()
     dbgcmdnew("SetBreakpointCondition,bpcond,bpcnd", cbDebugSetBPXCondition, true); //set breakpoint breakCondition
     dbgcmdnew("SetBreakpointLog,bplog,bpl", cbDebugSetBPXLog, true); //set breakpoint logText
     dbgcmdnew("SetBreakpointLogCondition,bplogcondition", cbDebugSetBPXLogCondition, true); //set breakpoint logCondition
-    dbgcmdnew("SetBreakpointCommand", cbDebugSetBPXCommand, true); //set breakpoint command on hit
-    dbgcmdnew("SetBreakpointCommandCondition", cbDebugSetBPXCommandCondition, true); //set breakpoint commandCondition
+    dbgcmdnew("SetBreakpointCommand,bpcommand", cbDebugSetBPXCommand, true); //set breakpoint command on hit
+    dbgcmdnew("SetBreakpointCommandCondition,bpcommandcond", cbDebugSetBPXCommandCondition, true); //set breakpoint commandCondition
     dbgcmdnew("SetBreakpointLogFile", cbDebugSetBPXLogFile, true); //set breakpoint logFile
     dbgcmdnew("SetBreakpointFastResume", cbDebugSetBPXFastResume, true); //set breakpoint fast resume
     dbgcmdnew("SetBreakpointSingleshoot", cbDebugSetBPXSingleshoot, true); //set breakpoint singleshoot
@@ -428,7 +431,9 @@ static void registercommands()
     dbgcmdnew("log", cbInstrLog, false); //log command with superawesome hax
     dbgcmdnew("htmllog", cbInstrHtmlLog, false); //command for testing
     dbgcmdnew("scriptdll,dllscript", cbScriptDll, false); //execute a script DLL
-    dbgcmdnew("scriptcmd", cbScriptCmd, false); // execute a script command TODO: undocumented
+    dbgcmdnew("scriptcmd", cbScriptCmd, false); // execute a script command
+    dbgcmdnew("scriptrun", cbScriptRun, false); // run the currently-loaded script
+    dbgcmdnew("scriptexec", cbScriptExec, false); // run a script file
 
     //gui
     dbgcmdnew("showthreadid", cbShowThreadId, false); // show given thread in threads
@@ -505,7 +510,7 @@ static void registercommands()
 bool cbCommandProvider(char* cmd, int maxlen)
 {
     MESSAGE msg;
-    MsgWait(gMsgStack, &msg);
+    MsgWait(gMsgQueue, &msg);
     if(bStopCommandLoopThread)
         return false;
     char* newcmd = (char*)msg.param1;
@@ -527,7 +532,7 @@ extern "C" DLL_EXPORT bool _dbg_dbgcmdexec(const char* cmd)
     int len = (int)strlen(cmd);
     char* newcmd = (char*)emalloc((len + 1) * sizeof(char), "_dbg_dbgcmdexec:newcmd");
     strcpy_s(newcmd, len + 1, cmd);
-    return MsgSend(gMsgStack, 0, (duint)newcmd, 0);
+    return MsgSend(gMsgQueue, 0, (duint)newcmd, 0);
 }
 
 static DWORD WINAPI DbgCommandLoopThread(void* a)
@@ -681,14 +686,135 @@ static DWORD WINAPI loadDbThread(LPVOID hEvent)
     return 0;
 }
 
-static WString escape(WString cmdline)
+static String escape(String cmdline)
 {
-    StringUtils::ReplaceAll(cmdline, L"\\", L"\\\\");
-    StringUtils::ReplaceAll(cmdline, L"\"", L"\\\"");
+    StringUtils::ReplaceAll(cmdline, "\\", "\\\\");
+    StringUtils::ReplaceAll(cmdline, "\"", "\\\"");
     return cmdline;
 }
 
-extern "C" DLL_EXPORT const char* _dbg_dbginit()
+class CommandlineArguments : public ArgumentParser
+{
+public:
+    String filename;
+    std::vector<std::string> arguments;
+    String workingDir;
+    String pid;
+    String tid;
+    String event;
+    String command;
+    String commandFile;
+    bool help = false;
+
+    CommandlineArguments() : ArgumentParser(ArchValue("x32dbg", "x64dbg"))
+    {
+        addPositional("filename", filename, "Filename of program to debug.");
+        addExtra(arguments);
+
+        addString("-workingDir", workingDir, "Current working directory of new process. Defaults to current working directory if not specified.");
+        addString("-pid", pid, "Process ID to attach to.");
+        addString("-tid", tid, "Thread Identifier (TID) of the thread to resume after attaching (PLMDebug).");
+        addString("-event", event, "Handle to an Event Object to signal on attach (JIT).");
+
+        addString("-c", command, "Command to execute Specifies the initial debugger command to run at start-up.");
+        addString("-cf", commandFile, "Specifies the path and name of a script file. This script file is executed as soon as the debugger is started.");
+
+        addString("-p", pid, "Alias for -pid.");
+        addString("-a", pid, "Alias for -pid.");
+        addString("-e", event, "Alias for -event");
+
+        addBool("-help", help, "Show this message.");
+    }
+};
+
+const char* parseArguments()
+{
+    int argc = 0;
+    auto argvW = std::unique_ptr<wchar_t* [], decltype(&::LocalFree)>(CommandLineToArgvW(GetCommandLineW(), &argc), ::LocalFree);
+    //MessageBoxW(0, GetCommandLineW(), StringUtils::sprintf(L"%d", argc).c_str(), MB_SYSTEMMODAL);
+    auto argvS = std::make_unique<String[]>(argc);
+    auto argvA = std::make_unique<const char* []>(argc);
+    for(int i = 0; i < argc; ++i)
+    {
+        argvS[i] = StringUtils::Utf16ToUtf8(argvW[i]);
+        argvA[i] = argvS[i].c_str();
+    }
+
+    CommandlineArguments args;
+    try
+    {
+        args.parse(argc, argvA.get());
+    }
+    catch(const std::exception & e)
+    {
+        return _strdup(StringUtils::sprintf("Error: %s\n\nHelp:\n%s\n", e.what(), args.helpStr().c_str()).c_str());
+    }
+    if(args.help)
+    {
+        return _strdup(args.helpStr().c_str());
+    }
+
+    // Default to current working directory if not specified otherwise
+    auto workingDir = args.workingDir;
+    if(workingDir.empty())
+    {
+        workingDir = StringUtils::Utf16ToUtf8(BridgeWorkingDirectory());
+    }
+    else
+    {
+        while(!workingDir.empty() && workingDir.back() == '\\')
+            workingDir.pop_back();
+    }
+
+    // Start the debuggee if specified
+    bool hasDebuggee = true;
+    if(!args.filename.empty())
+    {
+        std::string cmdline;
+        for(const auto & arg : args.arguments)
+        {
+            cmdline += StringUtils::sprintf("\"%s\" ", escape(arg).c_str());
+        }
+        DbgCmdExec(StringUtils::sprintf(R"(scriptcmd init "%s", "%s", "%s")", escape(args.filename).c_str(), escape(cmdline).c_str(), escape(workingDir).c_str()).c_str());
+    }
+    else if(!args.pid.empty())
+    {
+        auto event = args.event.empty() ? "0" : args.event;
+        auto tid = args.tid.empty() ? "0" : args.tid;
+        DbgCmdExec(StringUtils::sprintf("scriptcmd attach .%s, .%s, .%s", args.pid.c_str(), event.c_str(), tid.c_str()).c_str());
+    }
+    else
+    {
+        hasDebuggee = false;
+    }
+
+    if(!args.command.empty())
+    {
+        StringList commands;
+        cmdsplit(args.command.c_str(), commands);
+        for(const auto & command : commands)
+        {
+            DbgCmdExec(("scriptcmd " + command).c_str());
+        }
+    }
+
+    if(!args.commandFile.empty())
+    {
+        if(!PathIsRootW(StringUtils::Utf8ToUtf16(args.commandFile).c_str()))
+        {
+            args.commandFile = workingDir + "\\" + args.commandFile;
+        }
+        if(!FileExists(args.commandFile.c_str()))
+        {
+            return _strdup(StringUtils::sprintf("Error: Command file \"%s\" couldn't be opened.\n", args.commandFile.c_str()).c_str());
+        }
+        DbgCmdExec(StringUtils::sprintf("scriptexec \"%s\"", args.commandFile.c_str()).c_str());
+    }
+
+    return nullptr;
+}
+
+extern "C" DLL_EXPORT const char* _dbg_dbginit(bool blocking)
 {
     if(!EngineCheckStructAlignment(UE_STRUCT_TITAN_ENGINE_CONTEXT, sizeof(TITAN_ENGINE_CONTEXT_t)))
         return "Invalid TITAN_ENGINE_CONTEXT_t alignment!";
@@ -721,15 +847,6 @@ extern "C" DLL_EXPORT const char* _dbg_dbginit()
     strcpy_s(scriptDllDir, szUserDir);
     strcat_s(scriptDllDir, "\\scripts\\");
     initDataInstMap();
-
-    dputs(QT_TRANSLATE_NOOP("DBG", "Start file read thread..."));
-    {
-        auto hEvent = CreateEventW(nullptr, false, FALSE, nullptr);
-        CloseHandle(CreateThread(nullptr, 0, loadDbThread, hEvent, 0, nullptr));
-        // Wait until the loadDbThread signals it's finished
-        WaitForSingleObject(hEvent, INFINITE);
-        CloseHandle(hEvent);
-    }
 
     // Create database directory in the local debugger folder
     DbSetPath(StringUtils::sprintf("%s\\db", szUserDir).c_str(), nullptr);
@@ -767,9 +884,22 @@ extern "C" DLL_EXPORT const char* _dbg_dbginit()
         }
     }
     dprintf(QT_TRANSLATE_NOOP("DBG", "Symbol Path: %s\n"), szSymbolCachePath);
+
+    dputs(QT_TRANSLATE_NOOP("DBG", "Start file read thread..."));
+    {
+        auto hEvent = CreateEventW(nullptr, false, FALSE, nullptr);
+        auto hThread = CreateThread(nullptr, 0, loadDbThread, hEvent, 0, nullptr);
+        // Wait until the loadDbThread signals it has started
+        WaitForSingleObject(hEvent, INFINITE);
+        CloseHandle(hEvent);
+        if(blocking)
+            WaitForSingleObject(hThread, INFINITE);
+        CloseHandle(hThread);
+    }
+
     dputs(QT_TRANSLATE_NOOP("DBG", "Allocating message stack..."));
-    gMsgStack = MsgAllocStack();
-    if(!gMsgStack)
+    gMsgQueue = MsgAllocQueue();
+    if(!gMsgQueue)
         return "Could not allocate message stack!";
     dputs(QT_TRANSLATE_NOOP("DBG", "Initializing global script variables..."));
     varinit();
@@ -808,24 +938,7 @@ extern "C" DLL_EXPORT const char* _dbg_dbginit()
     dputs(QT_TRANSLATE_NOOP("DBG", "Handling command line..."));
     dprintf("  %s\n", StringUtils::Utf16ToUtf8(GetCommandLineW()).c_str());
     //handle command line
-    int argc = 0;
-    wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    //MessageBoxW(0, GetCommandLineW(), StringUtils::sprintf(L"%d", argc).c_str(), MB_SYSTEMMODAL);
-    if(argc == 2) //1 argument (init filename)
-        DbgCmdExec(StringUtils::Utf16ToUtf8(StringUtils::sprintf(L"init \"%s\"", escape(argv[1]).c_str())).c_str());
-    else if(argc == 3 && !_wcsicmp(argv[1], L"-p")) //2 arguments (-p PID)
-        DbgCmdExec(StringUtils::Utf16ToUtf8(StringUtils::sprintf(L"attach .%s", argv[2])).c_str()); //attach pid
-    else if(argc == 3) //2 arguments (init filename, cmdline)
-        DbgCmdExec(StringUtils::Utf16ToUtf8(StringUtils::sprintf(L"init \"%s\", \"%s\"", escape(argv[1]).c_str(), escape(argv[2]).c_str())).c_str());
-    else if(argc == 4) //3 arguments (init filename, cmdline, currentdir)
-        DbgCmdExec(StringUtils::Utf16ToUtf8(StringUtils::sprintf(L"init \"%s\", \"%s\", \"%s\"", escape(argv[1]).c_str(), escape(argv[2]).c_str(), escape(argv[3]).c_str())).c_str());
-    else if(argc == 5 && (!_wcsicmp(argv[1], L"-a") || !_wcsicmp(argv[1], L"-p")) && !_wcsicmp(argv[3], L"-e")) //4 arguments (JIT)
-        DbgCmdExec(StringUtils::Utf16ToUtf8(StringUtils::sprintf(L"attach .%s, .%s", argv[2], argv[4])).c_str()); //attach pid, event
-    else if(argc == 5 && !_wcsicmp(argv[1], L"-p") && !_wcsicmp(argv[3], L"-tid")) //4 arguments (PLMDebug)
-        DbgCmdExec(StringUtils::Utf16ToUtf8(StringUtils::sprintf(L"attach .%s, 0, .%s", argv[2], argv[4])).c_str()); //attach pid, 0, tid
-    LocalFree(argv);
-
-    return nullptr;
+    return parseArguments();
 }
 
 /**
@@ -835,12 +948,12 @@ extern "C" DLL_EXPORT void _dbg_dbgexitsignal()
 {
     dputs(QT_TRANSLATE_NOOP("DBG", "Stopping command thread..."));
     bStopCommandLoopThread = true;
-    MsgFreeStack(gMsgStack);
+    MsgFreeQueue(gMsgQueue);
     WaitForThreadTermination(hCommandLoopThread);
     dputs(QT_TRANSLATE_NOOP("DBG", "Stopping running debuggee..."));
     cbDebugStop(0, 0); //after this, debugging stopped
     dputs(QT_TRANSLATE_NOOP("DBG", "Aborting scripts..."));
-    scriptabort();
+    ScriptAbortAwait();
     dputs(QT_TRANSLATE_NOOP("DBG", "Unloading plugins..."));
     pluginunloadall();
     dputs(QT_TRANSLATE_NOOP("DBG", "Cleaning up allocated data..."));
