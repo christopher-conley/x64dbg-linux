@@ -6,59 +6,22 @@
 #include "function.h"
 
 ControlFlowAnalysis::ControlFlowAnalysis(duint base, duint size, bool exceptionDirectory)
-    : Analysis(base, size),
-      mFunctionInfoSize(0),
-      mFunctionInfoData(nullptr)
+    : Analysis(base, size)
 {
 #ifdef _WIN64
-    // This will only be valid if the address range is within a loaded module
-    mModuleBase = ModBaseFromAddr(base);
+    SHARED_ACQUIRE(LockModules);
 
-    if(exceptionDirectory && mModuleBase != 0)
+    auto modInfo = ModInfoFromAddr(base);
+    if(modInfo == nullptr)
+        return;
+
+    mModuleBase = modInfo->base;
+
+    if(exceptionDirectory)
     {
-        char modulePath[MAX_PATH];
-        memset(modulePath, 0, sizeof(modulePath));
-
-        ModPathFromAddr(mModuleBase, modulePath, ARRAYSIZE(modulePath));
-
-        HANDLE fileHandle;
-        DWORD fileSize;
-        HANDLE fileMapHandle;
-        ULONG_PTR fileMapVa;
-        if(StaticFileLoadW(
-                    StringUtils::Utf8ToUtf16(modulePath).c_str(),
-                    UE_ACCESS_READ,
-                    false,
-                    &fileHandle,
-                    &fileSize,
-                    &fileMapHandle,
-                    &fileMapVa))
-        {
-            // Find a pointer to IMAGE_DIRECTORY_ENTRY_EXCEPTION for later use
-            auto virtualOffset = GetPE32DataFromMappedFile(fileMapVa, IMAGE_DIRECTORY_ENTRY_EXCEPTION, UE_SECTIONVIRTUALOFFSET);
-            mFunctionInfoSize = duint(GetPE32DataFromMappedFile(fileMapVa, IMAGE_DIRECTORY_ENTRY_EXCEPTION, UE_SECTIONVIRTUALSIZE));
-
-            // Unload the file
-            StaticFileUnloadW(nullptr, false, fileHandle, fileSize, fileMapHandle, fileMapVa);
-
-            // Get a copy of the function table
-            if(virtualOffset)
-            {
-                // Read the table into a buffer
-                mFunctionInfoData = emalloc(mFunctionInfoSize);
-
-                if(mFunctionInfoData)
-                    MemRead(virtualOffset + mModuleBase, mFunctionInfoData, mFunctionInfoSize);
-            }
-        }
+        mRuntimeFunctions = modInfo->runtimeFunctions;
     }
 #endif //_WIN64
-}
-
-ControlFlowAnalysis::~ControlFlowAnalysis()
-{
-    if(mFunctionInfoData)
-        efree(mFunctionInfoData);
 }
 
 void ControlFlowAnalysis::Analyse()
@@ -236,18 +199,16 @@ void ControlFlowAnalysis::BasicBlocks()
 
 #ifdef _WIN64
     auto count = 0;
-    enumerateFunctionRuntimeEntries64([&](PRUNTIME_FUNCTION Function)
+    for(const auto & Function : mRuntimeFunctions)
     {
-        auto funcAddr = mModuleBase + Function->BeginAddress;
-        auto funcEnd = mModuleBase + Function->EndAddress;
+        auto funcAddr = mModuleBase + Function.BeginAddress;
+        auto funcEnd = mModuleBase + Function.EndAddress;
 
         // If within limits...
         if(inRange(funcAddr) && inRange(funcEnd))
             mFunctionStarts.insert(funcAddr);
-        count++;
-        return true;
-    });
-    dprintf("%d functions from the exception directory...\n", count);
+    };
+    dprintf("%d functions from the exception directory...\n", (int)mRuntimeFunctions.size());
 #endif // _WIN64
 
     dprintf("%d basic blocks, %d function starts detected...\n", int(mBlocks.size()), int(mFunctionStarts.size()));
@@ -433,22 +394,3 @@ duint ControlFlowAnalysis::getReferenceOperand() const
     }
     return 0;
 }
-
-#ifdef _WIN64
-void ControlFlowAnalysis::enumerateFunctionRuntimeEntries64(const std::function<bool(PRUNTIME_FUNCTION)> & Callback) const
-{
-    if(!mFunctionInfoData)
-        return;
-
-    // Get the table pointer and size
-    auto functionTable = PRUNTIME_FUNCTION(mFunctionInfoData);
-    auto totalCount = mFunctionInfoSize / sizeof(RUNTIME_FUNCTION);
-
-    // Enumerate each entry
-    for(duint i = 0; i < totalCount; i++)
-    {
-        if(!Callback(&functionTable[i]))
-            break;
-    }
-}
-#endif // _WIN64

@@ -1,23 +1,23 @@
 # GuiFocusView
 
-Function description.
+Change the active view to the given view.
 
 ```c++
-Function definition.
+void GuiFocusView(int hWindow);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`hWindow` One of the following values: GUI_DISASSEMBLY, GUI_DUMP, GUI_STACK, GUI_GRAPH, GUI_MEMMAP, GUI_SYMMOD, GUI_THREADS.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
 ```c++
-Example code.
+GuiFocusView(GUI_DISASSEMBLY); // focus on the disassembly tab.
 ```
 
 ## Related functions

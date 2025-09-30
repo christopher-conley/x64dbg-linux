@@ -504,7 +504,7 @@ bool cbInstrMovdqu(int argc, char* argv[])
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read (all) memory..."));
             return false;
         }
-        SetContextDataEx(hActiveThread, registerindex, (ULONG_PTR)newValue);
+        SetContextDataEx(hActiveThread, (TitanRegister)registerindex, (ULONG_PTR)newValue);
         GuiUpdateAllViews(); //refresh disassembly/dump/etc
         return true;
     }
@@ -565,7 +565,7 @@ bool cbInstrMovdqu(int argc, char* argv[])
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
             return false;
         }
-        SetContextDataEx(hActiveThread, registerindex[1], (ULONG_PTR)&registers.regcontext.ZmmRegisters[registerindex[0]].Low.Low);
+        SetContextDataEx(hActiveThread, (TitanRegister)registerindex[1], (ULONG_PTR)&registers.regcontext.ZmmRegisters[registerindex[0]].Low.Low);
         GuiUpdateAllViews(); //refresh disassembly/dump/etc
         return true;
     }
@@ -613,7 +613,7 @@ bool cbInstrVmovdqu(int argc, char* argv[])
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read (all) memory..."));
             return false;
         }
-        TITAN_ENGINE_CONTEXT_t context;
+        TITAN_ENGINE_CONTEXT_t context = {};
         if(!GetAVXContext(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -640,7 +640,7 @@ bool cbInstrVmovdqu(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_t context;
+        TITAN_ENGINE_CONTEXT_t context = {};
         if(!GetAVXContext(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -671,7 +671,7 @@ bool cbInstrVmovdqu(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_t context;
+        TITAN_ENGINE_CONTEXT_t context = {};
         if(!GetAVXContext(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -705,7 +705,7 @@ bool cbInstrVmovdqu(int argc, char* argv[])
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read (all) memory..."));
             return false;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -732,7 +732,7 @@ bool cbInstrVmovdqu(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -763,7 +763,7 @@ bool cbInstrVmovdqu(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -819,7 +819,7 @@ bool cbInstrKmovq(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -865,7 +865,7 @@ bool cbInstrKmovq(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -887,7 +887,7 @@ bool cbInstrKmovq(int argc, char* argv[])
         {
             goto InvalidSrc;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -955,7 +955,7 @@ bool cbInstrKmovd(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -986,7 +986,7 @@ bool cbInstrKmovd(int argc, char* argv[])
         {
             goto InvalidDest;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
@@ -1008,7 +1008,7 @@ bool cbInstrKmovd(int argc, char* argv[])
         {
             goto InvalidSrc;
         }
-        TITAN_ENGINE_CONTEXT_AVX512_t context;
+        TITAN_ENGINE_CONTEXT_AVX512_t context = {};
         if(!GetAVX512Context(hActiveThread, &context))
         {
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));

@@ -186,7 +186,7 @@ bool varget(const char* Name, VAR_VALUE* Value, int* Size, VAR_TYPE* Type)
     auto found = variables.find(name_);
     if(found == variables.end()) //not found
         return false;
-    if(found->second.alias.length())
+    if(!found->second.alias.empty())
         return varget(found->second.alias.c_str(), Value, Size, Type);
     if(Type)
         *Type = found->second.type;

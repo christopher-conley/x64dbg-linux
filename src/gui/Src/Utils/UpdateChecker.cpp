@@ -2,6 +2,10 @@
 #include <QMessageBox>
 #include <QIcon>
 #include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <Gui/ReleaseNotesDialog.h>
 
 #include "StringUtil.h"
 #include "MiscUtil.h"
@@ -136,10 +140,25 @@ static std::string httpGet(const char* url,
 #endif // _WIN32
 
 UpdateChecker::UpdateChecker(QWidget* parent)
-    : QThread(parent),
-      mParent(parent)
+    : QThread(parent)
+    , mParent(parent)
+    , mUserAgent("x64dbg " + ToDateString(GetCompileDate()) + " " __TIME__)
 {
     connect(this, &UpdateChecker::updateCheckFinished, this, &UpdateChecker::finishedSlot);
+
+    auto downloadFn = [this](const QString & url) -> QImage
+    {
+        auto data = httpGet(url.toUtf8().constData(), mUserAgent.toUtf8().constData(), 3000);
+        if(data.empty())
+        {
+            return {};
+        }
+
+        QByteArray byteArray(data.c_str(), (int)(data.size()));
+        return QImage::fromData(byteArray);
+    };
+    mReleaseNotes = new ReleaseNotesDialog(downloadFn, mParent);
+    mReleaseNotes->setWindowIcon(DIcon("bug"));
 }
 
 void UpdateChecker::checkForUpdates()
@@ -153,9 +172,8 @@ void UpdateChecker::checkForUpdates()
 
 void UpdateChecker::run()
 {
-    QString userAgent = "x64dbg " + ToDateString(GetCompileDate()) + " " __TIME__;
     std::string result = httpGet("https://update.x64dbg.com/releases.json",
-                                 userAgent.toUtf8().constData(), 3000);
+                                 mUserAgent.toUtf8().constData(), 3000);
     emit updateCheckFinished(QString::fromStdString(result));
 }
 
@@ -167,26 +185,72 @@ void UpdateChecker::finishedSlot(const QString & json)
         return;
     }
 
-    QRegExp regExp("\"published_at\": ?\"([^\"]+)\"");
-    QDateTime serverTime;
-    if(regExp.indexIn(json) >= 0)
-        serverTime = QDateTime::fromString(regExp.cap(1), Qt::ISODate);
-    if(!serverTime.isValid())
+    QJsonParseError error;
+    auto releases = QJsonDocument::fromJson(json.toUtf8(), &error).array();
+    if(error.error != QJsonParseError::NoError || releases.isEmpty())
     {
         SimpleErrorBox(mParent, tr("Error!"), tr("File on server could not be parsed..."));
         return;
     }
-    QRegExp regUrl("\"browser_download_url\": ?\"([^\"]+)\"");
-    auto url = regUrl.indexIn(json) >= 0 ? regUrl.cap(1) : "https://releases.x64dbg.com";
-    auto server = serverTime.date();
-    auto build = GetCompileDate();
-    QString info;
-    if(server > build)
-        info = QString(tr("New build %1 available!<br>Download <a href=\"%2\">here</a><br><br>You are now on build %3")).arg(ToDateString(server)).arg(url).arg(ToDateString(build));
-    else if(server < build)
-        info = QString(tr("You have a development build (%1) of x64dbg!")).arg(ToDateString(build));
-    else
-        info = QString(tr("You have the latest build (%1) of x64dbg!")).arg(ToDateString(build));
-    GuiAddStatusBarMessage((info + "\n").toUtf8().constData());
-    SimpleInfoBox(mParent, tr("Information"), info);
+
+    QString markdown;
+    QString label;
+    auto buildDate = GetCompileDate();
+    for(int i = 0; i < releases.size(); i++)
+    {
+        QJsonObject release = releases[i].toObject();
+        auto publishedAt = release.value("published_at").toString();
+        auto publishedDate = QDateTime::fromString(publishedAt, Qt::ISODate).date();
+        auto tagName = release.value("tag_name").toString();
+
+        if(i == 0)
+        {
+            if(publishedDate <= buildDate)
+            {
+                QString info;
+                if(publishedDate < buildDate)
+                {
+                    info = QString(tr("You have a development build (%1) of x64dbg!")).arg(ToDateString(buildDate));
+                }
+                else
+                {
+                    info = tr("You have the latest build (%1) of x64dbg!").arg(ToDateString(buildDate));
+                }
+                GuiAddStatusBarMessage((info + "\n").toUtf8().constData());
+                SimpleInfoBox(mParent, tr("Information"), info);
+                return;
+            }
+
+            QString downloadUrl;
+            auto assets = release.value("assets").toArray();
+            for(int j = 0; j < assets.size(); j++)
+            {
+                auto asset = assets[i].toObject();
+                downloadUrl = asset.value("browser_download_url").toString();
+                break;
+            }
+
+            label = tr("<p><b>New x64dbg version available</b>: <a href=\"%1\">%2</a></p>").arg(downloadUrl, tagName);
+            GuiAddLogMessageHtml((label + "\n").toUtf8().constData());
+        }
+
+        // Do not show release notes older than the current build
+        if(publishedDate <= buildDate)
+            break;
+
+        auto body = release.value("body").toString();
+        if(!body.startsWith("#"))
+        {
+            markdown += QString("# %1\n").arg(tagName);
+        }
+
+        markdown += body;
+        markdown += QString("\n\n<sub>%1</sub>").arg(publishedAt);
+        markdown += "\n\n";
+    }
+
+    mReleaseNotes->move(mParent->frameGeometry().center() - mReleaseNotes->rect().center());
+    mReleaseNotes->setMarkdown(markdown, "https://github.com/x64dbg/x64dbg/issues/");
+    mReleaseNotes->setLabel(label);
+    mReleaseNotes->exec();
 }

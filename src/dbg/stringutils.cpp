@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <cstdint>
 
-static inline bool convertLongLongNumber(const char* str, unsigned long long & result, int radix)
+bool StringUtils::convertLongLongNumber(const char* str, unsigned long long & result, int radix)
 {
     errno = 0;
     char* end;
@@ -16,7 +16,7 @@ static inline bool convertLongLongNumber(const char* str, unsigned long long & r
     return true;
 }
 
-static inline bool convertNumber(const char* str, size_t & result, int radix)
+bool StringUtils::convertNumber(const char* str, size_t & result, int radix)
 {
     unsigned long long llr;
     if(!convertLongLongNumber(str, llr, radix))

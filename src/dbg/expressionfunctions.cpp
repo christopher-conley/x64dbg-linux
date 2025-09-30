@@ -7,23 +7,26 @@
 
 std::unordered_map<String, ExpressionFunctions::Function> ExpressionFunctions::mFunctions;
 
-//Copied from https://stackoverflow.com/a/7858971/1806760
-template<int...>
-struct seq {};
-
-template<int N, int... S>
-struct gens : gens < N - 1, N - 1, S... > {};
-
-template<int... S>
-struct gens<0, S...>
+namespace tmp
 {
-    typedef seq<S...> type;
-};
+    //Copied from https://stackoverflow.com/a/7858971/1806760
+    template<int...>
+    struct seq {};
 
-template<typename T, int ...S, typename... Ts>
-static duint callFunc(const T* argv, duint(*cbFunction)(Ts...), seq<S...>)
-{
-    return cbFunction(argv[S].number...);
+    template<int N, int... S>
+    struct gens : gens < N - 1, N - 1, S... > {};
+
+    template<int... S>
+    struct gens<0, S...>
+    {
+        typedef seq<S...> type;
+    };
+
+    template<typename T, int ...S, typename... Ts>
+    static duint callFunc(const T* argv, duint(*cbFunction)(Ts...), seq<S...>)
+    {
+        return cbFunction(argv[S].number...);
+    }
 }
 
 template<typename... Ts>
@@ -32,7 +35,7 @@ static bool RegisterEasy(const String & name, duint(*cbFunction)(Ts...))
     auto tempFunc = [cbFunction](ExpressionValue * result, int argc, const ExpressionValue * argv, void* userdata) -> bool
     {
         result->type = ValueTypeNumber;
-        result->number = callFunc(argv, cbFunction, typename gens<sizeof...(Ts)>::type());
+        result->number = callFunc(argv, cbFunction, typename tmp::gens<sizeof...(Ts)>::type());
 
         return true;
     };
@@ -181,6 +184,7 @@ void ExpressionFunctions::Init()
     ExpressionFunctions::Register("strreplace_last", ValueTypeString, { ValueTypeString, ValueTypeString, ValueTypeString }, Exprfunc::strreplace_last);
     ExpressionFunctions::Register("streval", ValueTypeNumber, { ValueTypeString }, Exprfunc::streval);
     ExpressionFunctions::Register("strtrim", ValueTypeString, { ValueTypeString }, Exprfunc::strtrim);
+    // str.endswith, str.startswith, str.find, str.rfind
 
     ExpressionFunctions::Register("syscall.name", ValueTypeString, { ValueTypeNumber }, Exprfunc::syscall_name);
     ExpressionFunctions::Register("syscall.id", ValueTypeNumber, { ValueTypeString }, Exprfunc::syscall_id);

@@ -323,7 +323,7 @@ void CommonActions::setBookmarkSlot()
 // Give a warning about the selected address is not executable
 bool CommonActions::WarningBoxNotExecutable(const QString & text, duint va) const
 {
-    if(DbgFunctions()->IsDepEnabled() && !DbgFunctions()->MemIsCodePage(va, false))
+    if(DbgFunctions()->IsDepEnabled() && !DbgFunctions()->MemIsCodePage(va, true))
     {
         QMessageBox msgyn(QMessageBox::Warning, tr("Address %1 is not executable").arg(ToPtrString(va)), text, QMessageBox::Yes | QMessageBox::No, widgetparent());
         msgyn.setWindowIcon(DIcon("compile-warning"));

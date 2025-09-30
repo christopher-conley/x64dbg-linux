@@ -1,6 +1,8 @@
 #include "../bridge/bridgemain.h"
 #include "../dbg/_plugins.h"
+#include "../dbg/concurrentqueue/blockingconcurrentqueue.h"
 
+#include <functional>
 #include <string>
 #include <iostream>
 #include <vector>
@@ -15,6 +17,8 @@
 static std::vector<SCRIPTTYPEINFO> scriptInfo;
 static int curScriptId = 0;
 static bool dbgStopped = false;
+static DWORD dwGuiThreadId = 0;
+static moodycamel::BlockingConcurrentQueue<std::function<bool()>> queue;
 
 struct GuiState
 {
@@ -45,60 +49,82 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
     }
 
     // Init debugger
-    const char* errormsg = DbgInit();
+    const char* errormsg = DbgInitBlocking();
     if(errormsg)
     {
-        MessageBoxA(0, errormsg, "DbgInit Error!", MB_SYSTEMMODAL | MB_ICONERROR);
+        puts(errormsg);
         return 1;
     }
+    puts("[headless] entering command loop...");
+    std::thread commandThread([]()
+    {
+        while(true)
+        {
+            std::string command;
+            std::getline(std::cin, command);
+            if(command == "exit")
+            {
+                queue.enqueue([]()
+                {
+                    return false;
+                });
+                break;
+            }
+            else if(command == "langs")
+            {
+                for(auto & info : scriptInfo)
+                    printf("%d:%s\n", info.id, info.name);
+            }
+            else if(command == "state")
+            {
+                printf("disasm: 0x%p\n", (void*)guistate.disasm);
+                printf("   cip: 0x%p\n", (void*)guistate.cip);
+                printf("  dump: 0x%p\n", (void*)guistate.dump);
+                printf(" stack: 0x%p\n", (void*)guistate.stack);
+                printf("   csp: 0x%p\n", (void*)guistate.csp);
+                if(guistate.graph)
+                    printf("  graph: 0x%p\n", (void*)guistate.graph);
+                if(guistate.memmap)
+                    printf(" memmap: 0x%p\n", (void*)guistate.memmap);
+                if(guistate.symmod)
+                    printf("symmod: 0x%p\n", (void*)guistate.symmod);
+            }
+            else
+            {
+                int scriptId = 0;
+                if(command.size() > 2 && isdigit(command[0]) && command[1] == '>')
+                {
+                    scriptId = command[0] - '0';
+                    command = command.substr(2);
+                }
+                if(scriptId >= scriptInfo.size())
+                {
+                    printf("[FAIL] no script id registered %d\n", scriptId);
+                    continue;
+                }
+                queue.enqueue([scriptId, command]()
+                {
+                    if(!scriptInfo[scriptId].execute(command.c_str()))
+                    {
+                        puts("[FAIL] command failed");
+                    }
+                    return true;
+                });
+            }
+        }
+    });
     while(true)
     {
-        std::string command;
-        std::getline(std::cin, command);
-        if(command == "exit")
+        std::function<bool()> job;
+        queue.wait_dequeue(job);
+        if(!job())
         {
             DbgExit();
             dbgStopped = true;
             break;
         }
-        else if(command == "langs")
-        {
-            for(auto & info : scriptInfo)
-                printf("%d:%s\n", info.id, info.name);
-        }
-        else if(command == "state")
-        {
-            printf("disasm: 0x%p\n", (void*)guistate.disasm);
-            printf("   cip: 0x%p\n", (void*)guistate.cip);
-            printf("  dump: 0x%p\n", (void*)guistate.dump);
-            printf(" stack: 0x%p\n", (void*)guistate.stack);
-            printf("   csp: 0x%p\n", (void*)guistate.csp);
-            if(guistate.graph)
-                printf("  graph: 0x%p\n", (void*)guistate.graph);
-            if(guistate.memmap)
-                printf(" memmap: 0x%p\n", (void*)guistate.memmap);
-            if(guistate.symmod)
-                printf("symmod: 0x%p\n", (void*)guistate.symmod);
-        }
-        else
-        {
-            int scriptId = 0;
-            if(command.size() > 2 && isdigit(command[0]) && command[1] == '>')
-            {
-                scriptId = command[0] - '0';
-                command = command.substr(2);
-            }
-            if(scriptId >= scriptInfo.size())
-            {
-                printf("[FAIL] no script id registered %d\n", scriptId);
-                continue;
-            }
-            if(!scriptInfo[scriptId].execute(command.c_str()))
-            {
-                puts("[FAIL] command failed");
-            }
-        }
     }
+    commandThread.join();
     return 0;
 }
 
@@ -152,6 +178,7 @@ extern "C" __declspec(dllexport) void* _gui_sendmessage(GUIMSG type, void* param
         printf("[SYMBOL] %s", (const char*)param1);
         break;
 
+    case GUI_ADD_MSG_TO_LOG_HTML:
     case GUI_ADD_MSG_TO_LOG:
         printf("%s", (const char*)param1);
         break;
@@ -302,6 +329,21 @@ extern "C" __declspec(dllexport) void* _gui_sendmessage(GUIMSG type, void* param
     }
     break;
 
+    case GUI_EXECUTE_ON_GUI_THREAD:
+    {
+        if(GetCurrentThreadId() == dwGuiThreadId)
+            ((GUICALLBACKEX)param1)(param2);
+        else
+        {
+            queue.enqueue([param1, param2]()
+            {
+                ((GUICALLBACKEX)param1)(param2);
+                return true;
+            });
+        }
+    }
+    break;
+
     default:
     {
         printf("[TODO] Not implemented %s (%d)\n", guimsg2str(type), type);
@@ -318,6 +360,8 @@ extern "C" __declspec(dllexport) const char* _gui_translate_text(const char* sou
 
 int main(int argc, char* argv[])
 {
+    dwGuiThreadId = GetCurrentThreadId();
+
     // Construct user directory from executable name
     auto hMainModule = GetModuleHandleW(nullptr);
     wchar_t szUserDirectory[MAX_PATH] = L"";

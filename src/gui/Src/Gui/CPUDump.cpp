@@ -418,7 +418,7 @@ static QString getTooltipForVa(duint va, int depth)
         else
         {
             bool isCodePage;
-            isCodePage = DbgFunctions()->MemIsCodePage(va, false);
+            isCodePage = DbgFunctions()->MemIsCodePage(va, true);
             char disassembly[GUI_MAX_DISASSEMBLY_SIZE];
             if(isCodePage)
             {

@@ -805,13 +805,25 @@ bool MemIsCanonicalAddress(duint Address)
 #endif //_WIN64
 }
 
-bool MemIsCodePage(duint Address, bool Refresh)
+bool MemIsCodePage(duint Address, bool SkipCache)
 {
-    MEMPAGE pageInfo;
-    if(!MemGetPageInfo(Address, &pageInfo, Refresh))
-        return false;
+    DWORD Protect = 0;
+    if(SkipCache)
+    {
+        MEMORY_BASIC_INFORMATION mbi = {};
+        if(!VirtualQueryEx(fdProcessInfo->hProcess, (LPVOID)Address, &mbi, sizeof(mbi)))
+            return false;
+        Protect = mbi.Protect;
+    }
+    else
+    {
+        MEMPAGE pageInfo;
+        if(!MemGetPageInfo(Address, &pageInfo, SkipCache))
+            return false;
+        Protect = pageInfo.mbi.Protect;
+    }
 
-    return (pageInfo.mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+    return (Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
 }
 
 duint MemAllocRemote(duint Address, duint Size, DWORD Type, DWORD Protect)

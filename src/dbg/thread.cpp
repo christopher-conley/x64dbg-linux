@@ -12,29 +12,16 @@
 static std::unordered_map<DWORD, THREADINFO> threadList;
 static std::unordered_map<DWORD, THREADWAITREASON> threadWaitReasons;
 
-// Function pointer for dynamic linking. Do not link statically for Windows XP compatibility.
-// TODO: move this function definition out of thread.cpp
-BOOL(WINAPI* pQueryThreadCycleTime)(HANDLE ThreadHandle, PULONG64 CycleTime) = nullptr;
-
-BOOL WINAPI QueryThreadCycleTimeUnsupported(HANDLE ThreadHandle, PULONG64 CycleTime)
-{
-    *CycleTime = 0;
-    return TRUE;
-}
-
 void ThreadCreate(CREATE_THREAD_DEBUG_INFO* CreateThread)
 {
     THREADINFO curInfo;
     memset(&curInfo, 0, sizeof(THREADINFO));
 
     curInfo.ThreadNumber = ThreadGetCount();
-    curInfo.Handle = INVALID_HANDLE_VALUE;
-    curInfo.ThreadId = ((DEBUG_EVENT*)GetDebugData())->dwThreadId;
+    curInfo.Handle = CreateThread->hThread;
+    curInfo.ThreadId = GetDebugData()->dwThreadId;
     curInfo.ThreadStartAddress = (duint)CreateThread->lpStartAddress;
     curInfo.ThreadLocalBase = (duint)CreateThread->lpThreadLocalBase;
-
-    // Duplicate the debug thread handle -> thread handle
-    DuplicateHandle(GetCurrentProcess(), CreateThread->hThread, GetCurrentProcess(), &curInfo.Handle, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
     typedef HRESULT(WINAPI * GETTHREADDESCRIPTION)(HANDLE hThread, PWSTR * ppszThreadDescription);
     static GETTHREADDESCRIPTION _GetThreadDescription = (GETTHREADDESCRIPTION)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetThreadDescription");
@@ -70,7 +57,6 @@ void ThreadExit(DWORD ThreadId)
 
     if(itr != threadList.end())
     {
-        CloseHandle(itr->second.Handle);
         threadList.erase(itr);
     }
 
@@ -81,10 +67,6 @@ void ThreadExit(DWORD ThreadId)
 void ThreadClear()
 {
     EXCLUSIVE_ACQUIRE(LockThreads);
-
-    // Close all handles first
-    for(auto & itr : threadList)
-        CloseHandle(itr.second.Handle);
 
     // Empty the array
     threadList.clear();
@@ -216,6 +198,9 @@ int ThreadGetSuspendCount(HANDLE Thread)
         return suspendCount;
     }
 
+    if(BridgeGetNtBuildNumber() >= 9600)
+        return 0;
+
     //
     // Suspend a thread in order to get the previous suspension count
     // WARNING: This function is very bad (threads should not be randomly interrupted)
@@ -310,10 +295,8 @@ HANDLE ThreadGetHandle(DWORD ThreadId)
 {
     SHARED_ACQUIRE(LockThreads);
 
-    if(threadList.find(ThreadId) != threadList.end())
-        return threadList[ThreadId].Handle;
-
-    return nullptr;
+    auto found = threadList.find(ThreadId);
+    return found != threadList.end() ? found->second.Handle : nullptr;
 }
 
 DWORD ThreadGetId(HANDLE Thread)
@@ -328,9 +311,7 @@ DWORD ThreadGetId(HANDLE Thread)
     }
 
     // Wasn't found, check with Windows
-    typedef DWORD (WINAPI * GETTHREADID)(HANDLE hThread);
-    static GETTHREADID _GetThreadId = (GETTHREADID)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetThreadId");
-    return _GetThreadId ? _GetThreadId(Thread) : 0;
+    return GetThreadId(Thread);
 }
 
 int ThreadSuspendAll()
@@ -393,16 +374,9 @@ ULONG64 ThreadQueryCycleTime(HANDLE hThread)
 {
     ULONG64 CycleTime;
 
-    // Initialize function pointer
-    if(pQueryThreadCycleTime == nullptr)
-    {
-        pQueryThreadCycleTime = (BOOL(WINAPI*)(HANDLE, PULONG64))GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "QueryThreadCycleTime");
-        if(pQueryThreadCycleTime == nullptr)
-            pQueryThreadCycleTime = QueryThreadCycleTimeUnsupported;
-    }
-
-    if(!pQueryThreadCycleTime(hThread, &CycleTime))
+    if(!QueryThreadCycleTime(hThread, &CycleTime))
         CycleTime = 0;
+
     return CycleTime;
 }
 

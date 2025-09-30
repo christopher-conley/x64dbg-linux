@@ -496,6 +496,7 @@ bool InitializeSignatureCheck()
         return false;
 #endif // DEBUG_SIGNATURE_CHECKS
 
+#ifndef _DEBUG
     // Safely load the MSVC runtime DLLs (since they cannot be delay loaded)
     auto loadRuntimeDll = [&szSystemDir](const wchar_t* szDll) -> HMODULE
     {
@@ -522,6 +523,7 @@ bool InitializeSignatureCheck()
         MessageBoxW(nullptr, L"Failed to load msvcp140.dll!", L"Error", MB_ICONERROR | MB_SYSTEMMODAL);
         ExitProcess(ERROR_MOD_NOT_FOUND);
     }
+#endif // _DEBUG
 
     return true;
 }

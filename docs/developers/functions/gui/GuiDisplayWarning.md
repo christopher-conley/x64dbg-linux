@@ -8,7 +8,9 @@ void GuiDisplayWarning(const char* title, const char* text)
 
 ## Parameters
 
-`param1` Parameter description.
+`title` Dialog title in UTF-8 encoding.
+
+`text` Dialog text in UTF-8 encoding.
 
 ## Return Value
 

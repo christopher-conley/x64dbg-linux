@@ -2,8 +2,14 @@
 
 REM Command file for Sphinx documentation
 set PYTHONNOUSERSITE=1
-set PYTHONHOME=%CD%\python-2.7.18.amd64.portable
-set PATH=%PYTHONHOME%;%PYTHONHOME%\Scripts;%PATH%
+set PORTABLE_PYTHON=%~dp0python-2.7.18.amd64.portable
+
+if not exist "%PORTABLE_PYTHON%" (
+	echo Portable Python not found!
+	exit /b 1
+)
+
+set PATH=%PORTABLE_PYTHON%;%PORTABLE_PYTHON%\Scripts;%PATH%
 set SPHINXBUILD=sphinx-build
 
 if "%SPHINXBUILD%" == "" (

@@ -92,7 +92,7 @@ extern "C" DLL_EXPORT bool _dbg_valfromstring(const char* string, duint* value)
 
 extern "C" DLL_EXPORT bool _dbg_isdebugging()
 {
-    return hDebugLoopThread && IsFileBeingDebugged();
+    return bIsDebugging;
 }
 
 extern "C" DLL_EXPORT bool _dbg_isjumpgoingtoexecute(duint addr)
@@ -710,14 +710,14 @@ static void TranslateTitanFpuRegisters(const x87FPURegister_t titanFpu[8], X87FP
 
 extern "C" DLL_EXPORT bool _dbg_getregdump(REGDUMP_AVX512* regdump)
 {
-    if(!DbgIsDebugging())
+    if(!DbgIsDebugging() || !hActiveThread)
     {
         memset(regdump, 0, sizeof(REGDUMP_AVX512));
         return true;
     }
 
-    TITAN_ENGINE_CONTEXT_t titcontext;
-    TITAN_ENGINE_CONTEXT_AVX512_t titcontext_AVX512;
+    TITAN_ENGINE_CONTEXT_t titcontext = {};
+    TITAN_ENGINE_CONTEXT_AVX512_t titcontext_AVX512 = {};
     if(!GetFullContextDataEx(hActiveThread, &titcontext))
         return false;
     memset(&titcontext_AVX512, 0, sizeof(titcontext_AVX512));
@@ -924,67 +924,67 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
     {
     case DBG_SCRIPT_LOAD:
     {
-        scriptload((const char*)param1);
+        ScriptLoadAwait((const char*)param1, true);
     }
     break;
 
     case DBG_SCRIPT_UNLOAD:
     {
-        scriptunload();
+        ScriptUnloadAwait();
     }
     break;
 
     case DBG_SCRIPT_RUN:
     {
-        scriptrun((int)(duint)param1, param2 != nullptr);
+        ScriptRunAsync((int)(duint)param1, true);
     }
     break;
 
     case DBG_SCRIPT_STEP:
     {
-        scriptstep();
+        ScriptStepAsync(true);
     }
     break;
 
     case DBG_SCRIPT_BPTOGGLE:
     {
-        return scriptbptoggle((int)(duint)param1);
+        return ScriptBpToggleLocked((int)(duint)param1);
     }
     break;
 
     case DBG_SCRIPT_BPGET:
     {
-        return scriptbpget((int)(duint)param1);
+        return ScriptBpGetLocked((int)(duint)param1);
     }
     break;
 
     case DBG_SCRIPT_CMDEXEC:
     {
-        return scriptcmdexec((const char*)param1);
+        return ScriptCmdExecAwait((const char*)param1, true, nullptr);
     }
     break;
 
     case DBG_SCRIPT_ABORT:
     {
-        scriptabort();
+        ScriptAbortAwait();
     }
     break;
 
     case DBG_SCRIPT_GETLINETYPE:
     {
-        return (duint)scriptgetlinetype((int)(duint)param1);
+        return (duint)ScriptGetLineTypeLocked((int)(duint)param1);
     }
     break;
 
     case DBG_SCRIPT_SETIP:
     {
-        scriptsetip((int)(duint)param1);
+        ScriptSetIpAwait((int)(duint)param1);
     }
     break;
 
     case DBG_SCRIPT_GETBRANCHINFO:
     {
-        return (duint)scriptgetbranchinfo((int)(duint)param1, (SCRIPTBRANCH*)param2);
+        return (duint)ScriptGetBranchInfoLocked((int)(duint)param1, (SCRIPTBRANCH*)param2);
     }
     break;
 
@@ -1050,24 +1050,24 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
 
     case DBG_SETTINGS_UPDATED:
     {
-        valuesetsignedcalc(!settingboolget("Engine", "CalculationType")); //0:signed, 1:unsigned
-        SetEngineVariable(UE_ENGINE_SET_DEBUG_PRIVILEGE, settingboolget("Engine", "EnableDebugPrivilege"));
-        SetEngineVariable(UE_ENGINE_SAFE_ATTACH, settingboolget("Engine", "SafeAttach"));
-        SetEngineVariable(UE_ENGINE_MEMBP_ALT, settingboolget("Engine", "MembpAlt"));
-        SetEngineVariable(UE_ENGINE_DISABLE_ASLR, settingboolget("Engine", "DisableAslr"));
-        bOnlyCipAutoComments = settingboolget("Disassembler", "OnlyCipAutoComments");
-        bNoSourceLineAutoComments = settingboolget("Disassembler", "NoSourceLineAutoComments");
-        bListAllPages = settingboolget("Engine", "ListAllPages");
-        bUndecorateSymbolNames = settingboolget("Engine", "UndecorateSymbolNames");
-        bEnableSourceDebugging = settingboolget("Engine", "EnableSourceDebugging");
-        bSkipInt3Stepping = settingboolget("Engine", "SkipInt3Stepping");
-        bIgnoreInconsistentBreakpoints = settingboolget("Engine", "IgnoreInconsistentBreakpoints");
-        bNoForegroundWindow = settingboolget("Gui", "NoForegroundWindow");
-        bVerboseExceptionLogging = settingboolget("Engine", "VerboseExceptionLogging");
-        bNoWow64SingleStepWorkaround = settingboolget("Engine", "NoWow64SingleStepWorkaround");
-        bQueryWorkingSet = settingboolget("Misc", "QueryWorkingSet");
-        bForceLoadSymbols = settingboolget("Misc", "ForceLoadSymbols");
-        bTruncateBreakpointLogs = settingboolget("Engine", "TruncateBreakpointLogs");
+        valuesetsignedcalc(!settingboolget("Engine", "CalculationType", false)); //0:signed, 1:unsigned
+        SetEngineVariable(UE_ENGINE_SET_DEBUG_PRIVILEGE, settingboolget("Engine", "EnableDebugPrivilege", true));
+        SetEngineVariable(UE_ENGINE_SAFE_ATTACH, settingboolget("Engine", "SafeAttach", false));
+        SetEngineVariable(UE_ENGINE_MEMBP_ALT, settingboolget("Engine", "MembpAlt", false));
+        SetEngineVariable(UE_ENGINE_DISABLE_ASLR, settingboolget("Engine", "DisableAslr", false));
+        bOnlyCipAutoComments = settingboolget("Disassembler", "OnlyCipAutoComments", false);
+        bNoSourceLineAutoComments = settingboolget("Disassembler", "NoSourceLineAutoComments", false);
+        bListAllPages = settingboolget("Engine", "ListAllPages", false);
+        bUndecorateSymbolNames = settingboolget("Engine", "UndecorateSymbolNames", true);
+        bEnableSourceDebugging = settingboolget("Engine", "EnableSourceDebugging", false);
+        bSkipInt3Stepping = settingboolget("Engine", "SkipInt3Stepping", false);
+        bIgnoreInconsistentBreakpoints = settingboolget("Engine", "IgnoreInconsistentBreakpoints", false);
+        bNoForegroundWindow = settingboolget("Gui", "NoForegroundWindow", true);
+        bVerboseExceptionLogging = settingboolget("Engine", "VerboseExceptionLogging", true);
+        bNoWow64SingleStepWorkaround = settingboolget("Engine", "NoWow64SingleStepWorkaround", false);
+        bQueryWorkingSet = settingboolget("Misc", "QueryWorkingSet", false);
+        bForceLoadSymbols = settingboolget("Misc", "ForceLoadSymbols", false);
+        bTruncateBreakpointLogs = settingboolget("Engine", "TruncateBreakpointLogs", false);
         stackupdatesettings();
 
         duint setting = 0;
@@ -1144,7 +1144,7 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
         }
 
         // check if we need to change the main window title
-        bool bNewWindowLongPath = settingboolget("Gui", "WindowLongPath");
+        bool bNewWindowLongPath = settingboolget("Gui", "WindowLongPath", false);
         if(bWindowLongPath != bNewWindowLongPath)
         {
             bWindowLongPath = bNewWindowLongPath;
@@ -1654,6 +1654,12 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
 
         auto declName = data->declName ? data->declName : "";
         return VisitType(data->typeName, declName, visitor);
+    }
+    break;
+
+    case DBG_UPDATE_GUI:
+    {
+        DebugUpdateGui((duint)param1, (duint)param2 != 0);
     }
     break;
     }

@@ -30,7 +30,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DCMAKE_UNITY_BUILD_BATCH_SIZE=6 -DX64DBG_RELEASE=${{ startsWith(github.ref, 'refs/tags/') && 'ON' || 'OFF' }}
           cmake --build build
 
       - name: Upload Artifacts
@@ -42,8 +42,31 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  docs:
+    # Skip building pull requests from the same repository
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Build Documentation
+        run: |
+          docs\makechm.bat
+
+      - name: Upload Documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: docs/x64dbg.chm
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+
   package:
-    needs: cmake
+    needs: [cmake, docs]
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -63,7 +86,13 @@ jobs:
           name: build-x86
           path: bin
 
-      - name: Prepare release
+      - name: Download Documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: docs
+          path: docs
+
+      - name: Prepare Release
         run: |
           curl.exe -L https://github.com/x64dbg/translations/releases/download/translations/qm.zip -o bin\qm.zip
           7z x bin\qm.zip -obin
@@ -71,7 +100,7 @@ jobs:
           $timestamp = Get-Date (Get-Date).ToUniversalTime() -Format "yyyy-MM-dd_HH-mm"
           echo "timestamp=$timestamp" >> $env:GITHUB_ENV
 
-      - name: Upload Artifacts
+      - name: Upload Snapshot
         uses: actions/upload-artifact@v4
         with:
           name: snapshot_${{ env.timestamp }}
@@ -83,13 +112,23 @@ jobs:
           include-hidden-files: true
           compression-level: 9
 
-      - name: Upload Artifacts
+      - name: Upload Symbols
         uses: actions/upload-artifact@v4
         with:
           name: symbols-snapshot_${{ env.timestamp }}
           path: |
             release/pdb
             release/commithash.txt
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 9
+
+      - name: Upload Plugin SDK
+        uses: actions/upload-artifact@v4
+        with:
+          name: x64dbg-pluginsdk
+          path: |
+            release/pluginsdk
           if-no-files-found: error
           include-hidden-files: true
           compression-level: 9

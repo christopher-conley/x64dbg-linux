@@ -162,3 +162,28 @@ bool LabelGetInfo(duint Address, LABELSINFO* info)
 
     return labels.Get(Labels::VaKey(Address), *info);
 }
+
+std::vector<std::string> LabelFindPrefix(const std::string & prefix, int maxCount, bool isCaseSensitive)
+{
+    std::vector<std::string> outputs;
+    auto cmp = isCaseSensitive ? strncmp : _strnicmp;
+    size_t prefixSize = prefix.size();
+
+    labels.GetWhere([&](const LABELSINFO & value)
+    {
+        if((int)outputs.size() >= maxCount)
+        {
+            return true;
+        }
+        if(cmp(prefix.c_str(), value.text.c_str(), prefixSize) != 0)
+        {
+            return false;
+        }
+        outputs.push_back(value.text);
+
+        // continue to search all labels
+        return false;
+    });
+
+    return outputs;
+}

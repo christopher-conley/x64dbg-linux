@@ -77,10 +77,10 @@ void Bridge::throttleUpdateSlot(GUIMSG msg)
     // NOTE: This is running synchronously on the UI thread
 
     auto lastUpdate = mLastUpdates[msg];
-    auto now = GetTickCount();
-    auto elapsed = now - lastUpdate;
-    const auto interval = 100;
-    if(lastUpdate > 0 && elapsed < interval)
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdate);
+    const auto interval = (std::chrono::milliseconds)100;
+    if(elapsed < interval)
     {
         //qDebug() << "Delay update:" << msg2str(msg);
         QTimer* timer = mUpdateTimers[msg];
@@ -110,7 +110,7 @@ void Bridge::throttleUpdateSlot(GUIMSG msg)
 
 void Bridge::doUpdate(GUIMSG msg)
 {
-    auto start = GetTickCount();
+    auto start = std::chrono::steady_clock::now();
 
     switch(msg)
     {
@@ -187,9 +187,9 @@ void Bridge::doUpdate(GUIMSG msg)
     }
 
     // Log potentially bottlenecked updates
-    auto now = GetTickCount();
-    auto elapsed = now - start;
-    if(elapsed > 5)
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
+    if(elapsed > (std::chrono::milliseconds)5)
     {
         //qDebug() << "[DebugMonitor]" << msg2str(msg) << elapsed << "ms";
     }
@@ -997,7 +997,8 @@ void* Bridge::processMessage(GUIMSG type, void* param1, void* param2)
     break;
 
     case GUI_PROCESS_EVENTS:
-        QCoreApplication::processEvents();
+        if(GetCurrentThreadId() == mMainThreadId)
+            QCoreApplication::processEvents();
         break;
 
     case GUI_TYPE_ADDNODE:
@@ -1131,17 +1132,8 @@ __declspec(dllexport) void* _gui_sendmessage(GUIMSG type, void* param1, void* pa
 
 __declspec(dllexport) const char* _gui_translate_text(const char* source)
 {
-    if(TLS_TranslatedStringMap)
-    {
-        QByteArray translatedUtf8 = QCoreApplication::translate("DBG", source).toUtf8();
-        // Boom... VS does not support "thread_local"... and cannot use "__declspec(thread)" in a DLL... https://blogs.msdn.microsoft.com/oldnewthing/20101122-00/?p=12233
-        // Simulating Thread Local Storage with a map...
-        DWORD ThreadId = GetCurrentThreadId();
-        TranslatedStringStorage & TranslatedString = (*TLS_TranslatedStringMap)[ThreadId];
-        TranslatedString.Data[translatedUtf8.size()] = 0; // Set the string terminator first.
-        memcpy(TranslatedString.Data, translatedUtf8.constData(), std::min((size_t)translatedUtf8.size(), sizeof(TranslatedString.Data) - 1)); // Then copy the string safely.
-        return TranslatedString.Data; // Don't need to free this memory. But this pointer should be used immediately to reduce race condition.
-    }
-    else // Translators are not initialized yet.
-        return source;
+    QByteArray translatedUtf8 = QCoreApplication::translate("DBG", source).toUtf8();
+    TLS_TranslatedString.Data[translatedUtf8.size()] = 0; // Set the string terminator first.
+    memcpy(TLS_TranslatedString.Data, translatedUtf8.constData(), std::min((size_t)translatedUtf8.size(), sizeof(TLS_TranslatedString.Data) - 1)); // Then copy the string safely.
+    return TLS_TranslatedString.Data; // Don't need to free this memory. But this pointer should be used immediately to reduce race condition.
 }

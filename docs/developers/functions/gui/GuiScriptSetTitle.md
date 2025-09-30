@@ -1,23 +1,23 @@
 # GuiScriptSetTitle
 
-Function description.
+Set the window title of the script view.
 
 ```c++
-Function definition.
+void GuiScriptSetTitle(const char* title);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`title` Window title of the script view.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
 ```c++
-Example code.
+GuiScriptSetTitle("Window Title");
 ```
 
 ## Related functions

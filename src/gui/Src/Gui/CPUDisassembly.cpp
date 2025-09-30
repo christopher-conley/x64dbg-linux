@@ -202,7 +202,7 @@ void CPUDisassembly::setupFollowReferenceMenu(duint va, QMenu* menu, bool isRefe
                         {
                             int index;
                             for(index = 0; index < 512; index++)
-                                if(!DbgFunctions()->MemIsCodePage(switchTable[index], false))
+                                if(!DbgFunctions()->MemIsCodePage(switchTable[index], true))
                                     break;
                             if(index >= 2 && index < 512)
                                 for(int index2 = 0; index2 < index; index2++)

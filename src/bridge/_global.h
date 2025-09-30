@@ -15,7 +15,7 @@ extern GUISENDMESSAGE _gui_sendmessage;
 extern GUITRANSLATETEXT _gui_translate_text;
 
 //DBG typedefs
-typedef const char* (*DBGDBGINIT)();
+typedef const char* (*DBGDBGINIT)(bool blocking);
 typedef duint(*DBGMEMFINDBASEADDR)(duint addr, duint* size);
 typedef bool (*DBGMEMREAD)(duint addr, void* dest, duint size, duint* read);
 typedef bool (*DBGMEMWRITE)(duint addr, const void* src, duint size, duint* written);

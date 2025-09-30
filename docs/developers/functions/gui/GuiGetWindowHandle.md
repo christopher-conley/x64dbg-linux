@@ -17,7 +17,7 @@ Returns the main window handle for x6dbg as a HWND variable
 ## Example
 
 ```c++
-hWnd = GuiGetWindowHandle();
+HWND hWnd = GuiGetWindowHandle();
 ```
 
 ## Related functions

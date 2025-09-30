@@ -27,7 +27,8 @@ struct TranslatedStringStorage
 {
     char Data[4096];
 };
-extern std::map<DWORD, TranslatedStringStorage>* TLS_TranslatedStringMap;
+
+extern thread_local TranslatedStringStorage TLS_TranslatedString;
 
 #if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 class MyEventFilter : public QAbstractNativeEventFilter

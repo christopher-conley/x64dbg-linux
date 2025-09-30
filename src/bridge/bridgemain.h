@@ -147,6 +147,12 @@ BRIDGE_IMPEXP bool BridgeIsProcessElevated();
 BRIDGE_IMPEXP unsigned int BridgeGetNtBuildNumber();
 
 /// <summary>
+/// Returns the original working directory when starting the debugger.
+/// The working directory is changed to the x64dbg directory after initialization.
+/// </summary>
+BRIDGE_IMPEXP const wchar_t* BridgeWorkingDirectory();
+
+/// <summary>
 /// Returns the user directory (without trailing backslash).
 /// </summary>
 BRIDGE_IMPEXP const wchar_t* BridgeUserDirectory();
@@ -352,6 +358,7 @@ typedef enum
     DBG_GET_SYMBOL_INFO_AT,         // param1=duint addr,                param2=SYMBOLINFO* info
     DBG_XREF_ADD_MULTI,             // param1=const XREF_EDGE* edges,    param2=duint count
     DBG_TYPE_VISIT,                 // param1=TYPEVISITDATA* data,       param2=unused
+    DBG_UPDATE_GUI,                 // param1=disasm_addr,               param2=bool stack
 } DBGMSG;
 
 typedef enum
@@ -1097,6 +1104,7 @@ typedef struct _TYPEDESCRIPTOR
 
 //Debugger functions
 BRIDGE_IMPEXP const char* DbgInit();
+BRIDGE_IMPEXP const char* DbgInitBlocking();
 BRIDGE_IMPEXP void DbgExit();
 BRIDGE_IMPEXP bool DbgMemRead(duint va, void* dest, duint size);
 BRIDGE_IMPEXP bool DbgMemWrite(duint va, const void* src, duint size);
@@ -1223,6 +1231,7 @@ BRIDGE_IMPEXP void DbgGetSymbolInfo(const SYMBOLPTR* symbolptr, SYMBOLINFO* info
 BRIDGE_IMPEXP DEBUG_ENGINE DbgGetDebugEngine();
 BRIDGE_IMPEXP bool DbgGetSymbolInfoAt(duint addr, SYMBOLINFO* info);
 BRIDGE_IMPEXP duint DbgXrefAddMulti(const XREF_EDGE* edges, duint count);
+BRIDGE_IMPEXP void DbgUpdateGui(duint disasm_addr, bool stack);
 
 typedef enum
 {

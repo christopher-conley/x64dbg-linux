@@ -62,9 +62,8 @@ bool MyApplication::notify(QObject* receiver, QEvent* event)
 
 static Configuration* mConfiguration;
 char gCurrentLocale[MAX_SETTING_SIZE] = "";
-// Boom... VS does not support "thread_local"... and cannot use "__declspec(thread)" in a DLL... https://blogs.msdn.microsoft.com/oldnewthing/20101122-00/?p=12233
-// Simulating Thread Local Storage with a map...
-std::map<DWORD, TranslatedStringStorage>* TLS_TranslatedStringMap; //key = Thread Id, value = Translate Buffer
+
+thread_local TranslatedStringStorage TLS_TranslatedString;
 
 static bool isValidLocale(const QString & locale)
 {
@@ -168,8 +167,6 @@ int main(int argc, char* argv[])
     if(x64dbgTranslator.load(QString("x64dbg_%1").arg(gCurrentLocale), path))
         application.installTranslator(&x64dbgTranslator);
 
-    TLS_TranslatedStringMap = new std::map<DWORD, TranslatedStringStorage>();
-
     // load config file + set config font
     mConfiguration = new Configuration;
     application.setFont(ConfigFont("Application"));
@@ -230,12 +227,6 @@ int main(int argc, char* argv[])
 #endif
     delete mainWindow;
     mConfiguration->save(); //save config on exit
-    {
-        //delete tls
-        auto temp = TLS_TranslatedStringMap;
-        TLS_TranslatedStringMap = nullptr;
-        delete temp;
-    }
 
     //TODO free Zydis/config/bridge and prevent use after free.
 

@@ -1,23 +1,23 @@
 # GuiScriptEnableHighlighting
 
-Function description.
+Set whether syntax highlighting in the script view is enabled.
 
 ```c++
-Function definition.
+void GuiScriptEnableHighlighting(bool enable);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`enable` `True` to enable syntax highlighting in the script view, `false` otherwise.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
 ```c++
-Example code.
+GuiScriptEnableHighlighting(true);
 ```
 
 ## Related functions

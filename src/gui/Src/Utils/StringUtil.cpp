@@ -3,7 +3,7 @@
 #include "StringUtil.h"
 #include "MiscUtil.h"
 #include "ldconvert.h"
-#include "Configuration.h"
+#include <Configuration.h>
 
 QString ToLongDoubleString(const void* buffer)
 {
@@ -311,4 +311,14 @@ QString DbgCmdEscape(QString argument)
     argument.replace("{", "\\{");
 
     return argument;
+}
+
+QString StringFormatInline(const QString & format)
+{
+    if(!DbgFunctions()->StringFormatInline)
+        return QString();
+    char result[MAX_SETTING_SIZE] = "";
+    if(DbgFunctions()->StringFormatInline(format.toUtf8().constData(), MAX_SETTING_SIZE, result))
+        return result;
+    return "[Formatting Error]";
 }

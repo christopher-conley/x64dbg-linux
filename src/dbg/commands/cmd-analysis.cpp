@@ -289,8 +289,11 @@ bool cbInstrImageinfo(int argc, char* argv[])
             dputs(QT_TRANSLATE_NOOP("DBG", "Invalid argument"));
             return false;
         }
-        c = GetPE32DataFromMappedFile(modinfo->fileMapVA, 0, UE_CHARACTERISTICS);
-        dllc = GetPE32DataFromMappedFile(modinfo->fileMapVA, 0, UE_DLLCHARACTERISTICS);
+        if(auto headers = modinfo->headers)
+        {
+            c = headers->FileHeader.Characteristics;
+            dllc = headers->OptionalHeader.DllCharacteristics;
+        }
         mod = modinfo->base;
     }
 

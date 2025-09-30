@@ -629,7 +629,7 @@ static void ReadDebugDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
 
         // Symbol cache
         auto cachePath = String(szSymbolCachePath);
-        if(cachePath.back() != '\\')
+        if(!cachePath.empty() && cachePath.back() != '\\')
             cachePath += '\\';
         cachePath += StringUtils::sprintf("%s\\%s\\%s", file.c_str(), Info.pdbSignature.c_str(), file.c_str());
         Info.pdbPaths.push_back(cachePath);
@@ -938,7 +938,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols)
 
             GetModuleInfo(info, info.fileMapVA);
 
-            Size = GetPE32DataFromMappedFile(info.fileMapVA, 0, UE_SIZEOFIMAGE);
+            Size = HEADER_FIELD(info.headers, SizeOfImage);
             info.size = Size;
         }
         else

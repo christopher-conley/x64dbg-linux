@@ -33,6 +33,7 @@ endif()
 
 # Options
 option(X64DBG_BUILD_IN_TREE "" ON)
+option(X64DBG_RELEASE "" OFF)
 
 # Variables
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -53,32 +54,25 @@ find_package(Qt5 REQUIRED
 		WinExtras
 )
 
-# Target: zydis_wrapper
-set(zydis_wrapper_SOURCES
-	cmake.toml
-	"src/zydis_wrapper/Zydis/Zydis.h"
-	"src/zydis_wrapper/zydis/Zydis.c"
-	"src/zydis_wrapper/zydis_wrapper.cpp"
-	"src/zydis_wrapper/zydis_wrapper.h"
-)
+# Subdirectory: src/zydis_wrapper
+set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+if(CMAKE_FOLDER)
+	set(CMAKE_FOLDER "${CMAKE_FOLDER}/src/zydis_wrapper")
+else()
+	set(CMAKE_FOLDER "src/zydis_wrapper")
+endif()
+add_subdirectory("src/zydis_wrapper")
+set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
-add_library(zydis_wrapper STATIC)
-
-target_sources(zydis_wrapper PRIVATE ${zydis_wrapper_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${zydis_wrapper_SOURCES})
-
-target_compile_definitions(zydis_wrapper PUBLIC
-	ZYCORE_STATIC_BUILD
-	ZYDIS_STATIC_BUILD
-)
-
-target_include_directories(zydis_wrapper PUBLIC
-	"src/zydis_wrapper"
-)
-
-target_include_directories(zydis_wrapper PRIVATE
-	"src/zydis_wrapper/Zydis"
-)
+# Subdirectory: src/gui/Src/ThirdPartyLibs/md4c
+set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+if(CMAKE_FOLDER)
+	set(CMAKE_FOLDER "${CMAKE_FOLDER}/src/gui/Src/ThirdPartyLibs/md4c")
+else()
+	set(CMAKE_FOLDER "src/gui/Src/ThirdPartyLibs/md4c")
+endif()
+add_subdirectory("src/gui/Src/ThirdPartyLibs/md4c")
+set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
 # Target: bridge
 set(bridge_SOURCES
@@ -221,6 +215,7 @@ set(dbg_SOURCES
 	"src/dbg/analysis/xrefsanalysis.h"
 	"src/dbg/animate.cpp"
 	"src/dbg/animate.h"
+	"src/dbg/args.h"
 	"src/dbg/argument.cpp"
 	"src/dbg/argument.h"
 	"src/dbg/assemble.cpp"
@@ -323,6 +318,7 @@ set(dbg_SOURCES
 	"src/dbg/jansson/jansson_x64dbg.h"
 	"src/dbg/jit.cpp"
 	"src/dbg/jit.h"
+	"src/dbg/jobqueue.h"
 	"src/dbg/label.cpp"
 	"src/dbg/label.h"
 	"src/dbg/loop.cpp"
@@ -405,6 +401,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${dbg_SOURCES})
 
 target_compile_definitions(dbg PRIVATE
 	BUILD_DBG
+	NOMINMAX
 )
 
 target_include_directories(dbg PRIVATE
@@ -439,6 +436,7 @@ target_link_libraries(dbg PRIVATE
 	Shlwapi
 	Ws2_32
 	Wininet
+	Iphlpapi
 )
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
@@ -625,6 +623,8 @@ set(gui_SOURCES
 	"src/gui/Src/Gui/HexLineEdit.cpp"
 	"src/gui/Src/Gui/HexLineEdit.h"
 	"src/gui/Src/Gui/HexLineEdit.ui"
+	"src/gui/Src/Gui/ImageTextBrowser.cpp"
+	"src/gui/Src/Gui/ImageTextBrowser.h"
 	"src/gui/Src/Gui/LineEditDialog.cpp"
 	"src/gui/Src/Gui/LineEditDialog.h"
 	"src/gui/Src/Gui/LineEditDialog.ui"
@@ -661,6 +661,9 @@ set(gui_SOURCES
 	"src/gui/Src/Gui/ReferenceManager.h"
 	"src/gui/Src/Gui/RegistersView.cpp"
 	"src/gui/Src/Gui/RegistersView.h"
+	"src/gui/Src/Gui/ReleaseNotesDialog.cpp"
+	"src/gui/Src/Gui/ReleaseNotesDialog.h"
+	"src/gui/Src/Gui/ReleaseNotesDialog.ui"
 	"src/gui/Src/Gui/RichTextItemDelegate.cpp"
 	"src/gui/Src/Gui/RichTextItemDelegate.h"
 	"src/gui/Src/Gui/SEHChainView.cpp"
@@ -727,6 +730,9 @@ set(gui_SOURCES
 	"src/gui/Src/QHexEdit/XByteArray.cpp"
 	"src/gui/Src/QHexEdit/XByteArray.h"
 	"src/gui/Src/ThirdPartyLibs/ldconvert/ldconvert.h"
+	"src/gui/Src/ThirdPartyLibs/md4c/md4c-entity.h"
+	"src/gui/Src/ThirdPartyLibs/md4c/md4c-html.h"
+	"src/gui/Src/ThirdPartyLibs/md4c/md4c.h"
 	"src/gui/Src/Tracer/TraceBrowser.cpp"
 	"src/gui/Src/Tracer/TraceBrowser.h"
 	"src/gui/Src/Tracer/TraceDump.cpp"
@@ -802,6 +808,12 @@ add_library(gui SHARED)
 target_sources(gui PRIVATE ${gui_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${gui_SOURCES})
 
+if(X64DBG_RELEASE) # X64DBG_RELEASE
+	target_compile_definitions(gui PUBLIC
+		X64DBG_RELEASE
+	)
+endif()
+
 target_compile_definitions(gui PRIVATE
 	BUILD_LIB
 	NOMINMAX
@@ -829,11 +841,16 @@ if(NOT TARGET bridge)
 	message(FATAL_ERROR "Target \"bridge\" referenced by \"gui\" does not exist!")
 endif()
 
+if(NOT TARGET md4c-html)
+	message(FATAL_ERROR "Target \"md4c-html\" referenced by \"gui\" does not exist!")
+endif()
+
 target_link_libraries(gui PRIVATE
 	Qt5::Widgets
 	Qt5::WinExtras
 	zydis_wrapper
 	bridge
+	md4c-html
 	winmm
 	wininet
 )
@@ -978,6 +995,8 @@ if(MSVC) # msvc
 		"/DELAYLOAD:user32.dll"
 		"/DELAYLOAD:wintrust.dll"
 		"/DELAYLOAD:$<TARGET_FILE_NAME:bridge>"
+		"/NOIMPLIB"
+		"/NOEXP"
 	)
 endif()
 

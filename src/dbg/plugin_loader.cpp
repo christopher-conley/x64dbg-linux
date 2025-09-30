@@ -296,7 +296,7 @@ bool pluginload(const char* pluginName, bool loadall)
 
     // Add plugin menus
     {
-        SectionLocker<LockPluginMenuList, false, false> menuLock; //exclusive lock
+        ExclusiveSectionLocker<LockPluginMenuList> menuLock;
 
         auto addPluginMenu = [](GUIMENUTYPE type)
         {
@@ -328,7 +328,7 @@ bool pluginload(const char* pluginName, bool loadall)
 
     // Add the plugin to the list
     {
-        SectionLocker<LockPluginList, false> pluginLock; //exclusive lock
+        ExclusiveSectionLocker<LockPluginList> pluginLock;
         gPluginList.push_back(gLoadingPlugin);
     }
 
@@ -934,7 +934,7 @@ void pluginmenucall(int hEntry)
     if(hEntry == -1)
         return;
 
-    SectionLocker<LockPluginMenuList, true, false> menuLock; //shared lock
+    SharedSectionLocker<LockPluginMenuList> menuLock;
     auto i = gPluginMenuEntryList.begin();
     while(i != gPluginMenuEntryList.end())
     {
@@ -944,7 +944,7 @@ void pluginmenucall(int hEntry)
         {
             PLUG_CB_MENUENTRY menuEntryInfo;
             menuEntryInfo.hEntry = currentMenu.hEntryPlugin;
-            SectionLocker<LockPluginCallbackList, true> callbackLock; //shared lock
+            SharedSectionLocker<LockPluginCallbackList, true> callbackLock;
             const auto & cbList = gPluginCallbackList[CB_MENUENTRY];
             for(auto j = cbList.begin(); j != cbList.end();)
             {

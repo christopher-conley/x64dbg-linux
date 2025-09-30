@@ -8,57 +8,17 @@
 FunctionPass::FunctionPass(duint VirtualStart, duint VirtualEnd, BBlockArray & MainBlocks)
     : AnalysisPass(VirtualStart, VirtualEnd, MainBlocks)
 {
-    // Zero values
-    m_FunctionInfo = nullptr;
-    m_FunctionInfoSize = 0;
+    SHARED_ACQUIRE(LockModules);
 
-    // This will only be valid if the address range is within a loaded module
-    m_ModuleStart = ModBaseFromAddr(VirtualStart);
+    auto modInfo = ModInfoFromAddr(VirtualStart);
+    if(modInfo == nullptr)
+        return;
 
-    if(m_ModuleStart != 0)
-    {
-        char modulePath[MAX_PATH];
-        memset(modulePath, 0, sizeof(modulePath));
+    mModuleStart = modInfo->base;
 
-        ModPathFromAddr(m_ModuleStart, modulePath, ARRAYSIZE(modulePath));
-
-        HANDLE fileHandle;
-        DWORD fileSize;
-        HANDLE fileMapHandle;
-        ULONG_PTR fileMapVa;
-        if(StaticFileLoadW(
-                    StringUtils::Utf8ToUtf16(modulePath).c_str(),
-                    UE_ACCESS_READ,
-                    false,
-                    &fileHandle,
-                    &fileSize,
-                    &fileMapHandle,
-                    &fileMapVa))
-        {
-            // Find a pointer to IMAGE_DIRECTORY_ENTRY_EXCEPTION for later use
-            ULONG_PTR virtualOffset = GetPE32DataFromMappedFile(fileMapVa, IMAGE_DIRECTORY_ENTRY_EXCEPTION, UE_SECTIONVIRTUALOFFSET);
-            m_FunctionInfoSize = (ULONG)GetPE32DataFromMappedFile(fileMapVa, IMAGE_DIRECTORY_ENTRY_EXCEPTION, UE_SECTIONVIRTUALSIZE);
-
-            // Unload the file
-            StaticFileUnloadW(nullptr, false, fileHandle, fileSize, fileMapHandle, fileMapVa);
-
-            // Get a copy of the function table
-            if(virtualOffset)
-            {
-                // Read the table into a buffer
-                m_FunctionInfo = BridgeAlloc(m_FunctionInfoSize);
-
-                if(m_FunctionInfo)
-                    MemRead(virtualOffset + m_ModuleStart, m_FunctionInfo, m_FunctionInfoSize);
-            }
-        }
-    }
-}
-
-FunctionPass::~FunctionPass()
-{
-    if(m_FunctionInfo)
-        BridgeFree(m_FunctionInfo);
+#ifdef _WIN64
+    mRuntimeFunctions = modInfo->runtimeFunctions;
+#endif // _WIN64
 }
 
 const char* FunctionPass::GetName()
@@ -204,11 +164,10 @@ void FunctionPass::FindFunctionWorkerPrepass(duint Start, duint End, std::vector
     const duint maxFunc = std::next(m_MainBlocks.begin(), End - 1)->VirtualEnd;
 
 #ifdef _WIN64
-    // RUNTIME_FUNCTION exception information
-    EnumerateFunctionRuntimeEntries64([&](PRUNTIME_FUNCTION Function)
+    for(const auto & Function : mRuntimeFunctions)
     {
-        const duint funcAddr = m_ModuleStart + Function->BeginAddress;
-        const duint funcEnd = m_ModuleStart + Function->EndAddress;
+        const duint funcAddr = mModuleStart + Function.BeginAddress;
+        const duint funcEnd = mModuleStart + Function.EndAddress;
 
         // If within limits...
         if(funcAddr >= minFunc && funcAddr < maxFunc)
@@ -216,13 +175,11 @@ void FunctionPass::FindFunctionWorkerPrepass(duint Start, duint End, std::vector
             // Add the descriptor (virtual start/end)
             Blocks->push_back({ funcAddr, funcEnd, 0, 0, 0 });
         }
-
-        return true;
-    });
+    };
 #endif // _WIN64
 
     // Module exports (return value ignored)
-    apienumexports(m_ModuleStart, [&](duint Base, const char* Module, const char* Name, duint Address)
+    apienumexports(mModuleStart, [&](duint Base, const char* Module, const char* Name, duint Address)
     {
         // If within limits...
         if(Address >= minFunc && Address < maxFunc)
@@ -408,22 +365,3 @@ bool FunctionPass::ResolveFunctionEnd(FunctionDef* Function, BasicBlock* LastBlo
     Function->BBlockEnd = FindBBlockIndex(block);
     return true;
 }
-
-#ifdef _WIN64
-void FunctionPass::EnumerateFunctionRuntimeEntries64(const std::function<bool(PRUNTIME_FUNCTION)> & Callback)
-{
-    if(!m_FunctionInfo)
-        return;
-
-    // Get the table pointer and size
-    auto functionTable = (PRUNTIME_FUNCTION)m_FunctionInfo;
-    size_t totalCount = (m_FunctionInfoSize / sizeof(RUNTIME_FUNCTION));
-
-    // Enumerate each entry
-    for(size_t i = 0; i < totalCount; i++)
-    {
-        if(!Callback(&functionTable[i]))
-            break;
-    }
-}
-#endif // _WIN64

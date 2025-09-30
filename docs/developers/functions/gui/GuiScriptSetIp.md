@@ -1,23 +1,23 @@
 # GuiScriptSetIp
 
-Function description.
+Set the current line in the script view.
 
 ```c++
-Function definition.
+void GuiScriptSetIp(int line);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`line` The line number of the new current line.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 
 ```c++
-Example code.
+GuiScriptSetIp(0);
 ```
 
 ## Related functions

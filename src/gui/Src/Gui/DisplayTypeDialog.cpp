@@ -65,6 +65,7 @@ void DisplayTypeDialog::pickType(QWidget* parent, duint defaultAddr)
         if(!selectedType.isEmpty())
         {
             emit Bridge::getBridge()->typeVisit(selectedType, dialog.mCurrentAddress);
+            emit Bridge::getBridge()->focusStruct();
         }
     }
 }

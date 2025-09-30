@@ -603,7 +603,7 @@ void MemoryMapView::doubleClickedSlot()
     auto addr = DbgValFromString(getSelectionText().toUtf8().constData());
     if(!addr)
         return;
-    if(DbgFunctions()->MemIsCodePage(addr, false))
+    if(DbgFunctions()->MemIsCodePage(addr, true))
         followDisassemblerSlot();
     else
     {

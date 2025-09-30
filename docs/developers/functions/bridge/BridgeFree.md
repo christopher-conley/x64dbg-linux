@@ -1,6 +1,6 @@
 # BridgeFree
 
-Function description.
+Free a memory buffer previously allocated by [BridgeAlloc](./BridgeAlloc.md).
 
 ```c++
 void BridgeFree(

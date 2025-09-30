@@ -108,6 +108,9 @@ public:
 
 private:
     static const String WHITESPACE;
+
+    static bool convertLongLongNumber(const char* str, unsigned long long & result, int radix);
+    static bool convertNumber(const char* str, size_t & result, int radix);
 };
 
 #endif //_STRINGUTILS_H

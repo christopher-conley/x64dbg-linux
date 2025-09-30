@@ -1,6 +1,6 @@
 # BridgeAlloc
 
-Function description.
+Allocate a memory buffer for use by x64dbg. The memory is freed by [BridgeFree](./BridgeFree.md).
 
 ```c++
 void* BridgeAlloc(

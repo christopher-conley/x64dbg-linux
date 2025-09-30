@@ -30,6 +30,7 @@ bool cmdnew(const char* name, CBCOMMAND cbCommand, bool debugonly);
 COMMAND* cmdget(const char* cmd);
 CBCOMMAND cmdset(const char* name, CBCOMMAND cbCommand, bool debugonly);
 bool cmddel(const char* name);
+void cmdsplit(const char* cmd, StringList & commands);
 void cmdloop();
 bool cmddirectexec(const char* cmd);
 

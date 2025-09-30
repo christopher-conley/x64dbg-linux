@@ -397,7 +397,7 @@ bool cbDebugSetHardwareBreakpoint(int argc, char* argv[])
     duint addr;
     if(!valfromstring(argv[1], &addr))
         return false;
-    DWORD type = UE_HARDWARE_EXECUTE;
+    TitanHardwareBreakpointType type = UE_HARDWARE_EXECUTE;
     if(argc > 2)
     {
         switch(*argv[2])
@@ -415,7 +415,7 @@ bool cbDebugSetHardwareBreakpoint(int argc, char* argv[])
             break;
         }
     }
-    DWORD titsize = UE_HARDWARE_SIZE_1;
+    TitanHardwareBreakpointSize titsize = UE_HARDWARE_SIZE_1;
     if(argc > 3)
     {
         duint size;
@@ -660,7 +660,7 @@ static bool cbEnableAllMemoryBreakpoints(const BREAKPOINT* bp)
         dprintf(QT_TRANSLATE_NOOP("DBG", "Could not enable memory breakpoint %p (BpEnable)\n"), bp->addr);
         return false;
     }
-    if(!SetMemoryBPXEx(bp->addr, size, bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
+    if(!SetMemoryBPXEx(bp->addr, size, (TitanMemoryBreakpointType)bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "Could not enable memory breakpoint %p (SetMemoryBPXEx)\n"), bp->addr);
         return false;
@@ -705,7 +705,7 @@ bool cbDebugSetMemoryBpx(int argc, char* argv[])
         else
             strcpy_s(arg3, argv[2]);
     }
-    DWORD type = UE_MEMORY;
+    TitanMemoryBreakpointType type = UE_MEMORY;
     if(*arg3)
     {
         switch(*arg3)
@@ -768,7 +768,7 @@ bool cbDebugSetMemoryRangeBpx(int argc, char* argv[])
     if(!valfromstring(argv[2], &size, false))
         return false;
 
-    DWORD type = UE_MEMORY;
+    TitanMemoryBreakpointType type = UE_MEMORY;
     bool singleshot = false;
     if(argc > 3)
     {
@@ -902,7 +902,7 @@ bool cbDebugEnableMemoryBreakpoint(int argc, char* argv[])
     }
     duint size = 0;
     MemFindBaseAddr(found.addr, &size);
-    if(!SetMemoryBPXEx(found.addr, size, found.titantype, !found.singleshoot, cbMemoryBreakpoint))
+    if(!SetMemoryBPXEx(found.addr, size, (TitanMemoryBreakpointType)found.titantype, !found.singleshoot, cbMemoryBreakpoint))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "Could not enable memory breakpoint %p (SetMemoryBPXEx)\n"), found.addr);
         return false;
@@ -1494,7 +1494,7 @@ bool cbDebugSetBPXOptions(int argc, char* argv[])
 {
     if(IsArgumentsLessThan(argc, 2))
         return false;
-    DWORD type = 0;
+    TitanBreakpointType type;
     const char* strType = 0;
     duint setting_type;
     if(strstr(argv[1], "long"))

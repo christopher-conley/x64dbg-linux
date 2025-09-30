@@ -171,6 +171,7 @@ protected:
     virtual void mouseMoveEvent(QMouseEvent* event);
     virtual void paintEvent(QPaintEvent* event);
     virtual void keyPressEvent(QKeyEvent* event);
+    virtual void wheelEvent(QWheelEvent* event) override;
 
     // use-in-class-only methods
     void drawRegister(QPainter* p, REGISTER_NAME reg, char* value);

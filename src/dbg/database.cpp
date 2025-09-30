@@ -145,7 +145,7 @@ void DbSave(DbLoadSaveType saveType, const char* dbfile, bool disablecompression
             return;
         }
 
-        if(!disablecompression && !settingboolget("Engine", "DisableDatabaseCompression"))
+        if(!disablecompression && !settingboolget("Engine", "DisableDatabaseCompression", false))
             LZ4_compress_fileW(wdbpath.c_str(), wdbpath.c_str());
     }
     else //remove database when nothing is in there
@@ -221,7 +221,7 @@ void DbLoad(DbLoadSaveType loadType, const char* dbfile)
     }
 
     // Decompress the file if compression was enabled
-    bool useCompression = !settingboolget("Engine", "DisableDatabaseCompression");
+    bool useCompression = !settingboolget("Engine", "DisableDatabaseCompression", false);
     LZ4_STATUS lzmaStatus = LZ4_INVALID_ARCHIVE;
     {
         lzmaStatus = LZ4_decompress_fileW(databasePathW.c_str(), databasePathW.c_str());
@@ -424,7 +424,7 @@ void DbSetPath(const char* Directory, const char* ModulePath)
             return true;
         };
 
-        if(settingboolget("Engine", "SaveDatabaseInProgramDirectory") && checkWritable(fileDir))
+        if(settingboolget("Engine", "SaveDatabaseInProgramDirectory", false) && checkWritable(fileDir))
         {
             // Absolute path in the program directory
             sprintf_s(dbpath, "%s\\%s.%s", fileDir, dbName, dbType);

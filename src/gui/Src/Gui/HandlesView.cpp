@@ -137,15 +137,6 @@ HandlesView::HandlesView(QWidget* parent) : QWidget(parent)
     connect(Config(), SIGNAL(shortcutsUpdated()), this, SLOT(refreshShortcuts()));
     connect(Bridge::getBridge(), SIGNAL(dbgStateChanged(DBGSTATE)), this, SLOT(dbgStateChanged(DBGSTATE)));
 
-#ifdef _WIN32 // This is only supported on Windows Vista or greater
-    if(!IsWindowsVistaOrGreater())
-#endif //_WIN32
-    {
-        mTcpConnectionsTable->setRowCount(1);
-        mTcpConnectionsTable->setCellContent(0, 0, tr("TCP Connection enumeration is only available on Windows Vista or greater."));
-        mTcpConnectionsTable->reloadData();
-    }
-
     mWindowsTable->setAccessibleName(tr("Windows"));
     mHandlesTable->setAccessibleName(tr("Handles"));
     mTcpConnectionsTable->setAccessibleName(tr("TCP Connections"));

@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.15)
+project(cmdline)
+if(MSVC)
+    add_link_options(/DEBUG:FULL /INCREMENTAL:NO /OPT:REF /OPT:ICF)
+endif()
+add_executable(cmdline test_cmdline.cpp)

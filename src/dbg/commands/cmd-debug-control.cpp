@@ -125,7 +125,9 @@ bool cbDebugInit(int argc, char* argv[])
     dprintf(QT_TRANSLATE_NOOP("DBG", "Debugging: %s\n"), arg1);
     hFile.Close();
 
-    auto arch = GetPeArch(arg1w.c_str());
+    uint32_t entryPointRva = 0;
+    bool isDll = false;
+    auto arch = GetPeArch(arg1w.c_str(), &entryPointRva, &isDll);
 
     // Translate Any CPU to the actual architecture
     if(arch == PeArch::DotnetAnyCpu)
@@ -168,6 +170,8 @@ bool cbDebugInit(int argc, char* argv[])
     init.exe = arg1;
     init.commandline = arg2;
     init.currentfolder = currentfolder;
+    init.entryPointRva = entryPointRva;
+    init.isDll = isDll;
 
     dbgcreatedebugthread(&init);
     return true;
@@ -222,6 +226,7 @@ bool cbDebugStop(int argc, char* argv[])
                     DbSave(DbLoadSaveType::All);
                     TerminateThread(hDebugLoopThreadCopy, 1); // TODO: this will lose state and cause possible corruption if a critical section is still owned
                     CloseHandle(hDebugLoopThreadCopy);
+                    bIsDebugging = false;
                     return false;
                 }
             }
@@ -391,6 +396,7 @@ bool cbDebugPause(int argc, char* argv[])
         dputs(QT_TRANSLATE_NOOP("DBG", "Program is not running"));
         return false;
     }
+    // TODO: get suspend count instead, this can be detected
     // Interesting behavior found by JustMagic, if the active thread is suspended pause would fail
     auto previousSuspendCount = SuspendThread(hActiveThread);
     if(previousSuspendCount != 0)

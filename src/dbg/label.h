@@ -20,5 +20,6 @@ void LabelCacheLoad(JSON root);
 void LabelClear();
 void LabelGetList(std::vector<LABELSINFO> & list);
 bool LabelGetInfo(duint Address, LABELSINFO* info);
+std::vector<std::string> LabelFindPrefix(const std::string & prefix, int maxCount, bool isCaseSensitive);
 
 #endif // _LABEL_H

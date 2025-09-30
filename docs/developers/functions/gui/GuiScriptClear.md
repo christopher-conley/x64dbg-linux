@@ -1,23 +1,9 @@
 # GuiScriptClear
 
-Function description.
+Set the script view to empty.
 
 ```c++
-Function definition.
-```
-
-## Parameters
-
-`param1` Parameter description.
-
-## Return Value
-
-Return value description.
-
-## Example
-
-```c++
-Example code.
+void GuiScriptClear();
 ```
 
 ## Related functions

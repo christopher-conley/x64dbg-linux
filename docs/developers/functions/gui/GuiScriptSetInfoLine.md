@@ -3,16 +3,16 @@
 Function description.
 
 ```c++
-Function definition.
+void GuiScriptSetInfoLine(int line, const char* info);
 ```
 
 ## Parameters
 
-`param1` Parameter description.
+`line` Parameter description.
 
 ## Return Value
 
-Return value description.
+This function does not return a value.
 
 ## Example
 

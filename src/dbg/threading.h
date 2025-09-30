@@ -75,6 +75,8 @@ enum SectionLock
     LockFormatFunctions,
     LockDllBreakpoints,
     LockHandleCache,
+    LockScriptLineMap,
+    LockScriptBreakpoints,
 
     // Number of elements in this enumeration. Must always be the last index.
     LockLast
@@ -102,110 +104,77 @@ private:
     static void AcquireLock()
     {
         auto threadId = GetCurrentThreadId();
-        if(m_SRWLocks)
+
+        auto srwLock = &m_srwLocks[LockIndex];
+
+        if(Shared)
         {
-            auto srwLock = &m_srwLocks[LockIndex];
-
-            if(Shared)
-            {
-                if(m_exclusiveOwner[LockIndex].threadId == threadId)
-                    return;
-
-                if(ProcessGuiEvents && threadId == m_guiMainThreadId)
-                {
-                    while(!m_TryAcquireSRWLockShared(srwLock))
-                        GuiProcessEvents();
-                }
-                else
-                {
-                    m_AcquireSRWLockShared(srwLock);
-                }
-                return;
-            }
-
             if(m_exclusiveOwner[LockIndex].threadId == threadId)
-            {
-                assert(m_exclusiveOwner[LockIndex].count > 0);
-                m_exclusiveOwner[LockIndex].count++;
                 return;
-            }
 
             if(ProcessGuiEvents && threadId == m_guiMainThreadId)
             {
-                while(!m_TryAcquireSRWLockExclusive(srwLock))
+                while(!TryAcquireSRWLockShared(srwLock))
                     GuiProcessEvents();
             }
             else
             {
-                m_AcquireSRWLockExclusive(srwLock);
+                AcquireSRWLockShared(srwLock);
             }
+            return;
+        }
 
-            assert(m_exclusiveOwner[LockIndex].threadId == 0);
-            assert(m_exclusiveOwner[LockIndex].count == 0);
-            m_exclusiveOwner[LockIndex].threadId = threadId;
-            m_exclusiveOwner[LockIndex].count = 1;
+        if(m_exclusiveOwner[LockIndex].threadId == threadId)
+        {
+            assert(m_exclusiveOwner[LockIndex].count > 0);
+            m_exclusiveOwner[LockIndex].count++;
+            return;
+        }
+
+        if(ProcessGuiEvents && threadId == m_guiMainThreadId)
+        {
+            while(!TryAcquireSRWLockExclusive(srwLock))
+                GuiProcessEvents();
         }
         else
         {
-            auto cr = &m_crLocks[LockIndex];
-            if(ProcessGuiEvents && threadId == m_guiMainThreadId)
-            {
-                while(!TryEnterCriticalSection(cr))
-                    GuiProcessEvents();
-            }
-            else
-            {
-                EnterCriticalSection(cr);
-            }
+            AcquireSRWLockExclusive(srwLock);
         }
+
+        assert(m_exclusiveOwner[LockIndex].threadId == 0);
+        assert(m_exclusiveOwner[LockIndex].count == 0);
+        m_exclusiveOwner[LockIndex].threadId = threadId;
+        m_exclusiveOwner[LockIndex].count = 1;
     }
 
     template<SectionLock LockIndex, bool Shared>
     static void ReleaseLock()
     {
-        if(m_SRWLocks)
+        if(Shared)
         {
-            if(Shared)
-            {
-                if(m_exclusiveOwner[LockIndex].threadId == GetCurrentThreadId())
-                    return;
-
-                m_ReleaseSRWLockShared(&m_srwLocks[LockIndex]);
+            if(m_exclusiveOwner[LockIndex].threadId == GetCurrentThreadId())
                 return;
-            }
 
-            assert(m_exclusiveOwner[LockIndex].count && m_exclusiveOwner[LockIndex].threadId);
-            m_exclusiveOwner[LockIndex].count--;
-
-            if(m_exclusiveOwner[LockIndex].count == 0)
-            {
-                m_exclusiveOwner[LockIndex].threadId = 0;
-                m_ReleaseSRWLockExclusive(&m_srwLocks[LockIndex]);
-            }
+            ReleaseSRWLockShared(&m_srwLocks[LockIndex]);
+            return;
         }
-        else
+
+        assert(m_exclusiveOwner[LockIndex].count && m_exclusiveOwner[LockIndex].threadId);
+        m_exclusiveOwner[LockIndex].count--;
+
+        if(m_exclusiveOwner[LockIndex].count == 0)
         {
-            LeaveCriticalSection(&m_crLocks[LockIndex]);
+            m_exclusiveOwner[LockIndex].threadId = 0;
+            ReleaseSRWLockExclusive(&m_srwLocks[LockIndex]);
         }
     }
 
-    typedef void (WINAPI* SRWLOCKFUNCTION)(PSRWLOCK SWRLock);
-    typedef BOOLEAN(WINAPI* TRYSRWLOCKFUNCTION)(PSRWLOCK SWRLock);
-
     static bool m_Initialized;
-    static bool m_SRWLocks;
 
     struct DBG_ALIGNAS(64) owner_info { DWORD threadId; size_t count; };
     static owner_info m_exclusiveOwner[SectionLock::LockLast];
     static CacheAligned<SRWLOCK> m_srwLocks[SectionLock::LockLast];
     static CacheAligned<CRITICAL_SECTION> m_crLocks[SectionLock::LockLast];
-    static SRWLOCKFUNCTION m_InitializeSRWLock;
-    static SRWLOCKFUNCTION m_AcquireSRWLockShared;
-    static TRYSRWLOCKFUNCTION m_TryAcquireSRWLockShared;
-    static SRWLOCKFUNCTION m_AcquireSRWLockExclusive;
-    static TRYSRWLOCKFUNCTION m_TryAcquireSRWLockExclusive;
-    static SRWLOCKFUNCTION m_ReleaseSRWLockShared;
-    static SRWLOCKFUNCTION m_ReleaseSRWLockExclusive;
     static DWORD m_guiMainThreadId;
 };
 
@@ -254,6 +223,12 @@ protected:
 private:
     using Internal = SectionLockerGlobal;
 };
+
+template <SectionLock LockIndex, bool ProcessGuiEvents = false>
+using SharedSectionLocker = SectionLocker<LockIndex, true, ProcessGuiEvents>;
+
+template <SectionLock LockIndex, bool ProcessGuiEvents = false>
+using ExclusiveSectionLocker = SectionLocker<LockIndex, false, ProcessGuiEvents>;
 
 struct TLSData
 {

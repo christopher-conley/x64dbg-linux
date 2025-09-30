@@ -8,6 +8,7 @@ This section contains information about the Graphical User Interface GUI functio
    :maxdepth: 1
 
    GuiAddLogMessage
+   GuiAddLogMessageHtml
    GuiAddQWidgetTab
    GuiAddRecentFile
    GuiAddStatusBarMessage
@@ -20,6 +21,7 @@ This section contains information about the Graphical User Interface GUI functio
    GuiDumpAt
    GuiDumpAtN
    GuiExecuteOnGuiThread
+   GuiExecuteOnGuiThreadEx
    GuiFocusView
    GuiGetDebuggeeNotes
    GuiGetDisassembly

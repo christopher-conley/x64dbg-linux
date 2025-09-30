@@ -3,7 +3,7 @@
 Returns the status of the internal update flag, which can be disabled via GuiUpdateDisable function or enabled vis the GuiUpdateEnable function.
 
 ```c++
-bool GuiIsUpdateDisabled()
+bool GuiIsUpdateDisabled();
 ```
 
 ## Parameters

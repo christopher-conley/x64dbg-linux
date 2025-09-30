@@ -1,13 +1,13 @@
 #include "msgqueue.h"
 
 // Allocate a message stack
-MESSAGE_STACK* MsgAllocStack()
+MESSAGE_QUEUE* MsgAllocQueue()
 {
-    return new MESSAGE_STACK();
+    return new MESSAGE_QUEUE();
 }
 
 // Free a message stack
-void MsgFreeStack(MESSAGE_STACK* Stack)
+void MsgFreeQueue(MESSAGE_QUEUE* Stack)
 {
     ASSERT_NONNULL(Stack);
 
@@ -26,7 +26,7 @@ void MsgFreeStack(MESSAGE_STACK* Stack)
 }
 
 // Add a message to the stack
-bool MsgSend(MESSAGE_STACK* Stack, int Msg, duint Param1, duint Param2)
+bool MsgSend(MESSAGE_QUEUE* Stack, int Msg, duint Param1, duint Param2)
 {
     if(Stack->Destroy)
         return false;
@@ -42,7 +42,7 @@ bool MsgSend(MESSAGE_STACK* Stack, int Msg, duint Param1, duint Param2)
 }
 
 // Get a message from the stack (will return false when there are no messages)
-bool MsgGet(MESSAGE_STACK* Stack, MESSAGE* Msg)
+bool MsgGet(MESSAGE_QUEUE* Stack, MESSAGE* Msg)
 {
     if(Stack->Destroy)
         return false;
@@ -52,7 +52,7 @@ bool MsgGet(MESSAGE_STACK* Stack, MESSAGE* Msg)
 }
 
 // Wait for a message on the specified stack
-void MsgWait(MESSAGE_STACK* Stack, MESSAGE* Msg)
+void MsgWait(MESSAGE_QUEUE* Stack, MESSAGE* Msg)
 {
     if(Stack->Destroy)
         return;
