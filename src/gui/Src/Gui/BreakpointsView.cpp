@@ -142,25 +142,35 @@ void BreakpointsView::updateColors()
     updateBreakpointsSlot();
 }
 
+struct SortFnHelper
+{
+    bool ascending;
+    const StdTable::SortBy::t& sortFn;
+    const QString & s;
+    SortFnHelper(bool ascending, const StdTable::SortBy::t& sortFn, const QString & s) : ascending(ascending), sortFn(sortFn), s(s) { }
+    bool operator<(const SortFnHelper & b)
+    {
+        // NOTE: Same as StdTable::sortRows
+        auto less = sortFn(s, b.s);
+        return ascending ? less : !less;
+    }
+};
+
 void BreakpointsView::sortRows(duint column, bool ascending)
 {
-    std::stable_sort(mData.begin(), mData.end(), [this, column, ascending](const std::vector<CellData> & a, const std::vector<CellData> & b)
+    auto sortFn = mColumnSortFunctions.at(column);
+    std::stable_sort(mData.begin(), mData.end(), [this, column, ascending, &sortFn](const std::vector<CellData> & a, const std::vector<CellData> & b)
     {
-        //this function sorts on header type first and then on column content
-        auto aBp = &mBps.at(a.at(ColAddr).userdata), bBp = &mBps.at(b.at(ColAddr).userdata);
-        auto aType = aBp->type, bType = bBp->type;
-        auto aHeader = aBp->addr || aBp->active, bHeader = bBp->addr || bBp->active;
-        struct Hax
-        {
-            const bool & greater;
-            const QString & s;
-            Hax(const bool & greater, const QString & s) : greater(greater), s(s) { }
-            bool operator<(const Hax & b)
-            {
-                return greater ? s > b.s : s < b.s;
-            }
-        } aHax(!ascending, a.at(column).text), bHax(!ascending, b.at(column).text);
-        return std::tie(aType, aHeader, aHax) < std::tie(bType, bHeader, bHax);
+        // We sort by breakpoint type, then the (empty) headers and only then we consider the content of the column
+        auto aBp = &mBps.at(a.at(ColAddr).userdata);
+        auto bBp = &mBps.at(b.at(ColAddr).userdata);
+        auto aType = aBp->type;
+        auto bType = bBp->type;
+        auto aHeader = aBp->addr || aBp->active;
+        auto bHeader = bBp->addr || bBp->active;
+        SortFnHelper aText(ascending, sortFn, a.at(column).text);
+        SortFnHelper bText(ascending, sortFn, b.at(column).text);
+        return std::tie(aType, aHeader, aText) < std::tie(bType, bHeader, bText);
     });
 }
 
