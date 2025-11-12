@@ -16,6 +16,7 @@
 #include "StringUtil.h"
 #include "MiscUtil.h"
 #include <QMainWindow>
+#include <QPdfWriter>
 
 DisassemblerGraphView::DisassemblerGraphView(Architecture* architecture, QWidget* parent)
     : QAbstractScrollArea(parent),
@@ -2547,7 +2548,7 @@ void DisassemblerGraphView::refreshSlot()
     DbgCmdExec(QString("graph %1, force").arg(ToPtrString(this->cur_instr)));
 }
 
-QImage DisassemblerGraphView::getImage()
+void DisassemblerGraphView::paintImage(QPainter* painter)
 {
     //this->viewport()->update();
 
@@ -2566,12 +2567,7 @@ QImage DisassemblerGraphView::getImage()
     }
 
     //save viewport to image
-    auto scaleFactor = devicePixelRatioF();
-    QRect completeRenderRect = QRect(0, 0, renderWidth * scaleFactor, renderHeight * scaleFactor);
-    QImage img(completeRenderRect.size(), QImage::Format_ARGB32);
-    img.setDevicePixelRatio(scaleFactor);
-    QPainter painter(&img);
-    viewport()->render(&painter);
+    viewport()->render(painter);
 
     //restore changes made to viewport for full render saving
     viewport()->resize(size);
@@ -2581,16 +2577,37 @@ QImage DisassemblerGraphView::getImage()
         horizontalScrollBar()->setValue(scrollbarPos.x());
         verticalScrollBar()->setValue(scrollbarPos.y());
     }
+}
 
+QImage DisassemblerGraphView::getImage()
+{
+    auto scaleFactor = devicePixelRatioF();
+    QSize completeRenderRect = QSize(renderWidth * scaleFactor, renderHeight * scaleFactor);
+    QImage img(completeRenderRect, QImage::Format_ARGB32);
+    img.setDevicePixelRatio(scaleFactor);
+    QPainter painter(&img);
+    paintImage(&painter);
     return img;
 }
 
 void DisassemblerGraphView::saveImageSlot()
 {
-    QString path = QFileDialog::getSaveFileName(this, tr("Save as image"), "", tr("PNG file (*.png);;WebP file (*.webp);;BMP file (*.bmp);;TIFF file (*.tif)"));
+    QString path = QFileDialog::getSaveFileName(this, tr("Save as image"), "", tr("PNG file (*.png);;WebP lossless file (*.webp);;BMP file (*.bmp);;TIFF file (*.tif);;PDF file (*.pdf)"));
     if(path.isEmpty())
         return;
 
+    if(path.endsWith(".pdf", Qt::CaseInsensitive))
+    {
+        QPdfWriter pdf(path);
+        pdf.setCreator(QApplication::applicationDisplayName());
+        pdf.setPageSize(QPageSize(QSizeF(renderWidth, renderHeight), QPageSize::Point));
+        pdf.setResolution(72.0);
+        pdf.setTitle(getSymbolicName(currentGraph.entryPoint));
+        pdf.setPageMargins(QMarginsF(0.0, 0.0, 0.0, 0.0));
+        QPainter painter(&pdf);
+        paintImage(&painter);
+        return;
+    }
     QImage img = getImage();
     bool success;
     if(!path.endsWith(".webp", Qt::CaseInsensitive))
