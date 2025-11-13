@@ -80,6 +80,19 @@ void SimpleTraceDialog::on_btnOk_clicked()
         SimpleWarningBox(this, tr("Error"), tr("Failed to set log file!"));
         return;
     }
+    // Set module filter
+    QString filterType;
+    if(ui->radioFilterUser->isChecked())
+        filterType = "user";
+    else if(ui->radioFilterSystem->isChecked())
+        filterType = "system";
+    else
+        filterType = "none";
+    if(!DbgCmdExecDirect(QString("TraceSetStepFilter %1").arg(filterType).toUtf8().constData()))
+    {
+        SimpleWarningBox(this, tr("Error"), tr("Failed to set module filter!"));
+        return;
+    }
     auto breakCondition = ui->editBreakCondition->addHistoryClear();
     auto maxTraceCount = ui->spinMaxTraceCount->value();
     if(!DbgCmdExecDirect(QString("%1 \"%2\", .%3").arg(mTraceCommand, escapeText(breakCondition)).arg(maxTraceCount).toUtf8().constData()))
