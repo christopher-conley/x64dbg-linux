@@ -1,6 +1,16 @@
 #pragma once
 
 /**
+\brief Step filter type for tracing
+*/
+enum StepFilterType
+{
+    STEP_FILTER_NONE,    // No filtering (normal step)
+    STEP_FILTER_USER,    // Stop only at user modules
+    STEP_FILTER_SYSTEM   // Stop only at system modules
+};
+
+/**
 \brief Conditional tracing structures
 */
 struct TraceCondition
@@ -175,6 +185,16 @@ struct TraceState
         forceBreakTrace = true;
     }
 
+    void SetStepFilter(StepFilterType filter)
+    {
+        stepFilter = filter;
+    }
+
+    StepFilterType GetStepFilter() const
+    {
+        return stepFilter;
+    }
+
     void Clear()
     {
         delete traceCondition;
@@ -188,6 +208,7 @@ struct TraceState
         logWriter = nullptr;
         writeUtf16 = false;
         forceBreakTrace = false;
+        stepFilter = STEP_FILTER_NONE;
     }
 
 private:
@@ -199,4 +220,5 @@ private:
     BufferedWriter* logWriter = nullptr;
     bool writeUtf16 = false;
     bool forceBreakTrace = false;
+    StepFilterType stepFilter = STEP_FILTER_NONE;
 };

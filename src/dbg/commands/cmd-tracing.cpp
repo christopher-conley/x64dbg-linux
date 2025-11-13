@@ -41,12 +41,42 @@ static bool genericConditionalTraceCommand(TITANCBSTEP callback, STEPFUNCTION st
 
 static bool conditionalTraceIntoCommand(TITANCBSTEP callback, int argc, char* argv[])
 {
-    return genericConditionalTraceCommand(callback, StepIntoWow64, argc, argv);
+    // Select step function based on step filter
+    STEPFUNCTION stepFunction;
+    switch(dbggetstepfilter())
+    {
+    case STEP_FILTER_USER:
+        stepFunction = StepIntoUser;
+        break;
+    case STEP_FILTER_SYSTEM:
+        stepFunction = StepIntoSystem;
+        break;
+    case STEP_FILTER_NONE:
+    default:
+        stepFunction = StepIntoWow64;
+        break;
+    }
+    return genericConditionalTraceCommand(callback, stepFunction, argc, argv);
 }
 
 static bool conditionalTraceOverCommand(TITANCBSTEP callback, int argc, char* argv[])
 {
-    return genericConditionalTraceCommand(callback, StepOverWrapper, argc, argv);
+    // Select step function based on step filter
+    STEPFUNCTION stepFunction;
+    switch(dbggetstepfilter())
+    {
+    case STEP_FILTER_USER:
+        stepFunction = StepOverUser;
+        break;
+    case STEP_FILTER_SYSTEM:
+        stepFunction = StepOverSystem;
+        break;
+    case STEP_FILTER_NONE:
+    default:
+        stepFunction = StepOverWrapper;
+        break;
+    }
+    return genericConditionalTraceCommand(callback, stepFunction, argc, argv);
 }
 
 bool cbDebugTraceIntoConditional(int argc, char* argv[])
@@ -172,6 +202,40 @@ bool cbDebugTraceSetLogFile(int argc, char* argv[])
 {
     auto fileName = argc > 1 ? argv[1] : "";
     return dbgsettracelogfile(fileName);
+}
+
+bool cbDebugTraceSetStepFilter(int argc, char* argv[])
+{
+    if(argc < 2)
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Current step filter: %s\n"),
+                dbggetstepfilter() == STEP_FILTER_NONE ? "none" :
+                dbggetstepfilter() == STEP_FILTER_USER ? "user" : "system");
+        return true;
+    }
+
+    auto filter = argv[1];
+    if(_stricmp(filter, "none") == 0)
+    {
+        dbgsetstepfilter(STEP_FILTER_NONE);
+        dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: none"));
+    }
+    else if(_stricmp(filter, "user") == 0)
+    {
+        dbgsetstepfilter(STEP_FILTER_USER);
+        dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: user"));
+    }
+    else if(_stricmp(filter, "system") == 0)
+    {
+        dbgsetstepfilter(STEP_FILTER_SYSTEM);
+        dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: system"));
+    }
+    else
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid step filter \"%s\", valid options are: none, user, system\n"), filter);
+        return false;
+    }
+    return true;
 }
 
 bool cbDebugStartTraceRecording(int argc, char* argv[])
