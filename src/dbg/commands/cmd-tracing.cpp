@@ -205,13 +205,7 @@ bool cbDebugTraceSetLogFile(int argc, char* argv[])
 bool cbDebugTraceSetStepFilter(int argc, char* argv[])
 {
     if(argc < 2)
-    {
-        auto party = dbggettracepartyfilter();
-        dprintf(QT_TRANSLATE_NOOP("DBG", "Current step filter: %s\n"),
-                party == -1 ? "none" :
-                party == mod_user ? "user" : "system");
-        return true;
-    }
+        return false;
 
     auto filter = argv[1];
     if(_stricmp(filter, "none") == 0)
