@@ -7,6 +7,7 @@
 #include "breakpoint.h"
 #include "_plugins.h"
 #include "commandline.h"
+#include "debugger_tracing.h"
 #include <tlhelp32.h>
 #include <psapi.h>
 
