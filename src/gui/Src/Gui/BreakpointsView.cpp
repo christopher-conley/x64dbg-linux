@@ -148,7 +148,7 @@ struct SortFnHelper
     const StdTable::SortBy::t& sortFn;
     const QString & s;
     SortFnHelper(bool ascending, const StdTable::SortBy::t& sortFn, const QString & s) : ascending(ascending), sortFn(sortFn), s(s) { }
-    bool operator<(const SortFnHelper & b)
+    bool operator<(const SortFnHelper & b) const
     {
         // NOTE: Same as StdTable::sortRows
         auto less = sortFn(s, b.s);
