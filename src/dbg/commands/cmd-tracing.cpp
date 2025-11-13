@@ -204,7 +204,7 @@ bool cbDebugTraceSetLogFile(int argc, char* argv[])
 
 bool cbDebugTraceSetStepFilter(int argc, char* argv[])
 {
-    if(argc < 2)
+    if(IsArgumentsLessThan(argc, 2))
         return false;
 
     auto filter = argv[1];
