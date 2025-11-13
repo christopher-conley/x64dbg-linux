@@ -180,14 +180,14 @@ bool dbgsettracelogfile(const char* fileName)
     return true;
 }
 
-void dbgsetstepfilter(StepFilterType filter)
+void dbgsettracepartyfilter(int party)
 {
-    traceState.SetStepFilter(filter);
+    traceState.SetPartyFilter(party);
 }
 
-StepFilterType dbggetstepfilter()
+int dbggettracepartyfilter()
 {
-    return traceState.GetStepFilter();
+    return traceState.GetPartyFilter();
 }
 
 static DWORD WINAPI memMapThread(void* ptr)

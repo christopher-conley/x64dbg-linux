@@ -41,40 +41,38 @@ static bool genericConditionalTraceCommand(TITANCBSTEP callback, STEPFUNCTION st
 
 static bool conditionalTraceIntoCommand(TITANCBSTEP callback, int argc, char* argv[])
 {
-    // Select step function based on step filter
+    // Select step function based on party filter
     STEPFUNCTION stepFunction;
-    switch(dbggetstepfilter())
-    {
-    case STEP_FILTER_USER:
+    auto party = dbggettracepartyfilter();
+    if(party == mod_user)
         stepFunction = StepIntoUser;
-        break;
-    case STEP_FILTER_SYSTEM:
+    else if(party == mod_system)
         stepFunction = StepIntoSystem;
-        break;
-    case STEP_FILTER_NONE:
-    default:
+    else if(party == -1)
         stepFunction = StepIntoWow64;
-        break;
+    else
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Unsupported party filter: %d\n"), party);
+        return false;
     }
     return genericConditionalTraceCommand(callback, stepFunction, argc, argv);
 }
 
 static bool conditionalTraceOverCommand(TITANCBSTEP callback, int argc, char* argv[])
 {
-    // Select step function based on step filter
+    // Select step function based on party filter
     STEPFUNCTION stepFunction;
-    switch(dbggetstepfilter())
-    {
-    case STEP_FILTER_USER:
+    auto party = dbggettracepartyfilter();
+    if(party == mod_user)
         stepFunction = StepOverUser;
-        break;
-    case STEP_FILTER_SYSTEM:
+    else if(party == mod_system)
         stepFunction = StepOverSystem;
-        break;
-    case STEP_FILTER_NONE:
-    default:
+    else if(party == -1)
         stepFunction = StepOverWrapper;
-        break;
+    else
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Unsupported party filter: %d\n"), party);
+        return false;
     }
     return genericConditionalTraceCommand(callback, stepFunction, argc, argv);
 }
@@ -208,26 +206,27 @@ bool cbDebugTraceSetStepFilter(int argc, char* argv[])
 {
     if(argc < 2)
     {
+        auto party = dbggettracepartyfilter();
         dprintf(QT_TRANSLATE_NOOP("DBG", "Current step filter: %s\n"),
-                dbggetstepfilter() == STEP_FILTER_NONE ? "none" :
-                dbggetstepfilter() == STEP_FILTER_USER ? "user" : "system");
+                party == -1 ? "none" :
+                party == mod_user ? "user" : "system");
         return true;
     }
 
     auto filter = argv[1];
     if(_stricmp(filter, "none") == 0)
     {
-        dbgsetstepfilter(STEP_FILTER_NONE);
+        dbgsettracepartyfilter(-1);
         dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: none"));
     }
     else if(_stricmp(filter, "user") == 0)
     {
-        dbgsetstepfilter(STEP_FILTER_USER);
+        dbgsettracepartyfilter(mod_user);
         dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: user"));
     }
     else if(_stricmp(filter, "system") == 0)
     {
-        dbgsetstepfilter(STEP_FILTER_SYSTEM);
+        dbgsettracepartyfilter(mod_system);
         dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: system"));
     }
     else

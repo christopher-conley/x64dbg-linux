@@ -7,7 +7,6 @@
 #include "breakpoint.h"
 #include "_plugins.h"
 #include "commandline.h"
-#include "debugger_tracing.h"
 #include <tlhelp32.h>
 #include <psapi.h>
 
@@ -109,8 +108,8 @@ void dbgforcebreaktrace();
 bool dbgstepactive();
 void dbgforcebreakstep();
 bool dbgsettracelogfile(const char* fileName);
-void dbgsetstepfilter(StepFilterType filter);
-StepFilterType dbggetstepfilter();
+void dbgsettracepartyfilter(int party);
+int dbggettracepartyfilter();
 void dbgsetdebuggeeinitscript(const char* fileName);
 const char* dbggetdebuggeeinitscript();
 void dbgsetforeground();
