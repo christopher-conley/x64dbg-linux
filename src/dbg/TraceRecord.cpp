@@ -335,7 +335,8 @@ void TraceRecordManager::TraceExecuteRecord(const Zydis & newInstruction)
             blockFlags = 0x80;
         blockFlags |= rtOldOpcodeSize;
 
-        WriteBufferPtr[0] = 0; //1byte: block type
+        unsigned char blockType = 0;
+        WriteBufferPtr[0] = blockType; //1byte: block type
         WriteBufferPtr[1] = changed; //1byte: registers changed
         WriteBufferPtr[2] = rtOldMemoryArrayCount; //1byte: memory accesses count
         WriteBufferPtr[3] = blockFlags; //1byte: flags and opcode size

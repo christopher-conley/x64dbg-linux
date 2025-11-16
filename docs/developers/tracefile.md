@@ -5,11 +5,9 @@ Every trace file will begin with 4 bytes, "TRAC" (encoded in ASCII).
 ## Header
 Header is located after header at offset 4. It is composed of a 4-byte length field, followed by a JSON blob. The JSON blob might not be null-terminated and might not be aligned to 4-byte boundary.
 ## Binary trace blocks
-Binary trace data is immediately after header without any padding and might not be aligned to 4-byte boundary. It is defined as a sequence of blocks. Currently, only block type 0 is defined.
+Binary trace data is immediately after header without any padding and might not be aligned to 4-byte boundary. It is defined as a sequence of blocks. Every block is started with a 1-byte type number.
 
-Every block is started with a 1-byte type number. This type number must be 0, which means it is a block that describes an instruction traced.
-
-If the type number is 0, then the block will contain the following data:
+If the type number is `0`, then the block will contain the instruction data:
 
 ```c++
 struct {
@@ -30,6 +28,18 @@ struct {
     duint MemoryAccessNewData[];
 };
 ```
+
+If the type number is `0x80` or higher, the block will contain the following data:
+
+```
+struct {
+    uint8_t BlockType;
+    uint32_t BlockSize;
+    uint8_t BlockData[];
+}
+```
+
+The debugger will skip these blocks and you can use them for whatever you like.
 
 `RegisterChanges` is a unsigned byte that counts the number of elements in the array `RegisterChangePosition` and `RegisterChangeNewData`.
 

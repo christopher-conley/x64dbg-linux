@@ -390,7 +390,7 @@ static bool checkKey(const QJsonObject & root, const QString & key, const QStrin
 {
     const auto obj = root.find(key);
     if(obj == root.constEnd())
-        throw std::wstring(L"Unspecified");
+        throw std::wstring(L"Missing key: " + key.toStdWString());
     QJsonValue val = obj.value();
     if(val.isString())
         if(val.toString() == value)
@@ -406,7 +406,7 @@ void TraceFileParser::readFileHeader(TraceFileReader* that)
         throw std::wstring(L"Unspecified");
     if(header.LowPart != MAKEFOURCC('T', 'R', 'A', 'C'))
         throw std::wstring(L"File type mismatch");
-    if(header.HighPart > 16384)
+    if(header.HighPart > 100 * 1024)
         throw std::wstring(L"Header info is too big");
     QByteArray jsonData = that->traceFile.read(header.HighPart);
     if(jsonData.size() != header.HighPart)
@@ -418,10 +418,10 @@ void TraceFileParser::readFileHeader(TraceFileReader* that)
 
     const auto ver = jsonRoot.find("ver");
     if(ver == jsonRoot.constEnd())
-        throw std::wstring(L"Version not supported");
-    QJsonValue verVal = ver.value();
-    if(verVal.toInt(0) != 1)
-        throw std::wstring(L"Version not supported");
+        throw std::wstring(L"Version not found");
+    const auto verVal = ver.value().toInt();
+    if(verVal != 1)
+        throw std::wstring(L"Version not supported " + std::to_wstring(verVal));
     checkKey(jsonRoot, "arch", ArchValue("x86", "x64"));
     checkKey(jsonRoot, "compression", "");
     const auto hashAlgorithmObj = jsonRoot.find("hashAlgorithm");
@@ -487,8 +487,19 @@ static bool readBlock(QFile & traceFile)
         else
             return false;
     }
+    else if (blockType >= 0x80)
+    {
+        // User-defined block, skip it
+        uint32_t blockSize;
+        if (traceFile.read((char*)&blockSize, 4) != sizeof(blockSize))
+            throw std::wstring(L"Failed to read user-defined block size");
+        if (!traceFile.seek(traceFile.pos() + blockSize))
+            throw std::wstring(L"Failed to skip user-defined block");
+    }
     else
-        throw std::wstring(L"Unsupported block type");
+    {
+        throw std::wstring(L"Unsupported block type " + std::to_wstring(blockType));
+    }
     return false;
 }
 
@@ -848,8 +859,19 @@ TraceFilePage::TraceFilePage(TraceFileReader* parent, unsigned long long fileOff
                     memoryOperandOffset.push_back(memOperandOffset);
                 length++;
             }
+            else if (blockType >= 0x80)
+            {
+                // User-defined block, skip it
+                uint32_t blockSize;
+                if (mParent->traceFile.read((char*)&blockSize, 4) != sizeof(blockSize))
+                    throw std::runtime_error("Failed to read user-defined block size");
+                if (!mParent->traceFile.seek(mParent->traceFile.pos() + blockSize))
+                    throw std::runtime_error("Failed to skip user-defined block");
+            }
             else
-                throw std::runtime_error("Unexpected block type");
+            {
+                throw std::runtime_error("Unexpected block type: " + std::to_string(blockType));
+            }
         }
     }
     catch(const std::runtime_error & x)
