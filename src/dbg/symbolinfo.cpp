@@ -493,36 +493,34 @@ bool SymbolFromAddressExact(duint address, SYMBOLINFO* info)
         }
     }
 
+    // module entry point pseudo-symbol
     if(modInfo->entry != 0 && modInfo->entrySymbol.rva == rva)
     {
         modInfo->entrySymbol.convertToGuiSymbol(base, info);
         return true;
     }
 
-    // search in module imports
+    // search in module imports (iat)
     {
         auto modImport = modInfo->findImport(rva);
         if(modImport != nullptr)
         {
+            // for imports by ordinal, try to resolve the real symbol
             if(modImport->ordinal != -1)
             {
                 duint exportAddress = 0;
                 if(DbgMemRead(address, &exportAddress, sizeof(exportAddress)) && exportAddress != 0)
                 {
-                    SYMBOLINFO exportInfo = {};
-                    if(SymbolFromAddressExact(exportAddress, &exportInfo))
+                    if(SymbolFromAddressExact(exportAddress, info))
                     {
+                        // override the address of the export symbol with the IAT address
                         info->addr = address;
-                        info->decoratedSymbol = exportInfo.decoratedSymbol;
-                        info->undecoratedSymbol = exportInfo.undecoratedSymbol;
-                        info->type = exportInfo.type;
-                        info->freeDecorated = exportInfo.freeDecorated;
-                        info->freeUndecorated = exportInfo.freeUndecorated;
-                        info->ordinal = exportInfo.ordinal;
                         return true;
                     }
                 }
             }
+
+            // fall back to the import symbol itself
             modImport->copyToGuiSymbol(base, info);
             return true;
         }
