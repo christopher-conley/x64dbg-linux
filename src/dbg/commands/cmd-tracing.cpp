@@ -41,12 +41,40 @@ static bool genericConditionalTraceCommand(TITANCBSTEP callback, STEPFUNCTION st
 
 static bool conditionalTraceIntoCommand(TITANCBSTEP callback, int argc, char* argv[])
 {
-    return genericConditionalTraceCommand(callback, StepIntoWow64, argc, argv);
+    // Select step function based on party filter
+    STEPFUNCTION stepFunction;
+    auto party = dbggettracepartyfilter();
+    if(party == mod_user)
+        stepFunction = StepIntoUser;
+    else if(party == mod_system)
+        stepFunction = StepIntoSystem;
+    else if(party == -1)
+        stepFunction = StepIntoWow64;
+    else
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Unsupported party filter: %d\n"), party);
+        return false;
+    }
+    return genericConditionalTraceCommand(callback, stepFunction, argc, argv);
 }
 
 static bool conditionalTraceOverCommand(TITANCBSTEP callback, int argc, char* argv[])
 {
-    return genericConditionalTraceCommand(callback, StepOverWrapper, argc, argv);
+    // Select step function based on party filter
+    STEPFUNCTION stepFunction;
+    auto party = dbggettracepartyfilter();
+    if(party == mod_user)
+        stepFunction = StepOverUser;
+    else if(party == mod_system)
+        stepFunction = StepOverSystem;
+    else if(party == -1)
+        stepFunction = StepOverWrapper;
+    else
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Unsupported party filter: %d\n"), party);
+        return false;
+    }
+    return genericConditionalTraceCommand(callback, stepFunction, argc, argv);
 }
 
 bool cbDebugTraceIntoConditional(int argc, char* argv[])
@@ -172,6 +200,35 @@ bool cbDebugTraceSetLogFile(int argc, char* argv[])
 {
     auto fileName = argc > 1 ? argv[1] : "";
     return dbgsettracelogfile(fileName);
+}
+
+bool cbDebugTraceSetStepFilter(int argc, char* argv[])
+{
+    if(IsArgumentsLessThan(argc, 2))
+        return false;
+
+    auto filter = argv[1];
+    if(_stricmp(filter, "none") == 0)
+    {
+        dbgsettracepartyfilter(-1);
+        dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: none"));
+    }
+    else if(_stricmp(filter, "user") == 0)
+    {
+        dbgsettracepartyfilter(mod_user);
+        dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: user"));
+    }
+    else if(_stricmp(filter, "system") == 0)
+    {
+        dbgsettracepartyfilter(mod_system);
+        dputs(QT_TRANSLATE_NOOP("DBG", "Step filter set to: system"));
+    }
+    else
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid step filter \"%s\", valid options are: none, user, system\n"), filter);
+        return false;
+    }
+    return true;
 }
 
 bool cbDebugStartTraceRecording(int argc, char* argv[])

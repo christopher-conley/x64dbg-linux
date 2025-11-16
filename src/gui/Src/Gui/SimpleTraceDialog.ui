@@ -7,14 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>502</width>
-    <height>218</height>
+    <height>268</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string/>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="7" column="0" colspan="2">
+   <item row="8" column="0" colspan="2">
     <widget class="QLabel" name="lblHint">
      <property name="text">
       <string>Hint: History is available in every text field with the Up/Down arrows!</string>
@@ -69,7 +69,7 @@
    <item row="3" column="1">
     <widget class="HistoryLineEdit" name="editCommandText"/>
    </item>
-   <item row="6" column="1">
+   <item row="7" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <spacer name="horizontalSpacer">
@@ -178,6 +178,52 @@
      </property>
     </widget>
    </item>
+   <item row="6" column="0" colspan="2">
+    <widget class="QGroupBox" name="grpModuleFilter">
+     <property name="title">
+      <string>Module &amp;Filter</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QRadioButton" name="radioFilterNone">
+        <property name="text">
+         <string>&amp;None</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioFilterUser">
+        <property name="text">
+         <string>&amp;User</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioFilterSystem">
+        <property name="text">
+         <string>&amp;System</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -194,6 +240,9 @@
   <tabstop>editCommandText</tabstop>
   <tabstop>editCommandCondition</tabstop>
   <tabstop>spinMaxTraceCount</tabstop>
+  <tabstop>radioFilterNone</tabstop>
+  <tabstop>radioFilterUser</tabstop>
+  <tabstop>radioFilterSystem</tabstop>
   <tabstop>chkRecordTrace</tabstop>
   <tabstop>btnLogFile</tabstop>
   <tabstop>btnOk</tabstop>

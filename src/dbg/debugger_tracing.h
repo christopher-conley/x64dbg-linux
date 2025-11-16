@@ -175,6 +175,16 @@ struct TraceState
         forceBreakTrace = true;
     }
 
+    void SetPartyFilter(int party)
+    {
+        partyFilter = party;
+    }
+
+    int GetPartyFilter() const
+    {
+        return partyFilter;
+    }
+
     void Clear()
     {
         delete traceCondition;
@@ -188,6 +198,7 @@ struct TraceState
         logWriter = nullptr;
         writeUtf16 = false;
         forceBreakTrace = false;
+        partyFilter = -1;
     }
 
 private:
@@ -199,4 +210,5 @@ private:
     BufferedWriter* logWriter = nullptr;
     bool writeUtf16 = false;
     bool forceBreakTrace = false;
+    int partyFilter = -1;  // -1 = none, mod_user = 0, mod_system = 1
 };

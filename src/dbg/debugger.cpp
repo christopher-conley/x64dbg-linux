@@ -100,6 +100,7 @@ HANDLE mForegroundHandle;
 duint gRtrPreviousCSP = 0;
 static bool bAbortStepping = false;
 static TITANCBSTEP gStepIntoPartyCallback;
+static TITANCBSTEP gStepOverPartyCallback;
 HANDLE hDebugLoopThread = nullptr;
 DWORD dwDebugFlags = 0;
 std::atomic_bool bIsDebugging;
@@ -162,7 +163,7 @@ void dbgforcebreaktrace()
 
 bool dbgstepactive()
 {
-    return stepRepeat > 1 || gRtrPreviousCSP != 0 || gStepIntoPartyCallback != nullptr;
+    return stepRepeat > 1 || gRtrPreviousCSP != 0 || gStepIntoPartyCallback != nullptr || gStepOverPartyCallback != nullptr;
 }
 
 void dbgforcebreakstep()
@@ -177,6 +178,16 @@ bool dbgsettracelogfile(const char* fileName)
 {
     traceState.SetLogFile(fileName);
     return true;
+}
+
+void dbgsettracepartyfilter(int party)
+{
+    traceState.SetPartyFilter(party);
+}
+
+int dbggettracepartyfilter()
+{
+    return traceState.GetPartyFilter();
 }
 
 static DWORD WINAPI memMapThread(void* ptr)
@@ -3185,6 +3196,32 @@ void StepIntoSystem(TITANCBSTEP callback)
 {
     gStepIntoPartyCallback = callback;
     StepIntoWow64(cbStepIntoParty<mod_system>);
+}
+
+template<MODULEPARTY StopParty>
+static void cbStepOverParty()
+{
+    if(bAbortStepping || ModGetParty(GetContextDataEx(hActiveThread, UE_CIP)) == StopParty)
+    {
+        bAbortStepping = false;
+        gStepOverPartyCallback();
+    }
+    else
+    {
+        StepOverWrapper(cbStepOverParty<StopParty>);
+    }
+}
+
+void StepOverUser(TITANCBSTEP callback)
+{
+    gStepOverPartyCallback = callback;
+    StepOverWrapper(cbStepOverParty<mod_user>);
+}
+
+void StepOverSystem(TITANCBSTEP callback)
+{
+    gStepOverPartyCallback = callback;
+    StepOverWrapper(cbStepOverParty<mod_system>);
 }
 
 bool dbgisdepenabled()
