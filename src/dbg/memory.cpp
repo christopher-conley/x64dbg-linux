@@ -605,13 +605,13 @@ bool MemoryReadSafePage(HANDLE hProcess, LPVOID lpBaseAddress, LPVOID lpBuffer, 
 
 bool MemRead(duint BaseAddress, void* Buffer, duint Size, duint* NumberOfBytesRead, bool cache)
 {
+    if(!Buffer)
+        return false;
+
     if(!MemIsCanonicalAddress(BaseAddress) || !DbgIsDebugging())
         return false;
 
     if(cache && !MemIsValidReadPtr(BaseAddress, true))
-        return false;
-
-    if(!Buffer)
         return false;
 
     duint bytesReadTemp = 0;
