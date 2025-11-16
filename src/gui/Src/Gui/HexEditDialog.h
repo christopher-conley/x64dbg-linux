@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include "QHexEdit/QHexEdit.h"
+#include "Bridge.h"
 
 namespace Ui
 {
@@ -16,13 +17,11 @@ public:
     explicit HexEditDialog(QWidget* parent = nullptr);
     ~HexEditDialog();
 
-    void showEntireBlock(bool show, bool checked = false);
     void showKeepSize(bool show);
-    void showStartFromSelection(bool show, bool checked = false);
+    void setupFindMode(duint rangeStart, duint rangeEnd, duint selectionStart, bool startFromSelection);
     void isDataCopiable(bool copyDataEnabled);
     void updateCodepage();
 
-    bool entireBlock();
     bool startFromSelection();
 
     QHexEdit* mHexEdit;
@@ -37,6 +36,7 @@ public:
 private slots:
     void updateStyle();
     void on_chkKeepSize_toggled(bool checked);
+    void on_chkFromSelection_toggled(bool checked);
     void dataChangedSlot();
     void dataEditedSlot();
     void on_lineEditAscii_dataEdited();
@@ -48,11 +48,17 @@ private slots:
 private:
     Ui::HexEditDialog* ui;
     void updateCodepage(const QByteArray & name);
+    void updateSearchRangeLabel();
     QTextCodec* lastCodec;
     QTextCodec* fallbackCodec;
     bool stringEditorLock;
 
     bool mDataInitialized;
+    QString mSearchRangeFromStart;
+    QString mSearchRangeFromSelection;
+    duint mRangeStart;
+    duint mRangeEnd;
+    duint mSelectionStart;
 
     QByteArray resizeData(QByteArray & data);
     bool checkDataRepresentable(int mode); //1=ASCII, 2=Unicode, 3=User-selected codepage, 4=String editor, others(0)=All modes

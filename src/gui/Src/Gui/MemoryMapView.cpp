@@ -675,30 +675,49 @@ void MemoryMapView::memoryAllocateSlot()
 void MemoryMapView::findPatternSlot()
 {
     HexEditDialog hexEdit(this);
-    duint entireBlockEnabled = 0;
-    BridgeSettingGetUint("Gui", "MemoryMapEntireBlock", &entireBlockEnabled);
-    hexEdit.showEntireBlock(true, entireBlockEnabled);
     hexEdit.isDataCopiable(false);
     hexEdit.mHexEdit->setOverwriteMode(false);
     hexEdit.setWindowTitle(tr("Find Pattern..."));
+
+    // Calculate actual memory map range: first region start to last region end
+    duint scopeStart = 0;
+    duint scopeEnd = 0;
+    duint rowCount = getRowCount();
+
+    if(rowCount > 0)
+    {
+        // First region address
+        scopeStart = getCellUserdata(0, ColAddress);
+        // Last region address + size
+        duint lastRegionAddr = getCellUserdata(rowCount - 1, ColAddress);
+        duint lastRegionSize = getCellUserdata(rowCount - 1, ColSize);
+        scopeEnd = lastRegionAddr + lastRegionSize;
+    }
+
+    QList<duint> selection = getSelection();
+    duint selectionStart = selection.isEmpty() ? scopeStart : getCellUserdata(selection.first(), ColAddress);
+
+    // Setup find mode with range information
+    hexEdit.setupFindMode(scopeStart, scopeEnd, selectionStart, BridgeSettingGetUint("Gui", "MemoryMapEntireBlock", 0) == 0);
+
     if(hexEdit.exec() != QDialog::Accepted)
         return;
 
-    entireBlockEnabled = hexEdit.entireBlock();
-    BridgeSettingSetUint("Gui", "MemoryMapEntireBlock", entireBlockEnabled);
-    if(entireBlockEnabled)
+    bool startFromSelection = hexEdit.startFromSelection();
+    BridgeSettingSetUint("Gui", "MemoryMapEntireBlock", startFromSelection ? 0 : 1);
+
+    if(startFromSelection)
     {
-        DbgCmdExec(QString("findallmem 0, %2").arg(hexEdit.mHexEdit->pattern()));
-    }
-    else
-    {
-        QList<duint> selection = getSelection();
         if(selection.isEmpty())
             return;
         duint addrFirst = getCellUserdata(selection.first(), ColAddress);
         duint addrLast = getCellUserdata(selection.last(), ColAddress);
         duint size = getCellUserdata(selection.last(), ColSize);
         DbgCmdExec(QString("findallmem %1, %2, %3").arg(ToPtrString(addrFirst)).arg(hexEdit.mHexEdit->pattern()).arg(ToHexString(addrLast - addrFirst + size)));
+    }
+    else
+    {
+        DbgCmdExec(QString("findallmem 0, %1").arg(hexEdit.mHexEdit->pattern()));
     }
     emit showReferences();
 }

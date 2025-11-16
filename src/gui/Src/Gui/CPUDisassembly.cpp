@@ -1217,23 +1217,32 @@ void CPUDisassembly::findPatternSlot()
 {
     HexEditDialog hexEdit(this);
     hexEdit.isDataCopiable(false);
+
+    dsint addr = rvaToVa(getSelectionStart());
+
+    // Setup find mode based on search scope
     if(sender() == mFindPatternRegion)
-        hexEdit.showStartFromSelection(true, ConfigBool("Disassembler", "FindPatternFromSelection"));
+    {
+        // Setup for current memory region
+        duint regionStart = DbgMemFindBaseAddr(addr, 0);
+        duint regionSize = 0;
+        DbgMemFindBaseAddr(addr, &regionSize);
+        duint regionEnd = regionStart + regionSize;
+        hexEdit.setupFindMode(regionStart, regionEnd, addr, ConfigBool("Disassembler", "FindPatternFromSelection"));
+    }
+
     hexEdit.mHexEdit->setOverwriteMode(false);
     hexEdit.setWindowTitle(tr("Find Pattern..."));
     if(hexEdit.exec() != QDialog::Accepted)
         return;
-
-    dsint addr = rvaToVa(getSelectionStart());
 
     QString command;
     if(sender() == mFindPatternRegion)
     {
         bool startFromSelection = hexEdit.startFromSelection();
         Config()->setBool("Disassembler", "FindPatternFromSelection", startFromSelection);
-        if(!startFromSelection)
-            addr = DbgMemFindBaseAddr(addr, 0);
-        command = QString("findall %1, %2").arg(ToHexString(addr), hexEdit.mHexEdit->pattern());
+        dsint searchAddr = startFromSelection ? addr : DbgMemFindBaseAddr(addr, 0);
+        command = QString("findall %1, %2").arg(ToHexString(searchAddr), hexEdit.mHexEdit->pattern());
     }
     else if(sender() == mFindPatternModule)
     {

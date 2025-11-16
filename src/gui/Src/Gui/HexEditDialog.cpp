@@ -8,6 +8,7 @@
 #include "Bridge.h"
 #include "CodepageSelectionDialog.h"
 #include "LineEditDialog.h"
+#include "StringUtil.h"
 
 #ifndef AF_INET6
 #define AF_INET6        23              // Internetwork Version 6
@@ -102,21 +103,28 @@ HexEditDialog::~HexEditDialog()
     delete ui;
 }
 
-void HexEditDialog::showEntireBlock(bool show, bool checked)
-{
-    ui->chkEntireBlock->setVisible(show);
-    ui->chkEntireBlock->setChecked(checked);
-}
-
 void HexEditDialog::showKeepSize(bool show)
 {
     ui->chkKeepSize->setVisible(show);
 }
 
-void HexEditDialog::showStartFromSelection(bool show, bool checked)
+void HexEditDialog::setupFindMode(duint rangeStart, duint rangeEnd, duint selectionStart, bool startFromSelection)
 {
-    ui->chkFromSelection->setVisible(show);
-    ui->chkFromSelection->setChecked(checked);
+    mRangeStart = rangeStart;
+    mRangeEnd = rangeEnd;
+    mSelectionStart = selectionStart;
+
+    // Only show the checkbox if selection is different from range start
+    bool hasSelection = (selectionStart != rangeStart);
+    ui->chkFromSelection->setVisible(hasSelection);
+    ui->chkFromSelection->setChecked(hasSelection ? startFromSelection : false);
+
+    // Generate range texts using ToPtrString
+    mSearchRangeFromStart = tr("Search range: %1 - %2").arg(ToPtrString(rangeStart)).arg(ToPtrString(rangeEnd));
+    mSearchRangeFromSelection = tr("Search range: %1 - %2").arg(ToPtrString(selectionStart)).arg(ToPtrString(rangeEnd));
+
+    // Update the label
+    updateSearchRangeLabel();
 }
 
 void HexEditDialog::isDataCopiable(bool copyDataEnabled)
@@ -150,11 +158,6 @@ void HexEditDialog::updateCodepage(const QByteArray & name)
     ui->stringEditor->document()->setPlainText(lastCodec->toUnicode(mHexEdit->data()));
     ui->labelLastCodepage->setText(QString(name));
     ui->labelLastCodepage2->setText(ui->labelLastCodepage->text());
-}
-
-bool HexEditDialog::entireBlock()
-{
-    return ui->chkEntireBlock->isChecked();
 }
 
 bool HexEditDialog::startFromSelection()
@@ -857,4 +860,20 @@ void HexEditDialog::on_spinBox_valueChanged(int value)
 {
     mTypes[mIndex].itemsPerLine = value;
     printData(DataType(mIndex));
+}
+
+void HexEditDialog::on_chkFromSelection_toggled(bool /*checked*/)
+{
+    updateSearchRangeLabel();
+}
+
+void HexEditDialog::updateSearchRangeLabel()
+{
+    // Only update if we have valid range data
+    if(mRangeStart == 0 && mRangeEnd == 0)
+        return;
+
+    const QString & text = ui->chkFromSelection->isChecked() ? mSearchRangeFromSelection : mSearchRangeFromStart;
+    if(ui->labelSearchRange)
+        ui->labelSearchRange->setText(text);
 }
