@@ -300,7 +300,7 @@ void CPUDisassembly::setupRightClickContextMenu()
     copyMenu->addAction(makeShortcutAction(DIcon("copy_address"), tr("&RVA"), SLOT(copyRvaSlot()), "ActionCopyRva"));
     copyMenu->addAction(makeShortcutAction(DIcon("fileoffset"), tr("&File Offset"), SLOT(copyFileOffsetSlot()), "ActionCopyFileOffset"));
     copyMenu->addAction(makeAction(tr("&Header VA"), SLOT(copyHeaderVaSlot())));
-    copyMenu->addAction(makeAction(DIcon("copy_disassembly"), tr("Disassembly"), SLOT(copyDisassemblySlot())));
+    copyMenu->addAction(makeShortcutAction(DIcon("copy_disassembly"), tr("Disassembly"), SLOT(copyDisassemblySlot()), "ActionCopyDisassembly"));
     copyMenu->addBuilder(new MenuBuilder(this, [this](QMenu * menu)
     {
         QSet<QString> labels;
