@@ -854,7 +854,7 @@ void TraceBrowser::setupRightClickContextMenu()
     copyMenu->addAction(makeShortcutAction(DIcon("copy_address"), tr("Address"), SLOT(copyCipSlot()), "ActionCopyAddress"));
     copyMenu->addAction(makeShortcutAction(DIcon("copy_address"), tr("&RVA"), SLOT(copyRvaSlot()), "ActionCopyRva"), isDebugging);
     copyMenu->addAction(makeShortcutAction(DIcon("fileoffset"), tr("&File Offset"), SLOT(copyFileOffsetSlot()), "ActionCopyFileOffset"), isDebugging);
-    copyMenu->addAction(makeAction(DIcon("copy_disassembly"), tr("Disassembly"), SLOT(copyDisassemblySlot())));
+    copyMenu->addAction(makeShortcutAction(DIcon("copy_disassembly"), tr("Disassembly"), SLOT(copyDisassemblySlot()), "ActionCopyDisassembly"));
     copyMenu->addAction(makeAction(DIcon("copy_address"), tr("Index"), SLOT(copyIndexSlot())));
 
     mMenuBuilder->addMenu(makeMenu(DIcon("copy"), tr("&Copy")), copyMenu);
