@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QPushButton>
 #include "Imports.h"
+#include "HexValidator.h"
 
 class ValidateExpressionThread;
 
@@ -33,12 +34,14 @@ private slots:
     void expressionChanged(bool validExpression, bool validPointer, dsint value);
     void on_signedLineEdit_textEdited(const QString & arg1);
     void on_unsignedLineEdit_textEdited(const QString & arg1);
+    void on_hexLineEdit_textEdited(const QString & arg1);
 
 private:
     QString convertValueToHexString(duint value);
     Ui::WordEditDialog* ui;
     duint mWord;
     ValidateExpressionThread* mValidateThread;
+    HexValidator hexValidate;
 
     int mHexLineEditPos;
     int mSignedEditPos;

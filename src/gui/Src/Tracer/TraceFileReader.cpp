@@ -487,13 +487,13 @@ static bool readBlock(QFile & traceFile)
         else
             return false;
     }
-    else if (blockType >= 0x80)
+    else if(blockType >= 0x80)
     {
         // User-defined block, skip it
         uint32_t blockSize;
-        if (traceFile.read((char*)&blockSize, 4) != sizeof(blockSize))
+        if(traceFile.read((char*)&blockSize, 4) != sizeof(blockSize))
             throw std::wstring(L"Failed to read user-defined block size");
-        if (!traceFile.seek(traceFile.pos() + blockSize))
+        if(!traceFile.seek(traceFile.pos() + blockSize))
             throw std::wstring(L"Failed to skip user-defined block");
     }
     else
@@ -859,13 +859,13 @@ TraceFilePage::TraceFilePage(TraceFileReader* parent, unsigned long long fileOff
                     memoryOperandOffset.push_back(memOperandOffset);
                 length++;
             }
-            else if (blockType >= 0x80)
+            else if(blockType >= 0x80)
             {
                 // User-defined block, skip it
                 uint32_t blockSize;
-                if (mParent->traceFile.read((char*)&blockSize, 4) != sizeof(blockSize))
+                if(mParent->traceFile.read((char*)&blockSize, 4) != sizeof(blockSize))
                     throw std::runtime_error("Failed to read user-defined block size");
-                if (!mParent->traceFile.seek(mParent->traceFile.pos() + blockSize))
+                if(!mParent->traceFile.seek(mParent->traceFile.pos() + blockSize))
                     throw std::runtime_error("Failed to skip user-defined block");
             }
             else

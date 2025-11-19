@@ -10,7 +10,8 @@ WordEditDialog::WordEditDialog(QWidget* parent)
       mHexLineEditPos(0),
       mSignedEditPos(0),
       mUnsignedEditPos(0),
-      mAsciiLineEditPos(0)
+      mAsciiLineEditPos(0),
+      hexValidate(this)
 {
     ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint | Qt::MSWindowsFixedSizeDialogHint);
@@ -62,7 +63,8 @@ void WordEditDialog::setup(QString title, duint defVal, int byteCount)
 {
     this->setWindowTitle(title);
     this->byteCount = byteCount;
-    ui->hexLineEdit->setInputMask(QString("hh").repeated(byteCount));
+    ui->hexLineEdit->setValidator(&hexValidate);
+    ui->hexLineEdit->setMaxLength(byteCount * 2);
     ui->expressionLineEdit->setText(QString("%1").arg(defVal, byteCount * 2, 16, QChar('0')).toUpper());
 
     ui->expressionLineEdit->selectAll();
@@ -110,7 +112,8 @@ void WordEditDialog::expressionChanged(bool validExpression, bool validPointer, 
         saveCursorPositions();
 
         // Byte edit line
-        ui->hexLineEdit->setText(ToPtrString(hexWord));
+        if(!ui->hexLineEdit->hasFocus())
+            ui->hexLineEdit->setText(ToPtrString(hexWord));
         // Signed edit
         if(byteCount == sizeof(signed char))
             ui->signedLineEdit->setText(QString::number((signed char)mWord));
@@ -181,6 +184,32 @@ void WordEditDialog::on_unsignedLineEdit_textEdited(const QString & arg1)
         ui->unsignedLineEdit->setStyleSheet("border: 1px solid red");
         ui->btnOk->setEnabled(false);
     }
+}
+
+void WordEditDialog::on_hexLineEdit_textEdited(const QString & arg1)
+{
+    QString text = arg1;
+    duint value = 0;
+
+    for(int i = 0; i < text.length(); i += 2)
+    {
+        QString byteStr = text.mid(i, 2);
+        bool byteOk;
+        uint byteVal = byteStr.toUInt(&byteOk, 16);
+        if(!byteOk)
+        {
+            // Should never happen due to validator.
+            break;
+        }
+
+        // Little Endian: first byte is LSB
+        if(i / 2 < byteCount)
+        {
+            value |= ((duint)byteVal << ((i / 2) * 8));
+        }
+    }
+
+    ui->expressionLineEdit->setText(convertValueToHexString(value));
 }
 
 QString WordEditDialog::convertValueToHexString(duint value)
