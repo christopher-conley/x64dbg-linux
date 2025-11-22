@@ -161,7 +161,7 @@ void CPUArgumentWidget::contextMenuSlot(QPoint pos)
     {
         menu.addSeparator();
 
-        mCopyClipboard->setText(QString("Copy Value"));
+        mCopyClipboard->setText(tr("Copy Value"));
         mCopyClipboard->setIcon(DIcon("copy"));
         mCopyClipboard->setObjectName(ToHexString(value));
         menu.addAction(mCopyClipboard);
