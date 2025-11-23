@@ -311,9 +311,9 @@ int RefFind(duint Address, duint Size, CBREF Callback, void* UserData, bool Sile
 
 int RefFindInRange(duint scanStart, duint scanSize, CBREF Callback, void* UserData, bool Silent, REFINFO & refInfo, Zydis & zydis, bool initCallBack, const CBPROGRESS & cbUpdateProgress, bool disasmText)
 {
-    if (scanSize == 0)
+    if(scanSize == 0)
     {
-        if (!Silent)
+        if(!Silent)
             dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid scan size 0 passed to RefFindInRange\n"));
         return 0;
     }
