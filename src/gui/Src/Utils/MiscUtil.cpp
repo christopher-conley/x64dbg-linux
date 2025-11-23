@@ -2,6 +2,7 @@
 #include <QtWin>
 #include <QApplication>
 #include <QMessageBox>
+#include <QCheckBox>
 #include <QDir>
 #include "LineEditDialog.h"
 #include "ComboBoxDialog.h"
@@ -81,13 +82,30 @@ bool SimpleChoiceBox(QWidget* parent, const QString & title, QString defaultValu
         return false;
 }
 
-void SimpleErrorBox(QWidget* parent, const QString & title, const QString & text)
+void SimpleErrorBox(QWidget* parent, const QString & title, const QString & text, const char* doNotShowAgainSetting)
 {
+    duint currentSetting = 0;
+    if(doNotShowAgainSetting && BridgeSettingGetUint("Gui", doNotShowAgainSetting, &currentSetting) && currentSetting)
+        return;
+
     QMessageBox msg(QMessageBox::Critical, title, text, QMessageBox::NoButton, parent);
     msg.setWindowIcon(DIcon("fatal-error"));
     msg.setParent(parent, Qt::Dialog);
     msg.setWindowFlags(msg.windowFlags() & (~Qt::WindowContextHelpButtonHint));
+
+    QCheckBox* checkBox = nullptr;
+    if(doNotShowAgainSetting)
+    {
+        checkBox = new QCheckBox(QObject::tr("Do not show again"));
+        msg.setCheckBox(checkBox);
+    }
+
     msg.exec();
+
+    if(doNotShowAgainSetting)
+    {
+        BridgeSettingSetUint("Gui", doNotShowAgainSetting, checkBox->isChecked());
+    }
 }
 
 void SimpleWarningBox(QWidget* parent, const QString & title, const QString & text)
