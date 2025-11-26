@@ -887,54 +887,29 @@ duint getregister(int* size, const char* string)
     {
         return GetContextDataEx(hActiveThread, UE_DR7);
     }
-
     if(scmp(string, "cax"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RAX);
-#else
-        return GetContextDataEx(hActiveThread, UE_EAX);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_EAX, UE_RAX));
     }
     if(scmp(string, "cbx"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RBX);
-#else
-        return GetContextDataEx(hActiveThread, UE_EBX);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_EBX, UE_RBX));
     }
     if(scmp(string, "ccx"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RCX);
-#else
-        return GetContextDataEx(hActiveThread, UE_ECX);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_ECX, UE_RCX));
     }
     if(scmp(string, "cdx"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RDX);
-#else
-        return GetContextDataEx(hActiveThread, UE_EDX);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_EDX, UE_RDX));
     }
     if(scmp(string, "csi"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RSI);
-#else
-        return GetContextDataEx(hActiveThread, UE_ESI);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_ESI, UE_RSI));
     }
     if(scmp(string, "cdi"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RDI);
-#else
-        return GetContextDataEx(hActiveThread, UE_EDI);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_EDI, UE_RDI));
     }
     if(scmp(string, "cip"))
     {
@@ -946,11 +921,7 @@ duint getregister(int* size, const char* string)
     }
     if(scmp(string, "cbp"))
     {
-#ifdef _WIN64
-        return GetContextDataEx(hActiveThread, UE_RBP);
-#else
-        return GetContextDataEx(hActiveThread, UE_EBP);
-#endif //_WIN64
+        return GetContextDataEx(hActiveThread, ArchValue(UE_EBP, UE_RBP));
     }
     if(scmp(string, "cflags"))
     {
@@ -1261,51 +1232,23 @@ bool setregister(const char* string, duint value)
         return SetContextDataEx(hActiveThread, UE_DR7, value);
 
     if(scmp(string, "cax"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RAX, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_EAX, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_EAX, UE_RAX), value);
     if(scmp(string, "cbx"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RBX, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_EBX, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_EBX, UE_RBX), value);
     if(scmp(string, "ccx"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RCX, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_ECX, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_ECX, UE_RCX), value);
     if(scmp(string, "cdx"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RDX, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_EDX, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_EDX, UE_RDX), value);
     if(scmp(string, "csi"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RSI, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_ESI, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_ESI, UE_RSI), value);
     if(scmp(string, "cdi"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RDI, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_EDI, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_EDI, UE_RDI), value);
     if(scmp(string, "cip"))
         return SetContextDataEx(hActiveThread, UE_CIP, value);
     if(scmp(string, "csp"))
         return SetContextDataEx(hActiveThread, UE_CSP, value);
     if(scmp(string, "cbp"))
-#ifdef _WIN64
-        return SetContextDataEx(hActiveThread, UE_RBP, value);
-#else
-        return SetContextDataEx(hActiveThread, UE_EBP, value);
-#endif //_WIN64
+        return SetContextDataEx(hActiveThread, ArchValue(UE_EBP, UE_RBP), value);
     if(scmp(string, "cflags"))
         return SetContextDataEx(hActiveThread, UE_CFLAGS, value);
 
