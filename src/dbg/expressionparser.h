@@ -59,6 +59,7 @@ public:
             Error,
             Data,
             QuotedData,
+            NumericLiteral,
             Function,
             Comma,
             OpenParen,
@@ -143,6 +144,15 @@ public:
             mInfo = info;
         }
 
+        Token & tryConvertToNumericLiteral()
+        {
+            if(type() == Type::Data && valfromstring_noexpr_isvar(data().c_str()) != 0 && valfromstring_noexpr(mData.c_str(), &mInfo, true, true))
+            {
+                mType = Type::NumericLiteral;
+            }
+            return *this;
+        }
+
         Associativity associativity() const;
         int precedence() const;
         bool isOperator() const;
@@ -180,6 +190,7 @@ private:
 
     String mExpression;
     bool mIsValidExpression;
+    bool mIsConstValue;
     std::vector<Token> mTokens;
     std::vector<Token> mPrefixTokens;
     String mCurToken;

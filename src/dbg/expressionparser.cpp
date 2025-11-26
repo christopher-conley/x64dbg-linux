@@ -140,6 +140,7 @@ ExpressionParser::ExpressionParser(const String & expression)
     const size_t r = 50;
     mTokens.reserve(r);
     mCurToken.reserve(r);
+    mIsConstValue = false;
     tokenize();
 #if 0
     // Print the tokens for debugging
@@ -150,6 +151,13 @@ ExpressionParser::ExpressionParser(const String & expression)
     }
     dprintf_untranslated("\n");
 #endif
+    if(mTokens.size() == 1)
+    {
+        if(mTokens[0].type() == Token::Type::NumericLiteral)
+        {
+            mIsConstValue = true;
+        }
+    }
     shuntingYard();
 }
 
@@ -366,7 +374,7 @@ void ExpressionParser::tokenize()
     }
     if(mCurToken.length() != 0) //make sure the last token is added
     {
-        mTokens.push_back(Token(mCurToken, resolveQuotedData()));
+        mTokens.push_back(Token(mCurToken, resolveQuotedData()).tryConvertToNumericLiteral());
         mCurToken.clear();
         mCurTokenQuoted.clear();
     }
@@ -382,7 +390,7 @@ void ExpressionParser::addOperatorToken(const String & data, Token::Type type)
         }
         else
         {
-            mTokens.push_back(Token(mCurToken, resolveQuotedData()));
+            mTokens.push_back(Token(mCurToken, resolveQuotedData()).tryConvertToNumericLiteral());
         }
         mCurToken.clear();
         mCurTokenQuoted.clear();
@@ -404,7 +412,7 @@ bool ExpressionParser::isUnaryOperator() const
         return true;
     auto lastType = mTokens.back().type();
     //if the previous token is not data or a close bracket, this operator is a unary operator
-    return lastType != Token::Type::Data && lastType != Token::Type::QuotedData && lastType != Token::Type::CloseParen;
+    return lastType != Token::Type::Data && lastType != Token::Type::QuotedData && lastType != Token::Type::NumericLiteral && lastType != Token::Type::CloseParen;
 }
 
 void ExpressionParser::shuntingYard()
@@ -424,6 +432,7 @@ void ExpressionParser::shuntingYard()
         {
         case Token::Type::Data: //If the token is a number, then push it to the output queue.
         case Token::Type::QuotedData:
+        case Token::Type::NumericLiteral:
             queue.push_back(token);
             break;
         case Token::Type::Function: //If the token is a function token, then push it onto the stack.
@@ -829,6 +838,12 @@ bool ExpressionParser::signedOperation(Token::Type type, const EvalValue & op1, 
 
 bool ExpressionParser::Calculate(duint & value, bool signedcalc, bool allowassign, bool silent, bool baseonly, int* value_size, bool* isvar, bool* hexonly) const
 {
+    if(mIsConstValue && mTokens[0].type() == Token::Type::NumericLiteral)
+    {
+        // Just a number, optimize this very common case for tracing performance
+        value = mTokens[0].info();
+        return true;
+    }
     EvalValue evalue(0);
     if(!Calculate(evalue, signedcalc, allowassign, silent, baseonly, value_size, isvar, hexonly))
         return false;
@@ -1138,7 +1153,21 @@ bool ExpressionParser::Calculate(EvalValue & value, bool signedcalc, bool allowa
                 stack.emplace_back(result.number);
         }
         else
-            stack.push_back(EvalValue(token.data(), token.type() == Token::Type::QuotedData));
+        {
+            switch(token.type())
+            {
+            default:
+            case Token::Type::Data:
+                stack.push_back(EvalValue(token.data(), false));
+                break;
+            case Token::Type::QuotedData:
+                stack.push_back(EvalValue(token.data(), true));
+                break;
+            case Token::Type::NumericLiteral:
+                stack.push_back(EvalValue(token.info()));
+                break;
+            }
+        }
     }
     if(stack.size() != 1) //there should only be one value left on the stack
         return false;

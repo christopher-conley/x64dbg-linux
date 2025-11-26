@@ -1619,11 +1619,31 @@ bool convertLongLongNumber(const char* str, unsigned long long & result, int rad
 */
 static bool isdigitduint(char digit)
 {
-#ifdef _WIN64
-    return digit >= '1' && digit <= '8';
-#else //x86
-    return digit >= '1' && digit <= '4';
-#endif //_WIN64
+    return digit >= '1' && digit <= ArchValue('4', '8');
+}
+
+/**
+\brief Check whether the given string is a variable or a constant
+*/
+int valfromstring_noexpr_isvar(const char* string)
+{
+    if(!string || !*string)
+        return 0;
+
+    if(isdecnumber(string))  //decimal numbers come 'first'
+    {
+        return 1;
+    }
+    else if(ishexnumber(string))  //then hex numbers
+    {
+        return 2;
+    }
+    duint value;
+    if(ConstantFromName(string, value))
+    {
+        return 3;
+    }
+    return 0;
 }
 
 /**
@@ -1642,6 +1662,32 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
     if(!value || !string || !*string)
         return false;
 
+    switch(valfromstring_noexpr_isvar(string))
+    {
+    case 1:
+        if(value_size)
+            *value_size = 0;
+        if(isvar)
+            *isvar = false;
+        return convertNumber(string + 1, *value, 10);
+    case 2:
+        if(value_size)
+            *value_size = 0;
+        if(isvar)
+            *isvar = false;
+        //hexadecimal value
+        return convertNumber(string + ((*string == 'x') ? 1 : 0), *value, 16);
+    case 3:
+        if(value_size)
+            *value_size = 0;
+        if(isvar)
+            *isvar = false;
+        return ConstantFromName(string, *value);
+    default:
+        if(isvar)
+            *isvar = true;
+        break;
+    }
     if(string[0] == '['
             || (isdigitduint(string[0]) && string[1] == ':' && string[2] == '[')
             || (string[1] == 's' && (string[0] == 'c' || string[0] == 'd' || string[0] == 'e' || string[0] == 'f' || string[0] == 'g' || string[0] == 's') && string[2] == ':' && string[3] == '[') //memory location
@@ -1656,8 +1702,6 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             *value = 0;
             if(value_size)
                 *value_size = 0;
-            if(isvar)
-                *isvar = true;
             return true;
         }
         int len = (int)strlen(string);
@@ -1776,14 +1820,10 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
         }
         if(value_size)
             *value_size = read_size;
-        if(isvar)
-            *isvar = true;
         return true;
     }
     else if(varget(string, value, value_size, 0)) //then come variables
     {
-        if(isvar)
-            *isvar = true;
         return true;
     }
     else if(isregister(string)) //register
@@ -1795,13 +1835,9 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             *value = 0;
             if(value_size)
                 *value_size = 0;
-            if(isvar)
-                *isvar = true;
             return true;
         }
         *value = getregister(value_size, string);
-        if(isvar)
-            *isvar = true;
         return true;
     }
     else if(*string == '_' && isflag(string + 1)) //flag
@@ -1813,8 +1849,6 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             *value = 0;
             if(value_size)
                 *value_size = 0;
-            if(isvar)
-                *isvar = true;
             return true;
         }
         duint eflags = GetContextDataEx(hActiveThread, UE_CFLAGS);
@@ -1824,40 +1858,12 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             *value = 0;
         if(value_size)
             *value_size = 0;
-        if(isvar)
-            *isvar = true;
         return true;
     }
-    else if(isdecnumber(string)) //decimal numbers come 'first'
-    {
-        if(value_size)
-            *value_size = 0;
-        if(isvar)
-            *isvar = false;
-        return convertNumber(string + 1, *value, 10);
-    }
-    else if(ishexnumber(string)) //then hex numbers
-    {
-        if(value_size)
-            *value_size = 0;
-        if(isvar)
-            *isvar = false;
-        //hexadecimal value
-        int inc = 0;
-        if(*string == 'x')
-            inc = 1;
-        return convertNumber(string + inc, *value, 16);
-    }
-
-    if(isvar)
-        *isvar = false;
     if(hexonly)
         *hexonly = true;
     if(value_size)
         *value_size = sizeof(duint);
-
-    if(ConstantFromName(string, *value))
-        return true;
 
     PLUG_CB_VALFROMSTRING info;
     info.string = string;
