@@ -39,6 +39,38 @@ void valuesetsignedcalc(bool a)
     dosignedcalc = a;
 }
 
+// Macro for converting a static identifier with no more than 4 characters into an uppercased int for efficient comparison
+#define MAKE_WORD_INTO_INT(word) (#word[1]==0 ? #word[0] : (#word[2]==0 ? (#word[0]|(#word[1]<<8)) : (#word[3]==0 ? (#word[0]|(#word[1]<<8)|(#word[2]<<16)) : (#word[4]==0 ? (#word[0]|(#word[1]<<8)|(#word[2]<<16)|(#word[3]<<24)) : 0))))
+
+/**
+\brief Convert a string with no more than 4 characters into an uppercased int for efficient comparison
+*/
+int read_string_4char_ucase(const char* string)
+{
+    int a = 0;
+    char x = 'a' - 'A';
+    if(string[0] != '\0')
+        a = (string[0] >= 'a' && string[0] <= 'z' ? string[0] - x : string[0]);
+    else
+        return a;
+    if(string[1] != '\0')
+        a |= (string[1] >= 'a' && string[1] <= 'z' ? string[1] - x : string[1]) << 8;
+    else
+        return a;
+    if(string[2] != '\0')
+        a |= (string[2] >= 'a' && string[2] <= 'z' ? string[2] - x : string[2]) << 16;
+    else
+        return a;
+    if(string[3] != '\0')
+        a |= (string[3] >= 'a' && string[3] <= 'z' ? string[3] - x : string[3]) << 24;
+    else
+        return a;
+    if(string[4] != '\0')  // overflow
+        return 0;
+    else
+        return a;
+}
+
 /**
 \brief Check if a string is a flag.
 \param string The string to check.
@@ -46,37 +78,27 @@ void valuesetsignedcalc(bool a)
 */
 static bool isflag(const char* string)
 {
-    if(scmp(string, "cf"))
+    switch(read_string_4char_ucase(string))
+    {
+    case MAKE_WORD_INTO_INT(CF):
+    case MAKE_WORD_INTO_INT(PF):
+    case MAKE_WORD_INTO_INT(AF):
+    case MAKE_WORD_INTO_INT(ZF):
+    case MAKE_WORD_INTO_INT(SF):
+    case MAKE_WORD_INTO_INT(TF):
+    case MAKE_WORD_INTO_INT(IF):
+    case MAKE_WORD_INTO_INT(DF):
+    case MAKE_WORD_INTO_INT(OF):
+    case MAKE_WORD_INTO_INT(RF):
+    case MAKE_WORD_INTO_INT(VM):
+    case MAKE_WORD_INTO_INT(AC):
+    case MAKE_WORD_INTO_INT(VIF):
+    case MAKE_WORD_INTO_INT(VIP):
+    case MAKE_WORD_INTO_INT(ID):
         return true;
-    if(scmp(string, "pf"))
-        return true;
-    if(scmp(string, "af"))
-        return true;
-    if(scmp(string, "zf"))
-        return true;
-    if(scmp(string, "sf"))
-        return true;
-    if(scmp(string, "tf"))
-        return true;
-    if(scmp(string, "if"))
-        return true;
-    if(scmp(string, "df"))
-        return true;
-    if(scmp(string, "of"))
-        return true;
-    if(scmp(string, "rf"))
-        return true;
-    if(scmp(string, "vm"))
-        return true;
-    if(scmp(string, "ac"))
-        return true;
-    if(scmp(string, "vif"))
-        return true;
-    if(scmp(string, "vip"))
-        return true;
-    if(scmp(string, "id"))
-        return true;
-    return false;
+    default:
+        return false;
+    }
 }
 
 /**
@@ -86,223 +108,126 @@ static bool isflag(const char* string)
 */
 static bool isregister(const char* string)
 {
-    if(scmp(string, "eax"))
-        return true;
-    if(scmp(string, "ebx"))
-        return true;
-    if(scmp(string, "ecx"))
-        return true;
-    if(scmp(string, "edx"))
-        return true;
-    if(scmp(string, "edi"))
-        return true;
-    if(scmp(string, "esi"))
-        return true;
-    if(scmp(string, "ebp"))
-        return true;
-    if(scmp(string, "esp"))
-        return true;
-    if(scmp(string, "eip"))
-        return true;
-    if(scmp(string, "eflags"))
-        return true;
-
-    if(scmp(string, "ax"))
-        return true;
-    if(scmp(string, "bx"))
-        return true;
-    if(scmp(string, "cx"))
-        return true;
-    if(scmp(string, "dx"))
-        return true;
-    if(scmp(string, "si"))
-        return true;
-    if(scmp(string, "di"))
-        return true;
-    if(scmp(string, "bp"))
-        return true;
-    if(scmp(string, "sp"))
-        return true;
-    if(scmp(string, "ip"))
-        return true;
-
-    if(scmp(string, "ah"))
-        return true;
-    if(scmp(string, "al"))
-        return true;
-    if(scmp(string, "bh"))
-        return true;
-    if(scmp(string, "bl"))
-        return true;
-    if(scmp(string, "ch"))
-        return true;
-    if(scmp(string, "cl"))
-        return true;
-    if(scmp(string, "dh"))
-        return true;
-    if(scmp(string, "dl"))
-        return true;
-    if(scmp(string, "sih"))
-        return true;
-    if(scmp(string, "sil"))
-        return true;
-    if(scmp(string, "dih"))
-        return true;
-    if(scmp(string, "dil"))
-        return true;
-    if(scmp(string, "bph"))
-        return true;
-    if(scmp(string, "bpl"))
-        return true;
-    if(scmp(string, "sph"))
-        return true;
-    if(scmp(string, "spl"))
-        return true;
-    if(scmp(string, "iph"))
-        return true;
-    if(scmp(string, "ipl"))
-        return true;
-
-    if(scmp(string, "dr0"))
-        return true;
-    if(scmp(string, "dr1"))
-        return true;
-    if(scmp(string, "dr2"))
-        return true;
-    if(scmp(string, "dr3"))
-        return true;
-    if(scmp(string, "dr6") || scmp(string, "dr4"))
-        return true;
-    if(scmp(string, "dr7") || scmp(string, "dr5"))
-        return true;
-
-    if(scmp(string, "cax"))
-        return true;
-    if(scmp(string, "cbx"))
-        return true;
-    if(scmp(string, "ccx"))
-        return true;
-    if(scmp(string, "cdx"))
-        return true;
-    if(scmp(string, "csi"))
-        return true;
-    if(scmp(string, "cdi"))
-        return true;
-    if(scmp(string, "cip"))
-        return true;
-    if(scmp(string, "csp"))
-        return true;
-    if(scmp(string, "cbp"))
-        return true;
-    if(scmp(string, "cflags"))
-        return true;
-
-    if(scmp(string, "lasterror"))
-        return true;
-    if(scmp(string, "laststatus"))
-        return true;
-
-    if(scmp(string, "gs"))
-        return true;
-    if(scmp(string, "fs"))
-        return true;
-    if(scmp(string, "es"))
-        return true;
-    if(scmp(string, "ds"))
-        return true;
-    if(scmp(string, "cs"))
-        return true;
-    if(scmp(string, "ss"))
-        return true;
-
-#ifndef _WIN64
-    return false;
-#endif // _WIN64
-    if(scmp(string, "rax"))
-        return true;
-    if(scmp(string, "rbx"))
-        return true;
-    if(scmp(string, "rcx"))
-        return true;
-    if(scmp(string, "rdx"))
-        return true;
-    if(scmp(string, "rdi"))
-        return true;
-    if(scmp(string, "rsi"))
-        return true;
-    if(scmp(string, "rbp"))
-        return true;
-    if(scmp(string, "rsp"))
-        return true;
-    if(scmp(string, "rip"))
-        return true;
-    if(scmp(string, "rflags"))
-        return true;
-    if(scmp(string, "r8"))
-        return true;
-    if(scmp(string, "r9"))
-        return true;
-    if(scmp(string, "r10"))
-        return true;
-    if(scmp(string, "r11"))
-        return true;
-    if(scmp(string, "r12"))
-        return true;
-    if(scmp(string, "r13"))
-        return true;
-    if(scmp(string, "r14"))
-        return true;
-    if(scmp(string, "r15"))
-        return true;
-    if(scmp(string, "r8d"))
-        return true;
-    if(scmp(string, "r9d"))
-        return true;
-    if(scmp(string, "r10d"))
-        return true;
-    if(scmp(string, "r11d"))
-        return true;
-    if(scmp(string, "r12d"))
-        return true;
-    if(scmp(string, "r13d"))
-        return true;
-    if(scmp(string, "r14d"))
-        return true;
-    if(scmp(string, "r15d"))
-        return true;
-    if(scmp(string, "r8w"))
-        return true;
-    if(scmp(string, "r9w"))
-        return true;
-    if(scmp(string, "r10w"))
-        return true;
-    if(scmp(string, "r11w"))
-        return true;
-    if(scmp(string, "r12w"))
-        return true;
-    if(scmp(string, "r13w"))
-        return true;
-    if(scmp(string, "r14w"))
-        return true;
-    if(scmp(string, "r15w"))
-        return true;
-    if(scmp(string, "r8b"))
-        return true;
-    if(scmp(string, "r9b"))
-        return true;
-    if(scmp(string, "r10b"))
-        return true;
-    if(scmp(string, "r11b"))
-        return true;
-    if(scmp(string, "r12b"))
-        return true;
-    if(scmp(string, "r13b"))
-        return true;
-    if(scmp(string, "r14b"))
-        return true;
-    if(scmp(string, "r15b"))
-        return true;
-    return false;
+    switch(read_string_4char_ucase(string))
+    {
+    case MAKE_WORD_INTO_INT(EAX):
+    case MAKE_WORD_INTO_INT(EBX):
+    case MAKE_WORD_INTO_INT(ECX):
+    case MAKE_WORD_INTO_INT(EDX):
+    case MAKE_WORD_INTO_INT(EDI):
+    case MAKE_WORD_INTO_INT(ESI):
+    case MAKE_WORD_INTO_INT(EBP):
+    case MAKE_WORD_INTO_INT(ESP):
+    case MAKE_WORD_INTO_INT(EIP):
+    case MAKE_WORD_INTO_INT(AX):
+    case MAKE_WORD_INTO_INT(BX):
+    case MAKE_WORD_INTO_INT(CX):
+    case MAKE_WORD_INTO_INT(DX):
+    case MAKE_WORD_INTO_INT(SI):
+    case MAKE_WORD_INTO_INT(DI):
+    case MAKE_WORD_INTO_INT(BP):
+    case MAKE_WORD_INTO_INT(SP):
+    case MAKE_WORD_INTO_INT(IP):
+    case MAKE_WORD_INTO_INT(AH):
+    case MAKE_WORD_INTO_INT(AL):
+    case MAKE_WORD_INTO_INT(BH):
+    case MAKE_WORD_INTO_INT(BL):
+    case MAKE_WORD_INTO_INT(CH):
+    case MAKE_WORD_INTO_INT(CL):
+    case MAKE_WORD_INTO_INT(DH):
+    case MAKE_WORD_INTO_INT(DL):
+    case MAKE_WORD_INTO_INT(SIH):
+    case MAKE_WORD_INTO_INT(SIL):
+    case MAKE_WORD_INTO_INT(DIH):
+    case MAKE_WORD_INTO_INT(DIL):
+    case MAKE_WORD_INTO_INT(BPH):
+    case MAKE_WORD_INTO_INT(BPL):
+    case MAKE_WORD_INTO_INT(SPH):
+    case MAKE_WORD_INTO_INT(SPL):
+    case MAKE_WORD_INTO_INT(IPH):
+    case MAKE_WORD_INTO_INT(IPL):
+    case MAKE_WORD_INTO_INT(DR0):
+    case MAKE_WORD_INTO_INT(DR1):
+    case MAKE_WORD_INTO_INT(DR2):
+    case MAKE_WORD_INTO_INT(DR3):
+    case MAKE_WORD_INTO_INT(DR6):
+    case MAKE_WORD_INTO_INT(DR4):
+    case MAKE_WORD_INTO_INT(DR7):
+    case MAKE_WORD_INTO_INT(DR5):
+    case MAKE_WORD_INTO_INT(CAX):
+    case MAKE_WORD_INTO_INT(CBX):
+    case MAKE_WORD_INTO_INT(CCX):
+    case MAKE_WORD_INTO_INT(CDX):
+    case MAKE_WORD_INTO_INT(CSI):
+    case MAKE_WORD_INTO_INT(CDI):
+    case MAKE_WORD_INTO_INT(CIP):
+    case MAKE_WORD_INTO_INT(CSP):
+    case MAKE_WORD_INTO_INT(CBP):
+    case MAKE_WORD_INTO_INT(GS):
+    case MAKE_WORD_INTO_INT(FS):
+    case MAKE_WORD_INTO_INT(ES):
+    case MAKE_WORD_INTO_INT(DS):
+    case MAKE_WORD_INTO_INT(CS):
+    case MAKE_WORD_INTO_INT(SS):
+#ifdef _WIN64
+    case MAKE_WORD_INTO_INT(RAX):
+    case MAKE_WORD_INTO_INT(RBX):
+    case MAKE_WORD_INTO_INT(RCX):
+    case MAKE_WORD_INTO_INT(RDX):
+    case MAKE_WORD_INTO_INT(RDI):
+    case MAKE_WORD_INTO_INT(RSI):
+    case MAKE_WORD_INTO_INT(RBP):
+    case MAKE_WORD_INTO_INT(RSP):
+    case MAKE_WORD_INTO_INT(RIP):
+    case MAKE_WORD_INTO_INT(R8):
+    case MAKE_WORD_INTO_INT(R9):
+    case MAKE_WORD_INTO_INT(R10):
+    case MAKE_WORD_INTO_INT(R11):
+    case MAKE_WORD_INTO_INT(R12):
+    case MAKE_WORD_INTO_INT(R13):
+    case MAKE_WORD_INTO_INT(R14):
+    case MAKE_WORD_INTO_INT(R15):
+    case MAKE_WORD_INTO_INT(R8D):
+    case MAKE_WORD_INTO_INT(R9D):
+    case MAKE_WORD_INTO_INT(R10D):
+    case MAKE_WORD_INTO_INT(R11D):
+    case MAKE_WORD_INTO_INT(R12D):
+    case MAKE_WORD_INTO_INT(R13D):
+    case MAKE_WORD_INTO_INT(R14D):
+    case MAKE_WORD_INTO_INT(R15D):
+    case MAKE_WORD_INTO_INT(R8W):
+    case MAKE_WORD_INTO_INT(R9W):
+    case MAKE_WORD_INTO_INT(R10W):
+    case MAKE_WORD_INTO_INT(R11W):
+    case MAKE_WORD_INTO_INT(R12W):
+    case MAKE_WORD_INTO_INT(R13W):
+    case MAKE_WORD_INTO_INT(R14W):
+    case MAKE_WORD_INTO_INT(R15W):
+    case MAKE_WORD_INTO_INT(R8B):
+    case MAKE_WORD_INTO_INT(R9B):
+    case MAKE_WORD_INTO_INT(R10B):
+    case MAKE_WORD_INTO_INT(R11B):
+    case MAKE_WORD_INTO_INT(R12B):
+    case MAKE_WORD_INTO_INT(R13B):
+    case MAKE_WORD_INTO_INT(R14B):
+    case MAKE_WORD_INTO_INT(R15B):
+#endif //_WIN64
+        return true;
+    default:
+        if(scmp(string, "eflags"))
+            return true;
+        if(scmp(string, "cflags"))
+            return true;
+        if(scmp(string, "lasterror"))
+            return true;
+        if(scmp(string, "laststatus"))
+            return true;
+#ifdef _WIN64
+        if(scmp(string, "rflags"))
+            return true;
+#endif //_WIN64
+        return false;
+    };
 }
 
 #define MXCSRFLAG_IE 0x1
@@ -320,14 +245,7 @@ static bool isregister(const char* string)
 #define MXCSRFLAG_PM 0x1000
 #define MXCSRFLAG_FZ 0x8000
 
-typedef struct
-{
-    const char* name;
-    unsigned int flag;
-
-} FLAG_NAME_VALUE_TABLE_t;
-
-#define MXCSR_NAME_FLAG_TABLE_ENTRY(flag_name) { #flag_name, MXCSRFLAG_##flag_name }
+#define MXCSR_NAME_FLAG_TABLE_ENTRY(flag_name) case MAKE_WORD_INTO_INT(#flag_name): return MXCSRFLAG_##flag_name;
 
 /**
 \brief Gets the MXCSR flag AND value from a string.
@@ -336,31 +254,25 @@ typedef struct
 */
 static unsigned int getmxcsrflagfromstring(const char* string)
 {
-    static FLAG_NAME_VALUE_TABLE_t mxcsrnameflagtable[] =
+    switch(read_string_4char_ucase(string))
     {
-        MXCSR_NAME_FLAG_TABLE_ENTRY(IE),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(DE),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(ZE),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(OE),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(UE),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(PE),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(DAZ),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(IM),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(DM),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(ZM),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(OM),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(UM),
-        MXCSR_NAME_FLAG_TABLE_ENTRY(PM),
+        MXCSR_NAME_FLAG_TABLE_ENTRY(IE)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(DE)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(ZE)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(OE)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(UE)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(PE)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(DAZ)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(IM)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(DM)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(ZM)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(OM)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(UM)
+        MXCSR_NAME_FLAG_TABLE_ENTRY(PM)
         MXCSR_NAME_FLAG_TABLE_ENTRY(FZ)
-    };
-
-    for(int i = 0; i < (sizeof(mxcsrnameflagtable) / sizeof(*mxcsrnameflagtable)); i++)
-    {
-        if(scmp(string, mxcsrnameflagtable[i].name))
-            return mxcsrnameflagtable[i].flag;
+    default:
+        return 0;
     }
-
-    return 0;
 }
 
 /**
@@ -392,7 +304,7 @@ bool valmxcsrflagfromstring(duint mxcsrflags, const char* string)
 #define x87STATUSWORD_FLAG_C3 0x4000
 #define x87STATUSWORD_FLAG_B 0x8000
 
-#define X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(flag_name) { #flag_name, x87STATUSWORD_FLAG_##flag_name }
+#define X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(flag_name) case MAKE_WORD_INTO_INT(#flag_name): return x87STATUSWORD_FLAG_##flag_name;
 
 /**
 \brief Gets the x87 status word AND value from a string.
@@ -401,30 +313,24 @@ bool valmxcsrflagfromstring(duint mxcsrflags, const char* string)
 */
 static unsigned int getx87statuswordflagfromstring(const char* string)
 {
-    static FLAG_NAME_VALUE_TABLE_t statuswordflagtable[] =
+    switch(read_string_4char_ucase(string))
     {
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(I),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(D),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(Z),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(O),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(U),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(P),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(SF),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(ES),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C0),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C1),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C2),
-        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C3),
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(I)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(D)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(Z)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(O)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(U)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(P)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(SF)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(ES)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C0)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C1)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C2)
+        X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(C3)
         X87STATUSWORD_NAME_FLAG_TABLE_ENTRY(B)
-    };
-
-    for(int i = 0; i < (sizeof(statuswordflagtable) / sizeof(*statuswordflagtable)); i++)
-    {
-        if(scmp(string, statuswordflagtable[i].name))
-            return statuswordflagtable[i].flag;
+    default:
+        return 0;
     }
-
-    return 0;
 }
 
 /**
@@ -451,7 +357,7 @@ bool valx87statuswordflagfromstring(duint statusword, const char* string)
 #define x87CONTROLWORD_FLAG_IEM 0x80
 #define x87CONTROLWORD_FLAG_IC 0x1000
 
-#define X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(flag_name) { #flag_name, x87CONTROLWORD_FLAG_##flag_name }
+#define X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(flag_name) case MAKE_WORD_INTO_INT(#flag_name): return x87CONTROLWORD_FLAG_##flag_name;
 
 /**
 \brief Gets the x87 control word flag AND value from a string.
@@ -460,25 +366,19 @@ bool valx87statuswordflagfromstring(duint statusword, const char* string)
 */
 static unsigned int getx87controlwordflagfromstring(const char* string)
 {
-    static FLAG_NAME_VALUE_TABLE_t controlwordflagtable[] =
+    switch(read_string_4char_ucase(string))
     {
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(IM),
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(DM),
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(ZM),
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(OM),
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(UM),
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(PM),
-        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(IEM),
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(IM)
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(DM)
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(ZM)
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(OM)
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(UM)
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(PM)
+        X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(IEM)
         X87CONTROLWORD_NAME_FLAG_TABLE_ENTRY(IC)
-    };
-
-    for(int i = 0; i < (sizeof(controlwordflagtable) / sizeof(*controlwordflagtable)); i++)
-    {
-        if(scmp(string, controlwordflagtable[i].name))
-            return controlwordflagtable[i].flag;
+    default:
+        return 0;
     }
-
-    return 0;
 }
 
 /**
@@ -521,7 +421,6 @@ unsigned short valx87statuswordfieldfromstring(duint statusword, const char* str
 {
     if(scmp(string, "TOP"))
         return ((statusword & 0x3800) >> 11);
-
     return 0;
 }
 
@@ -533,12 +432,15 @@ unsigned short valx87statuswordfieldfromstring(duint statusword, const char* str
 */
 unsigned short valx87controlwordfieldfromstring(duint controlword, const char* string)
 {
-    if(scmp(string, "PC"))
+    switch(read_string_4char_ucase(string))
+    {
+    case MAKE_WORD_INTO_INT(PC):
         return ((controlword & 0x300) >> 8);
-    if(scmp(string, "RC"))
+    case MAKE_WORD_INTO_INT(RC):
         return ((controlword & 0xC00) >> 10);
-
-    return 0;
+    default:
+        return 0;
+    }
 }
 
 /**
@@ -549,37 +451,41 @@ unsigned short valx87controlwordfieldfromstring(duint controlword, const char* s
 */
 bool valflagfromstring(duint eflags, const char* string)
 {
-    if(scmp(string, "cf"))
+    switch(read_string_4char_ucase(string))
+    {
+    case MAKE_WORD_INTO_INT(CF):
         return (bool)((int)(eflags & 0x1) != 0);
-    if(scmp(string, "pf"))
+    case MAKE_WORD_INTO_INT(PF):
         return (bool)((int)(eflags & 0x4) != 0);
-    if(scmp(string, "af"))
+    case MAKE_WORD_INTO_INT(AF):
         return (bool)((int)(eflags & 0x10) != 0);
-    if(scmp(string, "zf"))
+    case MAKE_WORD_INTO_INT(ZF):
         return (bool)((int)(eflags & 0x40) != 0);
-    if(scmp(string, "sf"))
+    case MAKE_WORD_INTO_INT(SF):
         return (bool)((int)(eflags & 0x80) != 0);
-    if(scmp(string, "tf"))
+    case MAKE_WORD_INTO_INT(TF):
         return (bool)((int)(eflags & 0x100) != 0);
-    if(scmp(string, "if"))
+    case MAKE_WORD_INTO_INT(IF):
         return (bool)((int)(eflags & 0x200) != 0);
-    if(scmp(string, "df"))
+    case MAKE_WORD_INTO_INT(DF):
         return (bool)((int)(eflags & 0x400) != 0);
-    if(scmp(string, "of"))
+    case MAKE_WORD_INTO_INT(OF):
         return (bool)((int)(eflags & 0x800) != 0);
-    if(scmp(string, "rf"))
+    case MAKE_WORD_INTO_INT(RF):
         return (bool)((int)(eflags & 0x10000) != 0);
-    if(scmp(string, "vm"))
+    case MAKE_WORD_INTO_INT(VM):
         return (bool)((int)(eflags & 0x20000) != 0);
-    if(scmp(string, "ac"))
+    case MAKE_WORD_INTO_INT(AC):
         return (bool)((int)(eflags & 0x40000) != 0);
-    if(scmp(string, "vif"))
+    case MAKE_WORD_INTO_INT(VIF):
         return (bool)((int)(eflags & 0x80000) != 0);
-    if(scmp(string, "vip"))
+    case MAKE_WORD_INTO_INT(VIP):
         return (bool)((int)(eflags & 0x100000) != 0);
-    if(scmp(string, "id"))
+    case MAKE_WORD_INTO_INT(ID):
         return (bool)((int)(eflags & 0x200000) != 0);
-    return false;
+    default:
+        return false;
+    }
 }
 
 /**
@@ -590,39 +496,58 @@ bool valflagfromstring(duint eflags, const char* string)
 */
 bool setflag(const char* string, bool set)
 {
-    duint eflags = GetContextDataEx(hActiveThread, UE_CFLAGS);
-    duint xorval = 0;
     duint flag = 0;
-    if(scmp(string, "cf"))
+    switch(read_string_4char_ucase(string))
+    {
+    case MAKE_WORD_INTO_INT(CF):
         flag = 0x1;
-    else if(scmp(string, "pf"))
+        break;
+    case MAKE_WORD_INTO_INT(PF):
         flag = 0x4;
-    else if(scmp(string, "af"))
+        break;
+    case MAKE_WORD_INTO_INT(AF):
         flag = 0x10;
-    else if(scmp(string, "zf"))
+        break;
+    case MAKE_WORD_INTO_INT(ZF):
         flag = 0x40;
-    else if(scmp(string, "sf"))
+        break;
+    case MAKE_WORD_INTO_INT(SF):
         flag = 0x80;
-    else if(scmp(string, "tf"))
+        break;
+    case MAKE_WORD_INTO_INT(TF):
         flag = 0x100;
-    else if(scmp(string, "if"))
+        break;
+    case MAKE_WORD_INTO_INT(IF):
         flag = 0x200;
-    else if(scmp(string, "df"))
+        break;
+    case MAKE_WORD_INTO_INT(DF):
         flag = 0x400;
-    else if(scmp(string, "of"))
+        break;
+    case MAKE_WORD_INTO_INT(OF):
         flag = 0x800;
-    else if(scmp(string, "rf"))
+        break;
+    case MAKE_WORD_INTO_INT(RF):
         flag = 0x10000;
-    else if(scmp(string, "vm"))
+        break;
+    case MAKE_WORD_INTO_INT(VM):
         flag = 0x20000;
-    else if(scmp(string, "ac"))
+        break;
+    case MAKE_WORD_INTO_INT(AC):
         flag = 0x40000;
-    else if(scmp(string, "vif"))
+        break;
+    case MAKE_WORD_INTO_INT(VIF):
         flag = 0x80000;
-    else if(scmp(string, "vip"))
+        break;
+    case MAKE_WORD_INTO_INT(VIP):
         flag = 0x100000;
-    else if(scmp(string, "id"))
+        break;
+    case MAKE_WORD_INTO_INT(ID):
         flag = 0x200000;
+        break;
+    default:
+        return false;
+    }
+    duint eflags = GetContextDataEx(hActiveThread, UE_CFLAGS);
     if(set)
         eflags |= flag;
     else
@@ -640,71 +565,63 @@ duint getregister(int* size, const char* string)
 {
     if(size)
         *size = 4;
-    if(scmp(string, "eax"))
+    TitanRegister TitanIndex = UE_XMM0; // Tian register index with UE_XMM0 as invalid marker
+    int string_int = read_string_4char_ucase(string);
+    switch(string_int)
     {
-        return GetContextDataEx(hActiveThread, UE_EAX);
+    case MAKE_WORD_INTO_INT(EAX):
+        TitanIndex = UE_EAX;
+        break;
+    case MAKE_WORD_INTO_INT(EBX):
+        TitanIndex = UE_EBX;
+        break;
+    case MAKE_WORD_INTO_INT(ECX):
+        TitanIndex = UE_ECX;
+        break;
+    case MAKE_WORD_INTO_INT(EDX):
+        TitanIndex = UE_EDX;
+        break;
+    case MAKE_WORD_INTO_INT(EDI):
+        TitanIndex = UE_EDI;
+        break;
+    case MAKE_WORD_INTO_INT(ESI):
+        TitanIndex = UE_ESI;
+        break;
+    case MAKE_WORD_INTO_INT(EBP):
+        TitanIndex = UE_EBP;
+        break;
+    case MAKE_WORD_INTO_INT(ESP):
+        TitanIndex = UE_ESP;
+        break;
+    case MAKE_WORD_INTO_INT(EIP):
+        TitanIndex = UE_EIP;
+        break;
+    case MAKE_WORD_INTO_INT(GS):
+        TitanIndex = UE_SEG_GS;
+        break;
+    case MAKE_WORD_INTO_INT(FS):
+        TitanIndex = UE_SEG_FS;
+        break;
+    case MAKE_WORD_INTO_INT(ES):
+        TitanIndex = UE_SEG_ES;
+        break;
+    case MAKE_WORD_INTO_INT(DS):
+        TitanIndex = UE_SEG_DS;
+        break;
+    case MAKE_WORD_INTO_INT(CS):
+        TitanIndex = UE_SEG_CS;
+        break;
+    case MAKE_WORD_INTO_INT(SS):
+        TitanIndex = UE_SEG_SS;
+        break;
+    default:
+        if(scmp(string, "eflags"))
+            TitanIndex = UE_EFLAGS;
+        else
+            TitanIndex = UE_XMM0;  // Invalid marker
     }
-    if(scmp(string, "ebx"))
-    {
-        return GetContextDataEx(hActiveThread, UE_EBX);
-    }
-    if(scmp(string, "ecx"))
-    {
-        return GetContextDataEx(hActiveThread, UE_ECX);
-    }
-    if(scmp(string, "edx"))
-    {
-        return GetContextDataEx(hActiveThread, UE_EDX);
-    }
-    if(scmp(string, "edi"))
-    {
-        return GetContextDataEx(hActiveThread, UE_EDI);
-    }
-    if(scmp(string, "esi"))
-    {
-        return GetContextDataEx(hActiveThread, UE_ESI);
-    }
-    if(scmp(string, "ebp"))
-    {
-        return GetContextDataEx(hActiveThread, UE_EBP);
-    }
-    if(scmp(string, "esp"))
-    {
-        return GetContextDataEx(hActiveThread, UE_ESP);
-    }
-    if(scmp(string, "eip"))
-    {
-        return GetContextDataEx(hActiveThread, UE_EIP);
-    }
-    if(scmp(string, "eflags"))
-    {
-        return GetContextDataEx(hActiveThread, UE_EFLAGS);
-    }
-
-    if(scmp(string, "gs"))
-    {
-        return GetContextDataEx(hActiveThread, UE_SEG_GS);
-    }
-    if(scmp(string, "fs"))
-    {
-        return GetContextDataEx(hActiveThread, UE_SEG_FS);
-    }
-    if(scmp(string, "es"))
-    {
-        return GetContextDataEx(hActiveThread, UE_SEG_ES);
-    }
-    if(scmp(string, "ds"))
-    {
-        return GetContextDataEx(hActiveThread, UE_SEG_DS);
-    }
-    if(scmp(string, "cs"))
-    {
-        return GetContextDataEx(hActiveThread, UE_SEG_CS);
-    }
-    if(scmp(string, "ss"))
-    {
-        return GetContextDataEx(hActiveThread, UE_SEG_SS);
-    }
+    if(TitanIndex != UE_XMM0)
+        return GetContextDataEx(hActiveThread, TitanIndex);
 
     if(scmp(string, "lasterror"))
     {
@@ -722,391 +639,319 @@ duint getregister(int* size, const char* string)
 
     if(size)
         *size = 2;
-    if(scmp(string, "ax"))
+    switch(string_int)
     {
-        duint val = GetContextDataEx(hActiveThread, UE_EAX);
-        return val & 0xFFFF;
+    case MAKE_WORD_INTO_INT(AX):
+        TitanIndex = UE_EAX;
+        break;
+    case MAKE_WORD_INTO_INT(BX):
+        TitanIndex = UE_EBX;
+        break;
+    case MAKE_WORD_INTO_INT(CX):
+        TitanIndex = UE_ECX;
+        break;
+    case MAKE_WORD_INTO_INT(DX):
+        TitanIndex = UE_EDX;
+        break;
+    case MAKE_WORD_INTO_INT(SI):
+        TitanIndex = UE_ESI;
+        break;
+    case MAKE_WORD_INTO_INT(DI):
+        TitanIndex = UE_EDI;
+        break;
+    case MAKE_WORD_INTO_INT(BP):
+        TitanIndex = UE_EBP;
+        break;
+    case MAKE_WORD_INTO_INT(SP):
+        TitanIndex = UE_ESP;
+        break;
+    case MAKE_WORD_INTO_INT(IP):
+        TitanIndex = UE_EIP;
+        break;
+    default:
+        TitanIndex = UE_XMM0; // Invalid marker
     }
-    if(scmp(string, "bx"))
+    if(TitanIndex != UE_XMM0)
     {
-        duint val = GetContextDataEx(hActiveThread, UE_EBX);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "cx"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ECX);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "dx"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EDX);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "si"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ESI);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "di"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EDI);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "bp"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EBP);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "sp"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ESP);
-        return val & 0xFFFF;
-    }
-    if(scmp(string, "ip"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EIP);
-        return val & 0xFFFF;
+        return GetContextDataEx(hActiveThread, TitanIndex) & 0xFFFF;
     }
 
     if(size)
         *size = 1;
-    if(scmp(string, "ah"))
+    switch(string_int)
     {
-        duint val = GetContextDataEx(hActiveThread, UE_EAX);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "al"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EAX);
-        return val & 0xFF;
-    }
-    if(scmp(string, "bh"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EBX);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "bl"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EBX);
-        return val & 0xFF;
-    }
-    if(scmp(string, "ch"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ECX);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "cl"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ECX);
-        return val & 0xFF;
-    }
-    if(scmp(string, "dh"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EDX);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "dl"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EDX);
-        return val & 0xFF;
-    }
-    if(scmp(string, "sih"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ESI);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "sil"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ESI);
-        return val & 0xFF;
-    }
-    if(scmp(string, "dih"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EDI);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "dil"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EDI);
-        return val & 0xFF;
-    }
-    if(scmp(string, "bph"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EBP);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "bpl"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EBP);
-        return val & 0xFF;
-    }
-    if(scmp(string, "sph"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ESP);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "spl"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_ESP);
-        return val & 0xFF;
-    }
-    if(scmp(string, "iph"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EIP);
-        return (val >> 8) & 0xFF;
-    }
-    if(scmp(string, "ipl"))
-    {
-        duint val = GetContextDataEx(hActiveThread, UE_EIP);
-        return val & 0xFF;
+    case MAKE_WORD_INTO_INT(AH):
+        return (GetContextDataEx(hActiveThread, UE_EAX) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(AL):
+        return GetContextDataEx(hActiveThread, UE_EAX) & 0xFF;
+    case MAKE_WORD_INTO_INT(BH):
+        return (GetContextDataEx(hActiveThread, UE_EBX) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(BL):
+        return GetContextDataEx(hActiveThread, UE_EBX) & 0xFF;
+    case MAKE_WORD_INTO_INT(CH):
+        return (GetContextDataEx(hActiveThread, UE_ECX) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(CL):
+        return GetContextDataEx(hActiveThread, UE_ECX) & 0xFF;
+    case MAKE_WORD_INTO_INT(DH):
+        return (GetContextDataEx(hActiveThread, UE_EDX) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(DL):
+        return GetContextDataEx(hActiveThread, UE_EDX) & 0xFF;
+    case MAKE_WORD_INTO_INT(SIH):
+        return (GetContextDataEx(hActiveThread, UE_ESI) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(SIL):
+        return GetContextDataEx(hActiveThread, UE_ESI) & 0xFF;
+    case MAKE_WORD_INTO_INT(DIH):
+        return (GetContextDataEx(hActiveThread, UE_EDI) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(DIL):
+        return GetContextDataEx(hActiveThread, UE_EDI) & 0xFF;
+    case MAKE_WORD_INTO_INT(BPH):
+        return (GetContextDataEx(hActiveThread, UE_EBP) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(BPL):
+        return GetContextDataEx(hActiveThread, UE_EBP) & 0xFF;
+    case MAKE_WORD_INTO_INT(SPH):
+        return (GetContextDataEx(hActiveThread, UE_ESP) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(SPL):
+        return GetContextDataEx(hActiveThread, UE_ESP) & 0xFF;
+    case MAKE_WORD_INTO_INT(IPH):
+        return (GetContextDataEx(hActiveThread, UE_EIP) >> 8) & 0xFF;
+    case MAKE_WORD_INTO_INT(IPL):
+        return GetContextDataEx(hActiveThread, UE_EIP) & 0xFF;
     }
 
     if(size)
         *size = sizeof(duint);
-    if(scmp(string, "dr0"))
+    switch(string_int)
     {
-        return GetContextDataEx(hActiveThread, UE_DR0);
+    case MAKE_WORD_INTO_INT(DR0):
+        TitanIndex = UE_DR0;
+        break;
+    case MAKE_WORD_INTO_INT(DR1):
+        TitanIndex = UE_DR1;
+        break;
+    case MAKE_WORD_INTO_INT(DR2):
+        TitanIndex = UE_DR2;
+        break;
+    case MAKE_WORD_INTO_INT(DR3):
+        TitanIndex = UE_DR3;
+        break;
+    case MAKE_WORD_INTO_INT(DR4):
+    case MAKE_WORD_INTO_INT(DR6):
+        TitanIndex = UE_DR6;
+        break;
+    case MAKE_WORD_INTO_INT(DR5):
+    case MAKE_WORD_INTO_INT(DR7):
+        TitanIndex = UE_DR7;
+        break;
+    case MAKE_WORD_INTO_INT(CAX):
+        TitanIndex = ArchValue(UE_EAX, UE_RAX);
+        break;
+    case MAKE_WORD_INTO_INT(CBX):
+        TitanIndex = ArchValue(UE_EBX, UE_RBX);
+        break;
+    case MAKE_WORD_INTO_INT(CCX):
+        TitanIndex = ArchValue(UE_ECX, UE_RCX);
+        break;
+    case MAKE_WORD_INTO_INT(CDX):
+        TitanIndex = ArchValue(UE_EDX, UE_RDX);
+        break;
+    case MAKE_WORD_INTO_INT(CSI):
+        TitanIndex = ArchValue(UE_ESI, UE_RSI);
+        break;
+    case MAKE_WORD_INTO_INT(CDI):
+        TitanIndex = ArchValue(UE_EDI, UE_RDI);
+        break;
+    case MAKE_WORD_INTO_INT(CIP):
+        TitanIndex = UE_CIP;
+        break;
+    case MAKE_WORD_INTO_INT(CSP):
+        TitanIndex = UE_CSP;
+        break;
+    case MAKE_WORD_INTO_INT(CBP):
+        TitanIndex = ArchValue(UE_EBP, UE_RBP);
+        break;
+    default:
+        if(scmp(string, "cflags"))
+            TitanIndex = UE_CFLAGS;
+        else
+            TitanIndex = UE_XMM0; // Invalid marker
     }
-    if(scmp(string, "dr1"))
+    if(TitanIndex != UE_XMM0)
     {
-        return GetContextDataEx(hActiveThread, UE_DR1);
-    }
-    if(scmp(string, "dr2"))
-    {
-        return GetContextDataEx(hActiveThread, UE_DR2);
-    }
-    if(scmp(string, "dr3"))
-    {
-        return GetContextDataEx(hActiveThread, UE_DR3);
-    }
-    if(scmp(string, "dr6") || scmp(string, "dr4"))
-    {
-        return GetContextDataEx(hActiveThread, UE_DR6);
-    }
-    if(scmp(string, "dr7") || scmp(string, "dr5"))
-    {
-        return GetContextDataEx(hActiveThread, UE_DR7);
-    }
-    if(scmp(string, "cax"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_EAX, UE_RAX));
-    }
-    if(scmp(string, "cbx"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_EBX, UE_RBX));
-    }
-    if(scmp(string, "ccx"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_ECX, UE_RCX));
-    }
-    if(scmp(string, "cdx"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_EDX, UE_RDX));
-    }
-    if(scmp(string, "csi"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_ESI, UE_RSI));
-    }
-    if(scmp(string, "cdi"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_EDI, UE_RDI));
-    }
-    if(scmp(string, "cip"))
-    {
-        return GetContextDataEx(hActiveThread, UE_CIP);
-    }
-    if(scmp(string, "csp"))
-    {
-        return GetContextDataEx(hActiveThread, UE_CSP);
-    }
-    if(scmp(string, "cbp"))
-    {
-        return GetContextDataEx(hActiveThread, ArchValue(UE_EBP, UE_RBP));
-    }
-    if(scmp(string, "cflags"))
-    {
-        return GetContextDataEx(hActiveThread, UE_CFLAGS);
+        return GetContextDataEx(hActiveThread, TitanIndex);
     }
 
 #ifdef _WIN64
     if(size)
         *size = 8;
-    if(scmp(string, "rax"))
+    switch(string_int)
     {
-        return GetContextDataEx(hActiveThread, UE_RAX);
+    case MAKE_WORD_INTO_INT(RAX):
+        TitanIndex = UE_RAX;
+        break;
+    case MAKE_WORD_INTO_INT(RBX):
+        TitanIndex = UE_RBX;
+        break;
+    case MAKE_WORD_INTO_INT(RCX):
+        TitanIndex = UE_RCX;
+        break;
+    case MAKE_WORD_INTO_INT(RDX):
+        TitanIndex = UE_RDX;
+        break;
+    case MAKE_WORD_INTO_INT(RDI):
+        TitanIndex = UE_RDI;
+        break;
+    case MAKE_WORD_INTO_INT(RSI):
+        TitanIndex = UE_RSI;
+        break;
+    case MAKE_WORD_INTO_INT(RBP):
+        TitanIndex = UE_RBP;
+        break;
+    case MAKE_WORD_INTO_INT(RSP):
+        TitanIndex = UE_RSP;
+        break;
+    case MAKE_WORD_INTO_INT(RIP):
+        TitanIndex = UE_RIP;
+        break;
+    case MAKE_WORD_INTO_INT(R8):
+        TitanIndex = UE_R8;
+        break;
+    case MAKE_WORD_INTO_INT(R9):
+        TitanIndex = UE_R9;
+        break;
+    case MAKE_WORD_INTO_INT(R10):
+        TitanIndex = UE_R10;
+        break;
+    case MAKE_WORD_INTO_INT(R11):
+        TitanIndex = UE_R11;
+        break;
+    case MAKE_WORD_INTO_INT(R12):
+        TitanIndex = UE_R12;
+        break;
+    case MAKE_WORD_INTO_INT(R13):
+        TitanIndex = UE_R13;
+        break;
+    case MAKE_WORD_INTO_INT(R14):
+        TitanIndex = UE_R14;
+        break;
+    case MAKE_WORD_INTO_INT(R15):
+        TitanIndex = UE_R15;
+        break;
+    default:
+        if(scmp(string, "rflags"))
+            TitanIndex = UE_RFLAGS;
+        else
+            TitanIndex = UE_XMM0; // Invalid marker
+        break;
     }
-    if(scmp(string, "rbx"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RBX);
-    }
-    if(scmp(string, "rcx"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RCX);
-    }
-    if(scmp(string, "rdx"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RDX);
-    }
-    if(scmp(string, "rdi"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RDI);
-    }
-    if(scmp(string, "rsi"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RSI);
-    }
-    if(scmp(string, "rbp"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RBP);
-    }
-    if(scmp(string, "rsp"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RSP);
-    }
-    if(scmp(string, "rip"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RIP);
-    }
-    if(scmp(string, "rflags"))
-    {
-        return GetContextDataEx(hActiveThread, UE_RFLAGS);
-    }
-    if(scmp(string, "r8"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R8);
-    }
-    if(scmp(string, "r9"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R9);
-    }
-    if(scmp(string, "r10"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R10);
-    }
-    if(scmp(string, "r11"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R11);
-    }
-    if(scmp(string, "r12"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R12);
-    }
-    if(scmp(string, "r13"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R13);
-    }
-    if(scmp(string, "r14"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R14);
-    }
-    if(scmp(string, "r15"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R15);
-    }
+    if(TitanIndex != UE_XMM0)
+        return GetContextDataEx(hActiveThread, TitanIndex);
 
     if(size)
         *size = 4;
-    if(scmp(string, "r8d"))
+    switch(string_int)
     {
-        return GetContextDataEx(hActiveThread, UE_R8) & 0xFFFFFFFF;
+    case MAKE_WORD_INTO_INT(R8D):
+        TitanIndex = UE_R8;
+        break;
+    case MAKE_WORD_INTO_INT(R9D):
+        TitanIndex = UE_R9;
+        break;
+    case MAKE_WORD_INTO_INT(R10D):
+        TitanIndex = UE_R10;
+        break;
+    case MAKE_WORD_INTO_INT(R11D):
+        TitanIndex = UE_R11;
+        break;
+    case MAKE_WORD_INTO_INT(R12D):
+        TitanIndex = UE_R12;
+        break;
+    case MAKE_WORD_INTO_INT(R13D):
+        TitanIndex = UE_R13;
+        break;
+    case MAKE_WORD_INTO_INT(R14D):
+        TitanIndex = UE_R14;
+        break;
+    case MAKE_WORD_INTO_INT(R15D):
+        TitanIndex = UE_R15;
+        break;
+    default:
+        TitanIndex = UE_XMM0;
     }
-    if(scmp(string, "r9d"))
+    if(TitanIndex != UE_XMM0)
     {
-        return GetContextDataEx(hActiveThread, UE_R9) & 0xFFFFFFFF;
-    }
-    if(scmp(string, "r10d"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R10) & 0xFFFFFFFF;
-    }
-    if(scmp(string, "r11d"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R11) & 0xFFFFFFFF;
-    }
-    if(scmp(string, "r12d"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R12) & 0xFFFFFFFF;
-    }
-    if(scmp(string, "r13d"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R13) & 0xFFFFFFFF;
-    }
-    if(scmp(string, "r14d"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R14) & 0xFFFFFFFF;
-    }
-    if(scmp(string, "r15d"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R15) & 0xFFFFFFFF;
+        return GetContextDataEx(hActiveThread, TitanIndex) & 0xFFFFFFFF;
     }
 
     if(size)
         *size = 2;
-    if(scmp(string, "r8w"))
+    switch(string_int)
     {
-        return GetContextDataEx(hActiveThread, UE_R8) & 0xFFFF;
+    case MAKE_WORD_INTO_INT(R8W):
+        TitanIndex = UE_R8;
+        break;
+    case MAKE_WORD_INTO_INT(R9W):
+        TitanIndex = UE_R9;
+        break;
+    case MAKE_WORD_INTO_INT(R10W):
+        TitanIndex = UE_R10;
+        break;
+    case MAKE_WORD_INTO_INT(R11W):
+        TitanIndex = UE_R11;
+        break;
+    case MAKE_WORD_INTO_INT(R12W):
+        TitanIndex = UE_R12;
+        break;
+    case MAKE_WORD_INTO_INT(R13W):
+        TitanIndex = UE_R13;
+        break;
+    case MAKE_WORD_INTO_INT(R14W):
+        TitanIndex = UE_R14;
+        break;
+    case MAKE_WORD_INTO_INT(R15W):
+        TitanIndex = UE_R15;
+        break;
+    default:
+        TitanIndex = UE_XMM0;
     }
-    if(scmp(string, "r9w"))
+    if(TitanIndex != UE_XMM0)
     {
-        return GetContextDataEx(hActiveThread, UE_R9) & 0xFFFF;
-    }
-    if(scmp(string, "r10w"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R10) & 0xFFFF;
-    }
-    if(scmp(string, "r11w"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R11) & 0xFFFF;
-    }
-    if(scmp(string, "r12w"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R12) & 0xFFFF;
-    }
-    if(scmp(string, "r13w"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R13) & 0xFFFF;
-    }
-    if(scmp(string, "r14w"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R14) & 0xFFFF;
-    }
-    if(scmp(string, "r15w"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R15) & 0xFFFF;
+        return GetContextDataEx(hActiveThread, TitanIndex) & 0xFFFF;
     }
 
     if(size)
         *size = 1;
-    if(scmp(string, "r8b"))
+    switch(string_int)
     {
-        return GetContextDataEx(hActiveThread, UE_R8) & 0xFF;
+    case MAKE_WORD_INTO_INT(R8B):
+        TitanIndex = UE_R8;
+        break;
+    case MAKE_WORD_INTO_INT(R9B):
+        TitanIndex = UE_R9;
+        break;
+    case MAKE_WORD_INTO_INT(R10B):
+        TitanIndex = UE_R10;
+        break;
+    case MAKE_WORD_INTO_INT(R11B):
+        TitanIndex = UE_R11;
+        break;
+    case MAKE_WORD_INTO_INT(R12B):
+        TitanIndex = UE_R12;
+        break;
+    case MAKE_WORD_INTO_INT(R13B):
+        TitanIndex = UE_R13;
+        break;
+    case MAKE_WORD_INTO_INT(R14B):
+        TitanIndex = UE_R14;
+        break;
+    case MAKE_WORD_INTO_INT(R15B):
+        TitanIndex = UE_R15;
+        break;
+    default:
+        TitanIndex = UE_XMM0;
     }
-    if(scmp(string, "r9b"))
+    if(TitanIndex != UE_XMM0)
     {
-        return GetContextDataEx(hActiveThread, UE_R9) & 0xFF;
-    }
-    if(scmp(string, "r10b"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R10) & 0xFF;
-    }
-    if(scmp(string, "r11b"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R11) & 0xFF;
-    }
-    if(scmp(string, "r12b"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R12) & 0xFF;
-    }
-    if(scmp(string, "r13b"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R13) & 0xFF;
-    }
-    if(scmp(string, "r14b"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R14) & 0xFF;
-    }
-    if(scmp(string, "r15b"))
-    {
-        return GetContextDataEx(hActiveThread, UE_R15) & 0xFF;
+        return GetContextDataEx(hActiveThread, TitanIndex) & 0xFF;
     }
 #endif //_WIN64
 
