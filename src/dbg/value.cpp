@@ -968,223 +968,363 @@ duint getregister(int* size, const char* string)
 */
 bool setregister(const char* string, duint value)
 {
-    if(scmp(string, "eax"))
-        return SetContextDataEx(hActiveThread, UE_EAX, value & 0xFFFFFFFF);
-    if(scmp(string, "ebx"))
-        return SetContextDataEx(hActiveThread, UE_EBX, value & 0xFFFFFFFF);
-    if(scmp(string, "ecx"))
-        return SetContextDataEx(hActiveThread, UE_ECX, value & 0xFFFFFFFF);
-    if(scmp(string, "edx"))
-        return SetContextDataEx(hActiveThread, UE_EDX, value & 0xFFFFFFFF);
-    if(scmp(string, "edi"))
-        return SetContextDataEx(hActiveThread, UE_EDI, value & 0xFFFFFFFF);
-    if(scmp(string, "esi"))
-        return SetContextDataEx(hActiveThread, UE_ESI, value & 0xFFFFFFFF);
-    if(scmp(string, "ebp"))
-        return SetContextDataEx(hActiveThread, UE_EBP, value & 0xFFFFFFFF);
-    if(scmp(string, "esp"))
-        return SetContextDataEx(hActiveThread, UE_ESP, value & 0xFFFFFFFF);
-    if(scmp(string, "eip"))
-        return SetContextDataEx(hActiveThread, UE_EIP, value & 0xFFFFFFFF);
-    if(scmp(string, "eflags"))
-        return SetContextDataEx(hActiveThread, UE_EFLAGS, value & 0xFFFFFFFF);
+    TitanRegister titanIndex = UE_XMM0;
+    const int string_int = read_string_4char_ucase(string);
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(EAX):
+        titanIndex = UE_EAX;
+        break;
+    case MAKE_WORD_INTO_INT(EBX):
+        titanIndex = UE_EBX;
+        break;
+    case MAKE_WORD_INTO_INT(ECX):
+        titanIndex = UE_ECX;
+        break;
+    case MAKE_WORD_INTO_INT(EDX):
+        titanIndex = UE_EDX;
+        break;
+    case MAKE_WORD_INTO_INT(EDI):
+        titanIndex = UE_EDI;
+        break;
+    case MAKE_WORD_INTO_INT(ESI):
+        titanIndex = UE_ESI;
+        break;
+    case MAKE_WORD_INTO_INT(EBP):
+        titanIndex = UE_EBP;
+        break;
+    case MAKE_WORD_INTO_INT(ESP):
+        titanIndex = UE_ESP;
+        break;
+    case MAKE_WORD_INTO_INT(EIP):
+        titanIndex = UE_EIP;
+        break;
+    default:
+        if(scmp(string, "eflags"))
+            titanIndex = UE_EFLAGS;
+        else
+            titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, value & 0xFFFFFFFF);
+
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(CAX):
+        titanIndex = ArchValue(UE_EAX, UE_RAX);
+        break;
+    case MAKE_WORD_INTO_INT(CBX):
+        titanIndex = ArchValue(UE_EBX, UE_RBX);
+        break;
+    case MAKE_WORD_INTO_INT(CCX):
+        titanIndex = ArchValue(UE_ECX, UE_RCX);
+        break;
+    case MAKE_WORD_INTO_INT(CDX):
+        titanIndex = ArchValue(UE_EDX, UE_RDX);
+        break;
+    case MAKE_WORD_INTO_INT(CDI):
+        titanIndex = ArchValue(UE_EDI, UE_RDI);
+        break;
+    case MAKE_WORD_INTO_INT(CSI):
+        titanIndex = ArchValue(UE_ESI, UE_RSI);
+        break;
+    case MAKE_WORD_INTO_INT(CBP):
+        titanIndex = ArchValue(UE_EBP, UE_RBP);
+        break;
+    case MAKE_WORD_INTO_INT(CSP):
+        titanIndex = UE_CSP;
+        break;
+    case MAKE_WORD_INTO_INT(CIP):
+        titanIndex = UE_CIP;
+        break;
+#ifdef _WIN64
+    case MAKE_WORD_INTO_INT(RAX):
+        titanIndex = UE_RAX;
+        break;
+    case MAKE_WORD_INTO_INT(RBX):
+        titanIndex = UE_RBX;
+        break;
+    case MAKE_WORD_INTO_INT(RCX):
+        titanIndex = UE_RCX;
+        break;
+    case MAKE_WORD_INTO_INT(RDX):
+        titanIndex = UE_RDX;
+        break;
+    case MAKE_WORD_INTO_INT(RDI):
+        titanIndex = UE_RDI;
+        break;
+    case MAKE_WORD_INTO_INT(RSI):
+        titanIndex = UE_RSI;
+        break;
+    case MAKE_WORD_INTO_INT(RBP):
+        titanIndex = UE_RBP;
+        break;
+    case MAKE_WORD_INTO_INT(RSP):
+        titanIndex = UE_RSP;
+        break;
+    case MAKE_WORD_INTO_INT(RIP):
+        titanIndex = UE_RIP;
+        break;
+    case MAKE_WORD_INTO_INT(R9):
+        titanIndex = UE_R9;
+        break;
+    case MAKE_WORD_INTO_INT(R10):
+        titanIndex = UE_R10;
+        break;
+    case MAKE_WORD_INTO_INT(R11):
+        titanIndex = UE_R11;
+        break;
+    case MAKE_WORD_INTO_INT(R12):
+        titanIndex = UE_R12;
+        break;
+    case MAKE_WORD_INTO_INT(R13):
+        titanIndex = UE_R13;
+        break;
+    case MAKE_WORD_INTO_INT(R14):
+        titanIndex = UE_R14;
+        break;
+    case MAKE_WORD_INTO_INT(R15):
+        titanIndex = UE_R15;
+        break;
+#endif //_WIN64
+    default:
+        if(scmp(string, "cflags"))
+            titanIndex = UE_CFLAGS;
+#ifdef _WIN64
+        else if(scmp(string, "rflags"))
+            titanIndex = UE_RFLAGS;
+#endif //_WIN64
+        else
+            titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, value);
+
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(AX):
+        titanIndex = UE_EAX;
+        break;
+    case MAKE_WORD_INTO_INT(BX):
+        titanIndex = UE_EBX;
+        break;
+    case MAKE_WORD_INTO_INT(CX):
+        titanIndex = UE_ECX;
+        break;
+    case MAKE_WORD_INTO_INT(DX):
+        titanIndex = UE_EDX;
+        break;
+    case MAKE_WORD_INTO_INT(SI):
+        titanIndex = UE_ESI;
+        break;
+    case MAKE_WORD_INTO_INT(DI):
+        titanIndex = UE_EDI;
+        break;
+    case MAKE_WORD_INTO_INT(SP):
+        titanIndex = UE_ESP;
+        break;
+    case MAKE_WORD_INTO_INT(BP):
+        titanIndex = UE_EBP;
+        break;
+    case MAKE_WORD_INTO_INT(IP):
+        titanIndex = UE_EIP;
+        break;
+    default:
+        titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, titanIndex) & 0xFFFF0000));
+
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(AH):
+        titanIndex = UE_EAX;
+        break;
+    case MAKE_WORD_INTO_INT(BH):
+        titanIndex = UE_EBX;
+        break;
+    case MAKE_WORD_INTO_INT(CH):
+        titanIndex = UE_ECX;
+        break;
+    case MAKE_WORD_INTO_INT(DH):
+        titanIndex = UE_EDX;
+        break;
+    case MAKE_WORD_INTO_INT(SIH):
+        titanIndex = UE_ESI;
+        break;
+    case MAKE_WORD_INTO_INT(DIH):
+        titanIndex = UE_EDI;
+        break;
+    case MAKE_WORD_INTO_INT(BPH):
+        titanIndex = UE_EBP;
+        break;
+    case MAKE_WORD_INTO_INT(SPH):
+        titanIndex = UE_ESP;
+        break;
+    case MAKE_WORD_INTO_INT(IPH):
+        titanIndex = UE_EIP;
+        break;
+    default:
+        titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, titanIndex) & 0xFFFF00FF));
+
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(AL):
+        titanIndex = UE_EAX;
+        break;
+    case MAKE_WORD_INTO_INT(BL):
+        titanIndex = UE_EBX;
+        break;
+    case MAKE_WORD_INTO_INT(CL):
+        titanIndex = UE_ECX;
+        break;
+    case MAKE_WORD_INTO_INT(DL):
+        titanIndex = UE_EDX;
+        break;
+    case MAKE_WORD_INTO_INT(SIL):
+        titanIndex = UE_ESI;
+        break;
+    case MAKE_WORD_INTO_INT(DIL):
+        titanIndex = UE_EDI;
+        break;
+    case MAKE_WORD_INTO_INT(BPL):
+        titanIndex = UE_EBP;
+        break;
+    case MAKE_WORD_INTO_INT(SPL):
+        titanIndex = UE_ESP;
+        break;
+    case MAKE_WORD_INTO_INT(IPL):
+        titanIndex = UE_EIP;
+        break;
+    default:
+        titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, (value & 0xFF) | (GetContextDataEx(hActiveThread, titanIndex) & 0xFFFFFF00));
+
+#ifdef _WIN64
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(R9D):
+    case MAKE_WORD_INTO_INT(R9W):
+    case MAKE_WORD_INTO_INT(R9B):
+        titanIndex = UE_R9;
+        break;
+    case MAKE_WORD_INTO_INT(R10D):
+    case MAKE_WORD_INTO_INT(R10W):
+    case MAKE_WORD_INTO_INT(R10B):
+        titanIndex = UE_R10;
+        break;
+    case MAKE_WORD_INTO_INT(R11D):
+    case MAKE_WORD_INTO_INT(R11W):
+    case MAKE_WORD_INTO_INT(R11B):
+        titanIndex = UE_R11;
+        break;
+    case MAKE_WORD_INTO_INT(R12D):
+    case MAKE_WORD_INTO_INT(R12W):
+    case MAKE_WORD_INTO_INT(R12B):
+        titanIndex = UE_R12;
+        break;
+    case MAKE_WORD_INTO_INT(R13D):
+    case MAKE_WORD_INTO_INT(R13W):
+    case MAKE_WORD_INTO_INT(R13B):
+        titanIndex = UE_R13;
+        break;
+    case MAKE_WORD_INTO_INT(R14D):
+    case MAKE_WORD_INTO_INT(R14W):
+    case MAKE_WORD_INTO_INT(R14B):
+        titanIndex = UE_R14;
+        break;
+    case MAKE_WORD_INTO_INT(R15D):
+    case MAKE_WORD_INTO_INT(R15W):
+    case MAKE_WORD_INTO_INT(R15B):
+        titanIndex = UE_R15;
+        break;
+    default:
+        titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+    {
+        duint mask;
+        if((string_int & 0xFF0000) == 0x440000 || (string_int & 0xFF000000) == 0x44000000)  // contains D
+        {
+            mask = 0xFFFFFFFF;
+        }
+        else if((string_int & 0xFF0000) == 0x570000 || (string_int & 0xFF000000) == 0x57000000)  // contains W
+        {
+            mask = 0xFFFF;
+        }
+        else if((string_int & 0xFF0000) == 0x420000 || (string_int & 0xFF000000) == 0x42000000)  // contains B
+        {
+            mask = 0xFF;
+        }
+        else
+        {
+            return false; // not possible
+        }
+        return SetContextDataEx(hActiveThread, titanIndex, (value & mask) | (GetContextDataEx(hActiveThread, titanIndex) & ~mask));
+    }
+#endif // _WIN64
+
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(DR0):
+        titanIndex = UE_DR0;
+        break;
+    case MAKE_WORD_INTO_INT(DR1):
+        titanIndex = UE_DR1;
+        break;
+    case MAKE_WORD_INTO_INT(DR2):
+        titanIndex = UE_DR2;
+        break;
+    case MAKE_WORD_INTO_INT(DR3):
+        titanIndex = UE_DR3;
+        break;
+    case MAKE_WORD_INTO_INT(DR4):
+    case MAKE_WORD_INTO_INT(DR6):
+        titanIndex = UE_DR6;
+        break;
+    case MAKE_WORD_INTO_INT(DR5):
+    case MAKE_WORD_INTO_INT(DR7):
+        titanIndex = UE_DR7;
+        break;
+    default:
+        titanIndex = UE_XMM0;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, value);
 
     if(scmp(string, "lasterror"))
         return MemWrite((duint)GetTEBLocation(hActiveThread) + ArchValue(0x34, 0x68), &value, 4);
     if(scmp(string, "laststatus"))
         return MemWrite((duint)GetTEBLocation(hActiveThread) + ArchValue(0xBF4, 0x1250), &value, 4);
 
-    if(scmp(string, "gs"))
-        return SetContextDataEx(hActiveThread, UE_SEG_GS, value & 0xFFFF);
-    if(scmp(string, "fs"))
-        return SetContextDataEx(hActiveThread, UE_SEG_FS, value & 0xFFFF);
-    if(scmp(string, "es"))
-        return SetContextDataEx(hActiveThread, UE_SEG_ES, value & 0xFFFF);
-    if(scmp(string, "ds"))
-        return SetContextDataEx(hActiveThread, UE_SEG_DS, value & 0xFFFF);
-    if(scmp(string, "cs"))
-        return SetContextDataEx(hActiveThread, UE_SEG_CS, value & 0xFFFF);
-    if(scmp(string, "ss"))
-        return SetContextDataEx(hActiveThread, UE_SEG_SS, value & 0xFFFF);
-
-    if(scmp(string, "ax"))
-        return SetContextDataEx(hActiveThread, UE_EAX, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_EAX) & 0xFFFF0000));
-    if(scmp(string, "bx"))
-        return SetContextDataEx(hActiveThread, UE_EBX, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_EBX) & 0xFFFF0000));
-    if(scmp(string, "cx"))
-        return SetContextDataEx(hActiveThread, UE_ECX, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_ECX) & 0xFFFF0000));
-    if(scmp(string, "dx"))
-        return SetContextDataEx(hActiveThread, UE_EDX, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_EDX) & 0xFFFF0000));
-    if(scmp(string, "si"))
-        return SetContextDataEx(hActiveThread, UE_ESI, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_ESI) & 0xFFFF0000));
-    if(scmp(string, "di"))
-        return SetContextDataEx(hActiveThread, UE_EDI, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_EDI) & 0xFFFF0000));
-    if(scmp(string, "bp"))
-        return SetContextDataEx(hActiveThread, UE_EBP, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_EBP) & 0xFFFF0000));
-    if(scmp(string, "sp"))
-        return SetContextDataEx(hActiveThread, UE_ESP, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_ESP) & 0xFFFF0000));
-    if(scmp(string, "ip"))
-        return SetContextDataEx(hActiveThread, UE_EIP, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_EIP) & 0xFFFF0000));
-
-    if(scmp(string, "ah"))
-        return SetContextDataEx(hActiveThread, UE_EAX, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_EAX) & 0xFFFF00FF));
-    if(scmp(string, "al"))
-        return SetContextDataEx(hActiveThread, UE_EAX, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_EAX) & 0xFFFFFF00));
-    if(scmp(string, "bh"))
-        return SetContextDataEx(hActiveThread, UE_EBX, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_EBX) & 0xFFFF00FF));
-    if(scmp(string, "bl"))
-        return SetContextDataEx(hActiveThread, UE_EBX, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_EBX) & 0xFFFFFF00));
-    if(scmp(string, "ch"))
-        return SetContextDataEx(hActiveThread, UE_ECX, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_ECX) & 0xFFFF00FF));
-    if(scmp(string, "cl"))
-        return SetContextDataEx(hActiveThread, UE_ECX, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_ECX) & 0xFFFFFF00));
-    if(scmp(string, "dh"))
-        return SetContextDataEx(hActiveThread, UE_EDX, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_EDX) & 0xFFFF00FF));
-    if(scmp(string, "dl"))
-        return SetContextDataEx(hActiveThread, UE_EDX, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_EDX) & 0xFFFFFF00));
-    if(scmp(string, "sih"))
-        return SetContextDataEx(hActiveThread, UE_ESI, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_ESI) & 0xFFFF00FF));
-    if(scmp(string, "sil"))
-        return SetContextDataEx(hActiveThread, UE_ESI, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_ESI) & 0xFFFFFF00));
-    if(scmp(string, "dih"))
-        return SetContextDataEx(hActiveThread, UE_EDI, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_EDI) & 0xFFFF00FF));
-    if(scmp(string, "dil"))
-        return SetContextDataEx(hActiveThread, UE_EDI, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_EDI) & 0xFFFFFF00));
-    if(scmp(string, "bph"))
-        return SetContextDataEx(hActiveThread, UE_EBP, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_EBP) & 0xFFFF00FF));
-    if(scmp(string, "bpl"))
-        return SetContextDataEx(hActiveThread, UE_EBP, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_EBP) & 0xFFFFFF00));
-    if(scmp(string, "sph"))
-        return SetContextDataEx(hActiveThread, UE_ESP, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_ESP) & 0xFFFF00FF));
-    if(scmp(string, "spl"))
-        return SetContextDataEx(hActiveThread, UE_ESP, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_ESP) & 0xFFFFFF00));
-    if(scmp(string, "iph"))
-        return SetContextDataEx(hActiveThread, UE_EIP, ((value & 0xFF) << 8) | (GetContextDataEx(hActiveThread, UE_EIP) & 0xFFFF00FF));
-    if(scmp(string, "ipl"))
-        return SetContextDataEx(hActiveThread, UE_EIP, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_EIP) & 0xFFFFFF00));
-
-    if(scmp(string, "dr0"))
-        return SetContextDataEx(hActiveThread, UE_DR0, value);
-    if(scmp(string, "dr1"))
-        return SetContextDataEx(hActiveThread, UE_DR1, value);
-    if(scmp(string, "dr2"))
-        return SetContextDataEx(hActiveThread, UE_DR2, value);
-    if(scmp(string, "dr3"))
-        return SetContextDataEx(hActiveThread, UE_DR3, value);
-    if(scmp(string, "dr6") || scmp(string, "dr4"))
-        return SetContextDataEx(hActiveThread, UE_DR6, value);
-    if(scmp(string, "dr7") || scmp(string, "dr5"))
-        return SetContextDataEx(hActiveThread, UE_DR7, value);
-
-    if(scmp(string, "cax"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_EAX, UE_RAX), value);
-    if(scmp(string, "cbx"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_EBX, UE_RBX), value);
-    if(scmp(string, "ccx"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_ECX, UE_RCX), value);
-    if(scmp(string, "cdx"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_EDX, UE_RDX), value);
-    if(scmp(string, "csi"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_ESI, UE_RSI), value);
-    if(scmp(string, "cdi"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_EDI, UE_RDI), value);
-    if(scmp(string, "cip"))
-        return SetContextDataEx(hActiveThread, UE_CIP, value);
-    if(scmp(string, "csp"))
-        return SetContextDataEx(hActiveThread, UE_CSP, value);
-    if(scmp(string, "cbp"))
-        return SetContextDataEx(hActiveThread, ArchValue(UE_EBP, UE_RBP), value);
-    if(scmp(string, "cflags"))
-        return SetContextDataEx(hActiveThread, UE_CFLAGS, value);
-
-#ifdef _WIN64
-    if(scmp(string, "rax"))
-        return SetContextDataEx(hActiveThread, UE_RAX, value);
-    if(scmp(string, "rbx"))
-        return SetContextDataEx(hActiveThread, UE_RBX, value);
-    if(scmp(string, "rcx"))
-        return SetContextDataEx(hActiveThread, UE_RCX, value);
-    if(scmp(string, "rdx"))
-        return SetContextDataEx(hActiveThread, UE_RDX, value);
-    if(scmp(string, "rdi"))
-        return SetContextDataEx(hActiveThread, UE_RDI, value);
-    if(scmp(string, "rsi"))
-        return SetContextDataEx(hActiveThread, UE_RSI, value);
-    if(scmp(string, "rbp"))
-        return SetContextDataEx(hActiveThread, UE_RBP, value);
-    if(scmp(string, "rsp"))
-        return SetContextDataEx(hActiveThread, UE_RSP, value);
-    if(scmp(string, "rip"))
-        return SetContextDataEx(hActiveThread, UE_RIP, value);
-    if(scmp(string, "rflags"))
-        return SetContextDataEx(hActiveThread, UE_RFLAGS, value);
-    if(scmp(string, "r8"))
-        return SetContextDataEx(hActiveThread, UE_R8, value);
-    if(scmp(string, "r9"))
-        return SetContextDataEx(hActiveThread, UE_R9, value);
-    if(scmp(string, "r10"))
-        return SetContextDataEx(hActiveThread, UE_R10, value);
-    if(scmp(string, "r11"))
-        return SetContextDataEx(hActiveThread, UE_R11, value);
-    if(scmp(string, "r12"))
-        return SetContextDataEx(hActiveThread, UE_R12, value);
-    if(scmp(string, "r13"))
-        return SetContextDataEx(hActiveThread, UE_R13, value);
-    if(scmp(string, "r14"))
-        return SetContextDataEx(hActiveThread, UE_R14, value);
-    if(scmp(string, "r15"))
-        return SetContextDataEx(hActiveThread, UE_R15, value);
-
-    if(scmp(string, "r8d"))
-        return SetContextDataEx(hActiveThread, UE_R8, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R8) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r9d"))
-        return SetContextDataEx(hActiveThread, UE_R9, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R9) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r10d"))
-        return SetContextDataEx(hActiveThread, UE_R10, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R10) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r11d"))
-        return SetContextDataEx(hActiveThread, UE_R11, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R11) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r12d"))
-        return SetContextDataEx(hActiveThread, UE_R12, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R12) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r13d"))
-        return SetContextDataEx(hActiveThread, UE_R13, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R13) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r14d"))
-        return SetContextDataEx(hActiveThread, UE_R14, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R14) & 0xFFFFFFFF00000000));
-    if(scmp(string, "r15d"))
-        return SetContextDataEx(hActiveThread, UE_R15, (value & 0xFFFFFFFF) | (GetContextDataEx(hActiveThread, UE_R15) & 0xFFFFFFFF00000000));
-
-    if(scmp(string, "r8w"))
-        return SetContextDataEx(hActiveThread, UE_R8, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R8) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r9w"))
-        return SetContextDataEx(hActiveThread, UE_R9, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R9) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r10w"))
-        return SetContextDataEx(hActiveThread, UE_R10, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R10) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r11w"))
-        return SetContextDataEx(hActiveThread, UE_R11, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R11) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r12w"))
-        return SetContextDataEx(hActiveThread, UE_R12, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R12) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r13w"))
-        return SetContextDataEx(hActiveThread, UE_R13, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R13) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r14w"))
-        return SetContextDataEx(hActiveThread, UE_R14, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R14) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r15w"))
-        return SetContextDataEx(hActiveThread, UE_R15, (value & 0xFFFF) | (GetContextDataEx(hActiveThread, UE_R15) & 0xFFFFFFFFFFFF0000));
-    if(scmp(string, "r8b"))
-        return SetContextDataEx(hActiveThread, UE_R8, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R8) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r9b"))
-        return SetContextDataEx(hActiveThread, UE_R9, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R9) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r10b"))
-        return SetContextDataEx(hActiveThread, UE_R10, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R10) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r11b"))
-        return SetContextDataEx(hActiveThread, UE_R11, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R11) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r12b"))
-        return SetContextDataEx(hActiveThread, UE_R12, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R12) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r13b"))
-        return SetContextDataEx(hActiveThread, UE_R13, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R13) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r14b"))
-        return SetContextDataEx(hActiveThread, UE_R14, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R14) & 0xFFFFFFFFFFFFFF00));
-    if(scmp(string, "r15b"))
-        return SetContextDataEx(hActiveThread, UE_R15, (value & 0xFF) | (GetContextDataEx(hActiveThread, UE_R15) & 0xFFFFFFFFFFFFFF00));
-#endif // _WIN64
+    switch(string_int)
+    {
+    case MAKE_WORD_INTO_INT(GS):
+        titanIndex = UE_SEG_GS;
+        break;
+    case MAKE_WORD_INTO_INT(FS):
+        titanIndex = UE_SEG_FS;
+        break;
+    case MAKE_WORD_INTO_INT(ES):
+        titanIndex = UE_SEG_ES;
+        break;
+    case MAKE_WORD_INTO_INT(DS):
+        titanIndex = UE_SEG_DS;
+        break;
+    case MAKE_WORD_INTO_INT(CS):
+        titanIndex = UE_SEG_CS;
+        break;
+    case MAKE_WORD_INTO_INT(SS):
+        titanIndex = UE_SEG_SS;
+        break;
+    }
+    if(titanIndex != UE_XMM0)
+        return SetContextDataEx(hActiveThread, titanIndex, value & 0xFFFF);
 
     return false;
 }
@@ -1476,6 +1616,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             *isvar = true;
         break;
     }
+    int len = (int)strlen(string);
     if(string[0] == '['
             || (isdigitduint(string[0]) && string[1] == ':' && string[2] == '[')
             || (string[1] == 's' && (string[0] == 'c' || string[0] == 'd' || string[0] == 'e' || string[0] == 'f' || string[0] == 'g' || string[0] == 's') && string[2] == ':' && string[3] == '[') //memory location
@@ -1492,19 +1633,18 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
                 *value_size = 0;
             return true;
         }
-        int len = (int)strlen(string);
 
         int read_size = sizeof(duint);
         int prefix_size = 1;
         size_t seg_offset = 0;
-        if(string[1] == ':') //n:[ (number of bytes to read)
+        if(len > 3 && string[1] == ':') //n:[ (number of bytes to read)
         {
             prefix_size = 3;
             int new_size = string[0] - '0';
             if(new_size < read_size)
                 read_size = new_size;
         }
-        else if(string[1] == 's' && string[2] == ':')
+        else if(len > 4 && string[1] == 's' && string[2] == ':')
         {
             prefix_size = 4;
             if(string[0] == 'f') // fs:[...]
@@ -1525,7 +1665,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
 #endif //_WIN64
             }
         }
-        else if(string[0] == 'b'
+        else if(len > 6 && string[0] == 'b'
                 && string[1] == 'y'
                 && string[2] == 't'
                 && string[3] == 'e'
@@ -1537,7 +1677,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             if(new_size < read_size)
                 read_size = new_size;
         }
-        else if(string[0] == 'w'
+        else if(len > 6 && string[0] == 'w'
                 && string[1] == 'o'
                 && string[2] == 'r'
                 && string[3] == 'd'
@@ -1549,7 +1689,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
             if(new_size < read_size)
                 read_size = new_size;
         }
-        else if(string[0] == 'd'
+        else if(len > 7 && string[0] == 'd'
                 && string[1] == 'w'
                 && string[2] == 'o'
                 && string[3] == 'r'
@@ -1563,7 +1703,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
                 read_size = new_size;
         }
 #ifdef _WIN64
-        else if(string[0] == 'q'
+        else if(len > 7 && string[0] == 'q'
                 && string[1] == 'w'
                 && string[2] == 'o'
                 && string[3] == 'r'
@@ -1628,7 +1768,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
         *value = getregister(value_size, string);
         return true;
     }
-    else if(*string == '_' && isflag(string + 1)) //flag
+    else if(len > 1 && *string == '_' && isflag(string + 1)) //flag
     {
         if(!DbgIsDebugging())
         {
@@ -1676,13 +1816,9 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent, bool ba
         return true;
     else if(SymAddrFromName(string, value)) //then come symbols
         return true;
-    else if(strstr(string, "sub_") == string) //then come sub_ functions
+    else if(len > 4 && string[0] == 's' && string[1] == 'u' && string[2] == 'b' && string[3] == '_') //then come sub_ functions
     {
-#ifdef _WIN64
-        bool result = sscanf_s(string, "sub_%llX", value) == 1;
-#else //x86
-        bool result = sscanf_s(string, "sub_%X", value) == 1;
-#endif //_WIN64
+        bool result = convertNumber(string + 4, *value, 16);
         duint start;
         return result && FunctionGet(*value, &start, nullptr) && *value == start;
     }

@@ -842,6 +842,12 @@ bool ExpressionParser::Calculate(duint & value, bool signedcalc, bool allowassig
     {
         // Just a number, optimize this very common case for tracing performance
         value = mTokens[0].info();
+        if(isvar)
+            *isvar = false;
+        if(value_size)
+            *value_size = sizeof(duint);
+        if(hexonly)
+            *hexonly = false;
         return true;
     }
     EvalValue evalue(0);
