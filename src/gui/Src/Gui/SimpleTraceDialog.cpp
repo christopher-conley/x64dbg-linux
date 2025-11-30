@@ -12,6 +12,7 @@ SimpleTraceDialog::SimpleTraceDialog(QWidget* parent) :
 {
     ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint | Qt::MSWindowsFixedSizeDialogHint);
+    resize(SimpleTraceDialog::minimumSizeHint());
     duint setting;
     if(!BridgeSettingGetUint("Engine", "MaxTraceCount", &setting))
         setting = 50000;

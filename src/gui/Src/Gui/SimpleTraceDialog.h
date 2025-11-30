@@ -13,7 +13,7 @@ class SimpleTraceDialog : public QDialog
 
 public:
     explicit SimpleTraceDialog(QWidget* parent = nullptr);
-    ~SimpleTraceDialog();
+    ~SimpleTraceDialog() override;
     void setTraceCommand(const QString & command);
 
 private slots:

@@ -7,74 +7,45 @@
     <x>0</x>
     <y>0</y>
     <width>502</width>
-    <height>268</height>
+    <height>262</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string/>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="5" column="0">
+    <widget class="QLabel" name="lblMaxTraceCount">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>&amp;Maximum trace count:</string>
+     </property>
+     <property name="buddy">
+      <cstring>spinMaxTraceCount</cstring>
+     </property>
+    </widget>
+   </item>
    <item row="8" column="0" colspan="2">
     <widget class="QLabel" name="lblHint">
      <property name="text">
       <string>Hint: History is available in every text field with the Up/Down arrows!</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
      </property>
     </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="lblLogCondition">
-     <property name="text">
-      <string>Lo&amp;g Condition:</string>
-     </property>
-     <property name="buddy">
-      <cstring>editLogCondition</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="lblCommandText">
-     <property name="text">
-      <string>&amp;Command Text:</string>
-     </property>
-     <property name="buddy">
-      <cstring>editCommandText</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="HistoryLineEdit" name="editLogText"/>
-   </item>
-   <item row="2" column="1">
-    <widget class="HistoryLineEdit" name="editLogCondition"/>
-   </item>
-   <item row="0" column="1">
-    <widget class="HistoryLineEdit" name="editBreakCondition"/>
-   </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="lblBreakCondition">
-     <property name="text">
-      <string>&amp;Break Condition:</string>
-     </property>
-     <property name="openExternalLinks">
-      <bool>true</bool>
-     </property>
-     <property name="buddy">
-      <cstring>editBreakCondition</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1">
-    <widget class="HistoryLineEdit" name="editCommandText"/>
    </item>
    <item row="7" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -129,6 +100,42 @@
      </item>
     </layout>
    </item>
+   <item row="0" column="1">
+    <widget class="HistoryLineEdit" name="editBreakCondition"/>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="lblLogCondition">
+     <property name="text">
+      <string>Lo&amp;g Condition:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editLogCondition</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="HistoryLineEdit" name="editCommandText"/>
+   </item>
+   <item row="1" column="1">
+    <widget class="HistoryLineEdit" name="editLogText"/>
+   </item>
+   <item row="6" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Module Filter:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="lblLogText">
+     <property name="text">
+      <string>&amp;Log Text:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editLogText</cstring>
+     </property>
+    </widget>
+   </item>
    <item row="4" column="0">
     <widget class="QLabel" name="lblCommandCondition">
      <property name="text">
@@ -136,22 +143,6 @@
      </property>
      <property name="buddy">
       <cstring>editCommandCondition</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="lblMaxTraceCount">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>&amp;Maximum trace count:</string>
-     </property>
-     <property name="buddy">
-      <cstring>spinMaxTraceCount</cstring>
      </property>
     </widget>
    </item>
@@ -168,61 +159,81 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="lblLogText">
+   <item row="6" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QRadioButton" name="radioFilterNone">
+       <property name="toolTip">
+        <string>Trace all modules (no filter).</string>
+       </property>
+       <property name="text">
+        <string>&amp;All Modules</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioFilterUser">
+       <property name="toolTip">
+        <string>Conditions, logging, and recording only apply when execution is in a User module. System code is stepped through silently.</string>
+       </property>
+       <property name="text">
+        <string>&amp;User Only</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioFilterSystem">
+       <property name="toolTip">
+        <string>Conditions, logging, and recording only apply when execution is in a System module. User code is stepped through silently.</string>
+       </property>
+       <property name="text">
+        <string>&amp;System Only</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="lblBreakCondition">
      <property name="text">
-      <string>&amp;Log Text:</string>
+      <string>&amp;Break Condition:</string>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
      </property>
      <property name="buddy">
-      <cstring>editLogText</cstring>
+      <cstring>editBreakCondition</cstring>
      </property>
     </widget>
    </item>
-   <item row="6" column="0" colspan="2">
-    <widget class="QGroupBox" name="grpModuleFilter">
-     <property name="title">
-      <string>Module &amp;Filter</string>
+   <item row="3" column="0">
+    <widget class="QLabel" name="lblCommandText">
+     <property name="text">
+      <string>&amp;Command Text:</string>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <widget class="QRadioButton" name="radioFilterNone">
-        <property name="text">
-         <string>&amp;None</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QRadioButton" name="radioFilterUser">
-        <property name="text">
-         <string>&amp;User</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QRadioButton" name="radioFilterSystem">
-        <property name="text">
-         <string>&amp;System</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
+     <property name="buddy">
+      <cstring>editCommandText</cstring>
+     </property>
     </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="HistoryLineEdit" name="editLogCondition"/>
    </item>
   </layout>
  </widget>
