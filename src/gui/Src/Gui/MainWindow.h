@@ -276,6 +276,7 @@ protected:
     void dragEnterEvent(QDragEnterEvent* pEvent) override;
     void dropEvent(QDropEvent* pEvent) override;
     bool event(QEvent* event) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 
 private slots:
     void setupLanguagesMenu2();
