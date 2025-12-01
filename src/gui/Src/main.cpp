@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QDir>
 #include "MiscUtil.h"
+#include <dwmapi.h>
 
 MyApplication::MyApplication(int & argc, char** argv)
     : QApplication(argc, argv)
@@ -28,6 +29,21 @@ bool MyApplication::globalEventFilter(void* message)
 }
 #endif
 
+static void invalidateParentThumbnail(QDialog* dialog)
+{
+    // Find the top-level parent window
+    auto parent = dialog->parentWidget();
+    while(parent && parent->parentWidget())
+    {
+        parent = parent->parentWidget();
+    }
+
+    if(parent && parent->windowHandle())
+    {
+        DwmInvalidateIconicBitmaps((HWND)parent->winId());
+    }
+}
+
 bool MyApplication::notify(QObject* receiver, QEvent* event)
 {
     bool done = true;
@@ -41,7 +57,20 @@ bool MyApplication::notify(QObject* receiver, QEvent* event)
                 MainWindow::updateDarkTitleBar(widget);
             }
         }
+
         done = QApplication::notify(receiver, event);
+
+        // Fix stale taskbar preview thumbnails after closing child windows.
+        // Windows DWM caches the preview bitmap while hovering the taskbar, but Qt
+        // doesn't notify DWM when modal dialogs close, leaving the cached thumbnail
+        // showing the now-closed dialog. Force DWM to refresh by invalidating it.
+        if(event->type() == QEvent::Hide)
+        {
+            if(auto dialog = qobject_cast<QDialog*>(receiver))
+            {
+                invalidateParentThumbnail(dialog);
+            }
+        }
     }
     catch(const std::exception & ex)
     {

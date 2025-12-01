@@ -853,6 +853,7 @@ target_link_libraries(gui PRIVATE
 	md4c-html
 	winmm
 	wininet
+	dwmapi
 )
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86

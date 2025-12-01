@@ -148,6 +148,7 @@ private-link-libraries = [
     "::md4c-html",
     "winmm",
     "wininet",
+    "dwmapi"
 ]
 x86.private-link-libraries = [
     "src/gui/Src/ThirdPartyLibs/ldconvert/ldconvert_x86.lib",

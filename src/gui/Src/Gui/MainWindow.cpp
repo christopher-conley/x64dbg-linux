@@ -1400,10 +1400,10 @@ bool MainWindow::event(QEvent* event)
     return QMainWindow::event(event);
 }
 
-bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+bool MainWindow::nativeEvent(const QByteArray & eventType, void* message, long* result)
 {
     const auto msg = (MSG*)message;
-    if (msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_CLOSE)
+    if(msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_CLOSE)
     {
         // When a modal dialog is open (QDialog::exec), the main window is disabled.
         // DefWindowProc ignores WM_SYSCOMMAND/SC_CLOSE for disabled windows,
