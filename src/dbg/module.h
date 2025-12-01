@@ -181,5 +181,6 @@ void ModCacheClear();
 bool ModRelocationsFromAddr(duint Address, std::vector<MODRELOCATIONINFO> & Relocations);
 bool ModRelocationAtAddr(duint Address, MODRELOCATIONINFO* Relocation);
 bool ModRelocationsInRange(duint Address, duint Size, std::vector<MODRELOCATIONINFO> & Relocations);
+duint ModFunctionEntryGuessFromAddr(duint Address);
 
 #endif // _MODULE_H

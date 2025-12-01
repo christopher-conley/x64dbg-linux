@@ -2,6 +2,7 @@
 #include "cmd-analysis.h"
 #include "linearanalysis.h"
 #include "memory.h"
+#include "module.h"
 #include "exceptiondirectoryanalysis.h"
 #include "controlflowanalysis.h"
 #include "analysis_nukem.h"
@@ -90,29 +91,17 @@ bool cbInstrAnalrecur(int argc, char* argv[])
     duint entry;
     if(!valfromstring(argv[1], &entry, false))
         return false;
-#ifdef _WIN64
-    // find the closest function
-    {
-        SHARED_ACQUIRE(LockModules);
-        auto info = ModInfoFromAddr(entry);
-        if(info)
-        {
-            DWORD rva = DWORD(entry - info->base);
-            auto runtimeFunction = info->findRuntimeFunction(rva);
-            if(runtimeFunction)
-            {
-                if(runtimeFunction->BeginAddress < rva)
-                {
-                    entry = info->base + runtimeFunction->BeginAddress;
-                }
-            }
-        }
-    }
-#endif // _WIN64
-    duint size;
+
+    // Attempt to guess function entry point with module/symbol information
+    auto funcEntry = ModFunctionEntryGuessFromAddr(entry);
+    if(funcEntry != 0)
+        entry = funcEntry;
+
+    duint size = 0;
     auto base = MemFindBaseAddr(entry, &size);
     if(!base)
         return false;
+
     RecursiveAnalysis analysis(base, size, entry, true);
     analysis.Analyse();
     analysis.SetMarkers();

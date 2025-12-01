@@ -1371,6 +1371,34 @@ bool ModRelocationsInRange(duint Address, duint Size, std::vector<MODRELOCATIONI
     return !Relocations.empty();
 }
 
+duint ModFunctionEntryGuessFromAddr(duint Address)
+{
+    SHARED_ACQUIRE(LockModules);
+
+    auto info = ModInfoFromAddr(Address);
+    if(info == nullptr)
+        return 0;
+
+    DWORD rva = DWORD(Address - info->base);
+
+#ifdef _WIN64
+    // Try RUNTIME_FUNCTION first (most reliable on x64)
+    auto runtimeFunction = info->findRuntimeFunction(rva);
+    if(runtimeFunction && runtimeFunction->BeginAddress < rva)
+        return info->base + runtimeFunction->BeginAddress;
+#endif
+
+    // Fall back to PDB symbols
+    if(info->symbols && info->symbols->isOpen())
+    {
+        SymbolInfo symInfo;
+        if(info->symbols->findSymbolExactOrLower(rva, symInfo) && symInfo.rva < rva)
+            return info->base + symInfo.rva;
+    }
+
+    return 0;
+}
+
 #if _WIN64
 const RUNTIME_FUNCTION* MODINFO::findRuntimeFunction(DWORD rva, bool resolveIndirect) const
 {
