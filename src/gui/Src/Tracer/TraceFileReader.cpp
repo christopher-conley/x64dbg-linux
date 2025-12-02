@@ -457,14 +457,11 @@ void TraceFileParser::readFileHeader(TraceFileReader* that)
     }
 }
 
-static bool readBlock(QFile & traceFile)
+static bool readBlock(QFile & traceFile, unsigned char blockType)
 {
     if(!traceFile.isReadable())
         throw std::wstring(L"File is not readable");
-    unsigned char blockType;
     unsigned char changedCountFlags[3]; //reg changed count, mem accessed count, flags
-    if(traceFile.read((char*)&blockType, 1) != 1)
-        throw std::wstring(L"Read block type failed");
     if(blockType == 0)
     {
         if(traceFile.read((char*)&changedCountFlags, 3) != 3)
@@ -525,21 +522,27 @@ void TraceFileParser::run()
         while(!that->traceFile.atEnd())
         {
             quint64 blockStart = that->traceFile.pos();
-            bool isPageBoundary = readBlock(that->traceFile);
-            if(isPageBoundary)
+            unsigned char blockType;
+            if(that->traceFile.read((char*)&blockType, 1) != 1)
+                throw std::wstring(L"Read block type failed");
+            bool isPageBoundary = readBlock(that->traceFile, blockType);
+            if(blockType < 0x80) //Check whether it is a non-user block
             {
-                if(lastIndex != 0)
-                    that->fileIndex.back().second.second = index - (lastIndex - 1);
-                that->fileIndex.push_back(std::make_pair(index, TraceFileReader::Range(blockStart, 0)));
-                lastIndex = index + 1;
-                //Update progress
-                that->progress.store(that->traceFile.pos() * 100 / filesize);
-                if(that->progress == 100)
-                    that->progress = 99;
-                if(this->isInterruptionRequested() && !that->traceFile.atEnd()) //Cancel loading
-                    throw std::wstring(L"Canceled");
+                if(isPageBoundary)
+                {
+                    if(lastIndex != 0)
+                        that->fileIndex.back().second.second = index - (lastIndex - 1);
+                    that->fileIndex.push_back(std::make_pair(index, TraceFileReader::Range(blockStart, 0)));
+                    lastIndex = index + 1;
+                    //Update progress
+                    that->progress.store(that->traceFile.pos() * 100 / filesize);
+                    if(that->progress == 100)
+                        that->progress = 99;
+                    if(this->isInterruptionRequested() && !that->traceFile.atEnd()) //Cancel loading
+                        throw std::wstring(L"Canceled");
+                }
+                index++;
             }
-            index++;
         }
         if(index > 0)
             that->fileIndex.back().second.second = index - (lastIndex - 1);
@@ -591,16 +594,22 @@ void TraceFileReader::purgeLastPage()
         while(!traceFile.atEnd())
         {
             quint64 blockStart = traceFile.pos();
-            bool isPageBoundary = readBlock(traceFile);
-            if(isPageBoundary)
+            unsigned char blockType;
+            if(traceFile.read((char*)&blockType, 1) != 1)
+                throw std::wstring(L"Read block type failed");
+            bool isPageBoundary = readBlock(traceFile, blockType);
+            if(blockType < 0x80) //Check whether it is a non-user block
             {
-                if(lastIndex != 0)
-                    fileIndex.back().second.second = index - (lastIndex - 1);
-                fileIndex.push_back(std::make_pair(index, TraceFileReader::Range(blockStart, 0)));
-                lastIndex = index + 1;
-                isBlockExist = true;
+                if(isPageBoundary)
+                {
+                    if(lastIndex != 0)
+                        fileIndex.back().second.second = index - (lastIndex - 1);
+                    fileIndex.push_back(std::make_pair(index, TraceFileReader::Range(blockStart, 0)));
+                    lastIndex = index + 1;
+                    isBlockExist = true;
+                }
+                index++;
             }
-            index++;
         }
         if(isBlockExist)
             fileIndex.back().second.second = index - (lastIndex - 1);
