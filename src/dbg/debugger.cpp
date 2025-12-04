@@ -283,7 +283,7 @@ void cbDebuggerPaused()
         static DWORD PrevThreadId = 0;
         if(PrevThreadId == 0)
             PrevThreadId = fdProcessInfo->dwThreadId; // Initialize to Main Thread
-        DWORD currentThreadId = ThreadGetId(hActiveThread);
+        DWORD currentThreadId = GetDebugData()->dwThreadId;
         if(currentThreadId != PrevThreadId && PrevThreadId != 0)
         {
             dprintf(QT_TRANSLATE_NOOP("DBG", "Thread switched from %X to %X !\n"), PrevThreadId, currentThreadId);
@@ -501,7 +501,7 @@ static void DebugUpdateTitle(duint disasm_addr, bool analyzeThreadSwitch)
     else
         _snprintf_s(modtext, _TRUNCATE, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Module: %s - ")), modname);
     char threadswitch[256] = "";
-    DWORD currentThreadId = ThreadGetId(hActiveThread);
+    DWORD currentThreadId = GetDebugData()->dwThreadId;
     if(analyzeThreadSwitch)
     {
         static DWORD PrevThreadId = 0;

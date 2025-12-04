@@ -421,7 +421,7 @@ bool cbDebugPause(int argc, char* argv[])
     //WORKAROUND: If a program is stuck in NtUserGetMessage (GetMessage was called), this
     //will send a WM_NULL to stop the waiting. This only works if the message is not filtered.
     //OllyDbg also does this in a similar way.
-    PostThreadMessageA(ThreadGetId(hActiveThread), WM_NULL, 0, 0);
+    PostThreadMessageA(GetDebugData()->dwThreadId, WM_NULL, 0, 0);
     if(ResumeThread(hActiveThread) == -1)
     {
         dputs(QT_TRANSLATE_NOOP("DBG", "Error resuming thread"));

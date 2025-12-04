@@ -150,7 +150,7 @@ static void HandleZydisOperand(Zydis & zydis, int opindex, DISASM_ARG* arg, bool
         if(mem.segment == ArchValue(ZYDIS_REGISTER_FS, ZYDIS_REGISTER_GS))
         {
             arg->segment = ArchValue(SEG_FS, SEG_GS);
-            value += ThreadGetLocalBase(ThreadGetId(hActiveThread));
+            value += ThreadGetLocalBase(GetDebugData()->dwThreadId);
         }
         else
         {

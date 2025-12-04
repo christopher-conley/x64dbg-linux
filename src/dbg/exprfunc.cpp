@@ -174,7 +174,7 @@ namespace Exprfunc
 
     duint tid()
     {
-        return duint(ThreadGetId(hActiveThread));
+        return duint(GetDebugData()->dwThreadId);
     }
 
     duint kusd()
