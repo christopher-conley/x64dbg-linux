@@ -2,7 +2,7 @@
 #ifndef QT_NO_ACCESSIBILITY
 #include <array>
 #include <QAccessibleWidget>
-#include "../Gui/RegistersView.h"
+#include "Gui/RegistersView.h"
 
 class AccessibleRegistersView;
 
@@ -11,8 +11,7 @@ class AccessibleRegistersViewItem : public QAccessibleInterface
     RegistersView::REGISTER_NAME id;
     AccessibleRegistersView* mParent;
 public:
-    AccessibleRegistersViewItem();
-    void setRegistersView(AccessibleRegistersView* parent, int id);
+    AccessibleRegistersViewItem(AccessibleRegistersView* parent, RegistersView::REGISTER_NAME id);
 
     QString text(QAccessible::Text t) const override;
     QColor foregroundColor() const override;
@@ -40,7 +39,7 @@ public:
     ~AccessibleRegistersView();
     int childCount() const override;
     QAccessibleInterface* child(int index) const override;
-    QAccessibleInterface* QAccessibleInterface::childAt(int x, int y) const override;
+    QAccessibleInterface* childAt(int x, int y) const override;
     QAccessibleInterface* focusChild() const override;
     bool isValid() const override;
     QAccessible::Role role() const override;

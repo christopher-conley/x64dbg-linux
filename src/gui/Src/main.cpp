@@ -11,7 +11,7 @@
 #include <QDir>
 #include "MiscUtil.h"
 #include <dwmapi.h>
-#include "../Accessible/Accessible.h"
+#include "Accessible/Accessible.h"
 
 MyApplication::MyApplication(int & argc, char** argv)
     : QApplication(argc, argv)

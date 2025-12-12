@@ -3368,7 +3368,7 @@ void RegistersView::accessibilitySelectionChanged()
         else
         {
             QAccessibleEvent focusEvent(static_cast<RegistersView*>(this), QAccessible::Focus);
-            QAccessible::updateAccessibility(&updateEvent);
+            QAccessible::updateAccessibility(&focusEvent);
         }
     }
 }

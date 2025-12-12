@@ -1,5 +1,4 @@
 #include <QListWidget>
-#include <QAccessibleEvent>
 #include "MiscUtil.h"
 #include "CPUWidget.h"
 #include "CPUDisassembly.h"

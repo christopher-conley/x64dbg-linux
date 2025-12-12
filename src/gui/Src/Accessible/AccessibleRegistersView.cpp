@@ -2,14 +2,8 @@
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleRegistersView.h"
 
-AccessibleRegistersViewItem::AccessibleRegistersViewItem() : mParent(nullptr), id(RegistersView::REGISTER_NAME::CAX)
+AccessibleRegistersViewItem::AccessibleRegistersViewItem(AccessibleRegistersView* parent, RegistersView::REGISTER_NAME id) : mParent(parent), id(id)
 {
-}
-
-void AccessibleRegistersViewItem::setRegistersView(AccessibleRegistersView* parent, int id)
-{
-    this->mParent = parent;
-    this->id = (RegistersView::REGISTER_NAME)id;
 }
 
 QString AccessibleRegistersViewItem::text(QAccessible::Text t) const
@@ -20,8 +14,8 @@ QString AccessibleRegistersViewItem::text(QAccessible::Text t) const
     case QAccessible::Name:
     case QAccessible::Value:
         if(w->mLABELDISPLAY.contains(id))
-            return QString(w->mRegisterMapping[id]) + " = " + w->GetRegStringValueFromValue(w->mSelected, w->registerValue(&w->mRegDumpStruct, w->mSelected)) + ' ' + w->getRegisterLabel(id);
-        return QString(w->mRegisterMapping[id]) + " = " + w->GetRegStringValueFromValue(w->mSelected, w->registerValue(&w->mRegDumpStruct, w->mSelected));
+            return QString(w->mRegisterMapping[id]) + " = " + w->GetRegStringValueFromValue(id, w->registerValue(&w->mRegDumpStruct, id)) + ' ' + w->getRegisterLabel(id);
+        return QString(w->mRegisterMapping[id]) + " = " + w->GetRegStringValueFromValue(id, w->registerValue(&w->mRegDumpStruct, id));
     case QAccessible::Help:
         return w->helpRegister(id);
     default:
@@ -53,7 +47,7 @@ QWindow* AccessibleRegistersViewItem::window() const
 
 QAccessibleInterface* AccessibleRegistersViewItem::parent() const
 {
-    return dynamic_cast<QAccessibleInterface*>(mParent);
+    return mParent;
 }
 
 QAccessibleInterface* AccessibleRegistersViewItem::child(int index) const
@@ -142,8 +136,7 @@ QAccessibleInterface* AccessibleRegistersView::child(int index) const
         }
         else
         {
-            auto child = new AccessibleRegistersViewItem();
-            child->setRegistersView(const_cast<AccessibleRegistersView*>(this), index);
+            auto child = new AccessibleRegistersViewItem(const_cast<AccessibleRegistersView*>(this), (RegistersView::REGISTER_NAME)index);
             interfaces[index] = QAccessible::registerAccessibleInterface(child);
             return child;
         }
@@ -164,7 +157,10 @@ QAccessibleInterface* AccessibleRegistersView::childAt(int x, int y) const
 
 QAccessibleInterface* AccessibleRegistersView::focusChild() const
 {
-    return child(m_registersView->mSelected);
+    if(m_registersView->mSelected < RegistersView::UNKNOWN)
+        return child(m_registersView->mSelected);
+    else
+        return (QAccessibleInterface*)this;
 }
 
 bool AccessibleRegistersView::isValid() const
