@@ -488,6 +488,10 @@ endif()
 # Target: gui
 set(gui_SOURCES
 	cmake.toml
+	"src/gui/Src/Accessible/Accessible.cpp"
+	"src/gui/Src/Accessible/Accessible.h"
+	"src/gui/Src/Accessible/AccessibleRegistersView.cpp"
+	"src/gui/Src/Accessible/AccessibleRegistersView.h"
 	"src/gui/Src/BasicView/AbstractSearchList.h"
 	"src/gui/Src/BasicView/AbstractStdTable.cpp"
 	"src/gui/Src/BasicView/AbstractStdTable.h"

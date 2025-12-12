@@ -1,4 +1,5 @@
 #include <QListWidget>
+#include <QAccessibleEvent>
 #include "MiscUtil.h"
 #include "CPUWidget.h"
 #include "CPUDisassembly.h"
@@ -145,7 +146,10 @@ void CPURegistersView::mousePressEvent(QMouseEvent* event)
             emit refresh();
         }
         else
+        {
             mSelected = UNKNOWN;
+        }
+        accessibilitySelectionChanged();
     }
 }
 

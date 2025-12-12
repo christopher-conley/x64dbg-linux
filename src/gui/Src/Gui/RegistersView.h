@@ -298,4 +298,8 @@ protected:
     QAction* SIMDHQWord;
     QAction* SIMDXMMSizeAuto;
     QAction* SIMDAlwaysShowAVX512;
+    void accessibilitySelectionChanged();
+
+    friend class AccessibleRegistersView;
+    friend class AccessibleRegistersViewItem;
 };

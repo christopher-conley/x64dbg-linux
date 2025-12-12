@@ -2,6 +2,7 @@
 #include <QListWidget>
 #include <QToolTip>
 #include <stdint.h>
+#include <QAccessibleEvent>
 #include "RegistersView.h"
 #include "CPUDisassembly.h"
 #include "CPUMultiDump.h"
@@ -1775,7 +1776,10 @@ void RegistersView::mousePressEvent(QMouseEvent* event)
             emit refresh();
         }
         else
+        {
             mSelected = UNKNOWN;
+        }
+        accessibilitySelectionChanged();
     }
 }
 
@@ -1869,6 +1873,7 @@ void RegistersView::keyPressEvent(QKeyEvent* event)
             mSelected = newRegister;
             ensureRegisterVisible(newRegister);
             emit refresh();
+            accessibilitySelectionChanged();
         }
     }
     QScrollArea::keyPressEvent(event);
@@ -3343,4 +3348,27 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
 
     // force repaint
     emit refresh();
+}
+
+void RegistersView::accessibilitySelectionChanged()
+{
+    if(QAccessible::isActive())
+    {
+        QAccessibleEvent updateEvent(static_cast<RegistersView*>(this), QAccessible::Selection);
+        QAccessible::updateAccessibility(&updateEvent);
+        if(mSelected < REGISTER_NAME::UNKNOWN)
+        {
+            QAccessibleInterface* a = QAccessible::queryAccessibleInterface(this);
+            if(a)
+            {
+                QAccessibleEvent focusEvent(a->child(mSelected), QAccessible::Focus);
+                QAccessible::updateAccessibility(&focusEvent);
+            }
+        }
+        else
+        {
+            QAccessibleEvent focusEvent(static_cast<RegistersView*>(this), QAccessible::Focus);
+            QAccessible::updateAccessibility(&updateEvent);
+        }
+    }
 }
