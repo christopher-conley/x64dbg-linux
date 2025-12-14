@@ -393,5 +393,6 @@ private:
 
     void addReferenceAction(QMenu* menu, duint addr, const QString & description);
     bool getHighlightedTokenValueText(QString & text) const;
+    void paintImage(QPainter* painter);
     QImage getImage();
 };
