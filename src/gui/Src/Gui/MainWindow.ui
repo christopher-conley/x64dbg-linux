@@ -1036,7 +1036,7 @@
      <normaloff>:/Default/icons/bit.png</normaloff>:/Default/icons/bit.png</iconset>
    </property>
    <property name="text">
-    <string>Bit</string>
+    <string>Mark covered (yes/no)</string>
    </property>
    <property name="statusTip">
     <string>Enable trace coverage with 1 bit (whether an instruction was executed or not)</string>
@@ -1048,7 +1048,7 @@
      <normaloff>:/Default/icons/byte.png</normaloff>:/Default/icons/byte.png</iconset>
    </property>
    <property name="text">
-    <string>Byte</string>
+    <string>Count hits (up to 255)</string>
    </property>
    <property name="statusTip">
     <string>Enable trace coverage with 1 byte to record how many times an instruction has been executed.</string>
@@ -1060,7 +1060,7 @@
      <normaloff>:/Default/icons/word.png</normaloff>:/Default/icons/word.png</iconset>
    </property>
    <property name="text">
-    <string>Word</string>
+    <string>Count hits (up to 65535)</string>
    </property>
    <property name="statusTip">
     <string>Enable trace coverage with 1 word to record how many times an instruction has been executed.</string>
