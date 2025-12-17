@@ -1,6 +1,7 @@
 // This file implements accessibility interface for RegistersView
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleRegistersView.h"
+#include "StringUtil.h"
 
 AccessibleRegistersViewItem::AccessibleRegistersViewItem(AccessibleRegistersView* parent, RegistersView::REGISTER_NAME id) : mParent(parent), id(id)
 {
@@ -96,7 +97,35 @@ void AccessibleRegistersViewItem::setText(QAccessible::Text t, const QString & t
 
 QRect AccessibleRegistersViewItem::rect() const
 {
-    return QRect();
+    QRect rect;
+    const RegistersView* parent = mParent->m_registersView;
+    const auto & it = parent->mRegisterPlaces.constFind(id);
+    if(it == parent->mRegisterPlaces.cend())
+    {
+        return rect;
+    }
+    int top, bottom, left, right;
+    top = it.value().line * parent->mRowHeight + parent->yTopSpacing;
+    bottom = top + parent->mRowHeight;
+    // These registers occupy a whole line
+    if(it.key() >= RegistersView::CAX && it.key() <= RegistersView::EFLAGS
+            || it.key() >= RegistersView::MM0 && it.key() <= RegistersView::MM7
+            || it.key() >= RegistersView::DR0 && it.key() <= RegistersView::DR7
+            || it.key() >= RegistersView::K0 && it.key() <= RegistersView::K7
+            || it.key() >= RegistersView::XMM0 && it.key() <= ArchValue(RegistersView::XMM7, RegistersView::XMM31))
+    {
+        const QScrollArea* upperScrollArea = (const QScrollArea*)parent->parentWidget()->parentWidget();
+        left = 0;
+        right = upperScrollArea->width();
+    }
+    else
+    {
+        left = (1 + it.value().start) * parent->mCharWidth;
+        right = left + ((it.value().labelwidth + it.value().valuesize) * parent->mCharWidth);
+    }
+    const QPoint TL = parent->mapToGlobal(QPoint(left, top));
+    const QPoint BR = parent->mapToGlobal(QPoint(right, bottom));
+    return QRect(TL, BR);
 }
 
 bool AccessibleRegistersViewItem::isValid() const
@@ -149,7 +178,7 @@ QAccessibleInterface* AccessibleRegistersView::childAt(int x, int y) const
 {
     RegistersView::REGISTER_NAME clickedReg;
     QPoint local = m_registersView->mapFromGlobal(QPoint(x, y));
-    if(m_registersView->identifyRegister(local.y(), local.x(), &clickedReg))
+    if(m_registersView->identifyRegister((local.y() - m_registersView->yTopSpacing) / (double)m_registersView->mRowHeight, local.x() / (double)m_registersView->mCharWidth, &clickedReg))
         if(clickedReg < RegistersView::UNKNOWN)
             return child(static_cast<int>(clickedReg));
     return (QAccessibleInterface*)this;
@@ -185,5 +214,19 @@ QAccessible::State AccessibleRegistersView::state() const
     state.disabled = !m_registersView->isActive;
     state.hasPopup = true;
     return state;
+}
+
+QRect AccessibleRegistersView::rect() const
+{
+    QRect rect;
+    const QScrollArea* upperScrollArea = (const QScrollArea*)m_registersView->parentWidget()->parentWidget();
+    int top, bottom, left, right;
+    top = 0;
+    bottom = upperScrollArea->height();
+    left = 0;
+    right = upperScrollArea->width();
+    const QPoint TL = upperScrollArea->mapToGlobal(QPoint(left, top));
+    const QPoint BR = upperScrollArea->mapToGlobal(QPoint(right, bottom));
+    return QRect(TL, BR);
 }
 #endif

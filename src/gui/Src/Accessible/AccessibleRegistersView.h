@@ -44,6 +44,7 @@ public:
     bool isValid() const override;
     QAccessible::Role role() const override;
     QAccessible::State state() const override;
+    QRect rect() const override;
 };
 
 #endif

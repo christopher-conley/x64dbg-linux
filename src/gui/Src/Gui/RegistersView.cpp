@@ -1819,8 +1819,6 @@ void RegistersView::mouseDoubleClickEvent(QMouseEvent* event)
 
 void RegistersView::paintEvent(QPaintEvent* event)
 {
-    Q_UNUSED(event);
-
     if(mChangeViewButton != NULL)
     {
         if(mShowFpu)
@@ -1831,6 +1829,7 @@ void RegistersView::paintEvent(QPaintEvent* event)
 
     QPainter painter(this->viewport());
     painter.setFont(font());
+    painter.setClipRect(event->rect()); // Only repaint this dirty rect
     painter.fillRect(painter.viewport(), QBrush(ConfigColor("RegistersBackgroundColor")));
 
     // Don't draw the registers if a program isn't actually running
