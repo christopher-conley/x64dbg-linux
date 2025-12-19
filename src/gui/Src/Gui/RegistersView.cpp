@@ -1829,7 +1829,6 @@ void RegistersView::paintEvent(QPaintEvent* event)
 
     QPainter painter(this->viewport());
     painter.setFont(font());
-    painter.setClipRect(event->rect()); // Only repaint this dirty rect
     painter.fillRect(painter.viewport(), QBrush(ConfigColor("RegistersBackgroundColor")));
 
     // Don't draw the registers if a program isn't actually running
@@ -2817,30 +2816,36 @@ void RegistersView::onCopyAllAction()
         appendRegister(text, REGISTER_NAME::XMM14, "XMM14 : ", "XMM14 : ");
         appendRegister(text, REGISTER_NAME::XMM15, "XMM15 : ", "XMM15 : ");
         appendRegister(text, REGISTER_NAME::XMM16, "XMM16 : ", "XMM16 : ");
-        appendRegister(text, REGISTER_NAME::XMM17, "XMM17 : ", "XMM17 : ");
-        appendRegister(text, REGISTER_NAME::XMM18, "XMM18 : ", "XMM18 : ");
-        appendRegister(text, REGISTER_NAME::XMM19, "XMM19 : ", "XMM19 : ");
-        appendRegister(text, REGISTER_NAME::XMM20, "XMM20 : ", "XMM20 : ");
-        appendRegister(text, REGISTER_NAME::XMM21, "XMM21 : ", "XMM21 : ");
-        appendRegister(text, REGISTER_NAME::XMM22, "XMM22 : ", "XMM22 : ");
-        appendRegister(text, REGISTER_NAME::XMM23, "XMM23 : ", "XMM23 : ");
-        appendRegister(text, REGISTER_NAME::XMM24, "XMM24 : ", "XMM24 : ");
-        appendRegister(text, REGISTER_NAME::XMM25, "XMM25 : ", "XMM25 : ");
-        appendRegister(text, REGISTER_NAME::XMM26, "XMM26 : ", "XMM26 : ");
-        appendRegister(text, REGISTER_NAME::XMM27, "XMM27 : ", "XMM27 : ");
-        appendRegister(text, REGISTER_NAME::XMM28, "XMM28 : ", "XMM28 : ");
-        appendRegister(text, REGISTER_NAME::XMM29, "XMM29 : ", "XMM29 : ");
-        appendRegister(text, REGISTER_NAME::XMM30, "XMM30 : ", "XMM30 : ");
-        appendRegister(text, REGISTER_NAME::XMM31, "XMM31 : ", "XMM31 : ");
+        if(mAVX512RegistersShown)
+        {
+            appendRegister(text, REGISTER_NAME::XMM17, "XMM17 : ", "XMM17 : ");
+            appendRegister(text, REGISTER_NAME::XMM18, "XMM18 : ", "XMM18 : ");
+            appendRegister(text, REGISTER_NAME::XMM19, "XMM19 : ", "XMM19 : ");
+            appendRegister(text, REGISTER_NAME::XMM20, "XMM20 : ", "XMM20 : ");
+            appendRegister(text, REGISTER_NAME::XMM21, "XMM21 : ", "XMM21 : ");
+            appendRegister(text, REGISTER_NAME::XMM22, "XMM22 : ", "XMM22 : ");
+            appendRegister(text, REGISTER_NAME::XMM23, "XMM23 : ", "XMM23 : ");
+            appendRegister(text, REGISTER_NAME::XMM24, "XMM24 : ", "XMM24 : ");
+            appendRegister(text, REGISTER_NAME::XMM25, "XMM25 : ", "XMM25 : ");
+            appendRegister(text, REGISTER_NAME::XMM26, "XMM26 : ", "XMM26 : ");
+            appendRegister(text, REGISTER_NAME::XMM27, "XMM27 : ", "XMM27 : ");
+            appendRegister(text, REGISTER_NAME::XMM28, "XMM28 : ", "XMM28 : ");
+            appendRegister(text, REGISTER_NAME::XMM29, "XMM29 : ", "XMM29 : ");
+            appendRegister(text, REGISTER_NAME::XMM30, "XMM30 : ", "XMM30 : ");
+            appendRegister(text, REGISTER_NAME::XMM31, "XMM31 : ", "XMM31 : ");
+        }
 #endif
-        appendRegister(text, REGISTER_NAME::K0, "K0  : ", "K0  : ");
-        appendRegister(text, REGISTER_NAME::K1, "K1  : ", "K1  : ");
-        appendRegister(text, REGISTER_NAME::K2, "K2  : ", "K2  : ");
-        appendRegister(text, REGISTER_NAME::K3, "K3  : ", "K3  : ");
-        appendRegister(text, REGISTER_NAME::K4, "K4  : ", "K4  : ");
-        appendRegister(text, REGISTER_NAME::K5, "K5  : ", "K5  : ");
-        appendRegister(text, REGISTER_NAME::K6, "K6  : ", "K6  : ");
-        appendRegister(text, REGISTER_NAME::K7, "K7  : ", "K7  : ");
+        if(mAVX512RegistersShown)
+        {
+            appendRegister(text, REGISTER_NAME::K0, "K0  : ", "K0  : ");
+            appendRegister(text, REGISTER_NAME::K1, "K1  : ", "K1  : ");
+            appendRegister(text, REGISTER_NAME::K2, "K2  : ", "K2  : ");
+            appendRegister(text, REGISTER_NAME::K3, "K3  : ", "K3  : ");
+            appendRegister(text, REGISTER_NAME::K4, "K4  : ", "K4  : ");
+            appendRegister(text, REGISTER_NAME::K5, "K5  : ", "K5  : ");
+            appendRegister(text, REGISTER_NAME::K6, "K6  : ", "K6  : ");
+            appendRegister(text, REGISTER_NAME::K7, "K7  : ", "K7  : ");
+        }
     }
     appendRegister(text, REGISTER_NAME::DR0, "DR0 : ", "DR0 : ");
     appendRegister(text, REGISTER_NAME::DR1, "DR1 : ", "DR1 : ");

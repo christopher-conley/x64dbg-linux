@@ -1,146 +1,7 @@
 // This file implements accessibility interface for RegistersView
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleAbstractTableView.h"
-
-AccessibleAbstractTableViewCell::AccessibleAbstractTableViewCell(AccessibleAbstractTableView* parent, duint row, int column) : mParent(parent), row(row), column(column)
-{
-}
-
-QString AccessibleAbstractTableViewCell::text(QAccessible::Text t) const
-{
-    AbstractTableView* w = mParent->m_tableView;
-    switch(t)
-    {
-    case QAccessible::Name:
-    case QAccessible::Value:
-        return QString("Example Table Cell %1 row %2 column").arg(row).arg(column);
-    default:
-        return QString();
-    }
-}
-
-QColor AccessibleAbstractTableViewCell::foregroundColor() const
-{
-    return mParent->m_tableView->mTextColor;
-}
-
-int AccessibleAbstractTableViewCell::childCount() const
-{
-    return 0;
-}
-
-QWindow* AccessibleAbstractTableViewCell::window() const
-{
-    return mParent->window();
-}
-
-QAccessibleInterface* AccessibleAbstractTableViewCell::parent() const
-{
-    return dynamic_cast<QAccessibleInterface*>(mParent);
-}
-
-QAccessibleInterface* AccessibleAbstractTableViewCell::child(int index) const
-{
-    return nullptr;
-}
-
-int AccessibleAbstractTableViewCell::indexOfChild(const QAccessibleInterface* child) const
-{
-    return -1;
-}
-
-QAccessible::Role AccessibleAbstractTableViewCell::role() const
-{
-    return QAccessible::Cell;
-}
-
-QAccessible::State AccessibleAbstractTableViewCell::state() const
-{
-    QAccessible::State state;
-    state.focusable = mParent->m_tableView->getRowCount() > 0;
-    state.active = state.focusable;
-    state.selectable = state.focusable;
-    state.selected = false;
-    state.focused = false;
-    return state;
-}
-
-QAccessibleInterface* AccessibleAbstractTableViewCell::childAt(int x, int y) const
-{
-    return nullptr;
-}
-
-QObject* AccessibleAbstractTableViewCell::object() const
-{
-    return nullptr;
-}
-
-void AccessibleAbstractTableViewCell::setText(QAccessible::Text t, const QString & text)
-{
-}
-
-QRect AccessibleAbstractTableViewCell::rect() const
-{
-    const auto & table = mParent->m_tableView;
-    int height = table->getRowHeight();
-    auto & actualColumn = table->mColumnOrder[column];
-    QPoint pos(table->getColumnPosition(column), table->getHeaderHeight() + row * height);
-    pos = table->mapToGlobal(pos);
-    return QRect(pos, QSize(table->getColumnWidth(actualColumn), height));
-}
-
-bool AccessibleAbstractTableViewCell::isValid() const
-{
-    return true;
-}
-
-void* AccessibleAbstractTableViewCell::interface_cast(QAccessible::InterfaceType type)
-{
-    if(type == QAccessible::TableCellInterface)
-        return static_cast<QAccessibleTableCellInterface*>(this);
-    else
-        return nullptr;
-}
-
-bool AccessibleAbstractTableViewCell::isSelected() const
-{
-    return false;
-}
-
-QList<QAccessibleInterface*> AccessibleAbstractTableViewCell::columnHeaderCells() const
-{
-    return QList<QAccessibleInterface*>();
-}
-
-QList<QAccessibleInterface*> AccessibleAbstractTableViewCell::rowHeaderCells() const
-{
-    return QList<QAccessibleInterface*>();
-}
-
-int AccessibleAbstractTableViewCell::columnIndex() const
-{
-    return column;
-}
-
-int AccessibleAbstractTableViewCell::rowIndex() const
-{
-    return row;
-}
-
-int AccessibleAbstractTableViewCell::columnExtent() const
-{
-    return 1;
-}
-
-int AccessibleAbstractTableViewCell::rowExtent() const
-{
-    return 1;
-}
-
-QAccessibleInterface* AccessibleAbstractTableViewCell::table() const
-{
-    return static_cast<QAccessibleInterface*>(mParent);
-}
+#include "AccessibleAbstractTableViewCell.h"
 
 AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessibleWidget(w, QAccessible::Table, dynamic_cast<AbstractTableView*>(w)->accessibleName())
 {
@@ -157,6 +18,13 @@ AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessib
     if(rows > 0 && cols > 0)
     {
         cellInterfaces = std::vector<QAccessible::Id>((size_t)(rows * cols), (QAccessible::Id)0);
+        for(auto i = 0; i < rows; i++)
+        {
+            for(int j = 0; j < cols; j++)
+            {
+                cellArray(i, j) = QAccessible::registerAccessibleInterface(new AccessibleAbstractTableViewCell(this, i, j));
+            }
+        }
     }
     else
     {
@@ -167,16 +35,23 @@ AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessib
 
 AccessibleAbstractTableView::~AccessibleAbstractTableView()
 {
-    for(auto & i : cellInterfaces)
-    {
-        if(i != 0)
-        {
-            QAccessible::deleteAccessibleInterface(i);
-        }
-    }
+    std::for_each(cellInterfaces.cbegin(), cellInterfaces.cend(), QAccessible::deleteAccessibleInterface);
 }
 
-QAccessible::Id & AccessibleAbstractTableView::cellArray(int row, int column) const
+QString AccessibleAbstractTableView::getCellContent(int row, int column) const
+{
+    //return QString();
+    return QString("Row %1 Column %2").arg(row).arg(column);
+}
+
+QAccessible::Id & AccessibleAbstractTableView::cellArray(int row, int column)
+{
+    if(row < 0 || column < 0 || row >= rows || column >= cols)
+        throw std::out_of_range("");
+    return cellInterfaces.at(row * cols + column);
+}
+
+const QAccessible::Id & AccessibleAbstractTableView::cellArray(int row, int column) const
 {
     if(row < 0 || column < 0 || row >= rows || column >= cols)
         throw std::out_of_range("");
@@ -185,45 +60,19 @@ QAccessible::Id & AccessibleAbstractTableView::cellArray(int row, int column) co
 
 int AccessibleAbstractTableView::childCount() const
 {
-    return rows * cols;
+    return cellInterfaces.size();
 }
 
 QAccessibleInterface* AccessibleAbstractTableView::child(int index) const
 {
     if(index >= 0 && index < childCount())
     {
-        if(cellInterfaces[index] != 0)
-        {
-            return QAccessible::accessibleInterface(cellInterfaces[index]);
-        }
-        else
-        {
-            int row = index / cols;
-            int column = index % cols;
-            auto child = new AccessibleAbstractTableViewCell((AccessibleAbstractTableView*)this, row, column);
-            cellInterfaces[index] = QAccessible::registerAccessibleInterface(child);
-            return child;
-        }
+        return QAccessible::accessibleInterface(cellInterfaces[index]);
     }
     else
-        return nullptr;
-}
-
-int AccessibleAbstractTableView::indexOfChild(const QAccessibleInterface* child) const
-{
-    for(int i = 0; i < cellInterfaces.size(); i++)
     {
-        unsigned int id = cellInterfaces[i];
-        if(id != 0)
-        {
-            QAccessibleInterface* a = QAccessible::accessibleInterface(id);
-            if(a == child)
-            {
-                return i;
-            }
-        }
+        return nullptr;
     }
-    return -1;
 }
 
 QAccessibleInterface* AccessibleAbstractTableView::childAt(int x, int y) const
@@ -232,22 +81,26 @@ QAccessibleInterface* AccessibleAbstractTableView::childAt(int x, int y) const
     {
         int col = m_tableView->getColumnIndexFromX(x);
         auto row = m_tableView->getIndexOffsetFromY(m_tableView->transY(y));
-        QAccessible::Id & id = cellArray(row, col);
-        if(id != 0)
-        {
-            return QAccessible::accessibleInterface(id);
-        }
-        else
-        {
-            auto child = new AccessibleAbstractTableViewCell((AccessibleAbstractTableView*)this, row, col);
-            id = QAccessible::registerAccessibleInterface(child);
-            return child;
-        }
+        const QAccessible::Id & id = cellArray(row, col);
+        return QAccessible::accessibleInterface(id);
     }
     catch(std::out_of_range)
     {
         return nullptr;
     }
+}
+
+int AccessibleAbstractTableView::indexOfChild(const QAccessibleInterface* child) const
+{
+    for(int i = 0; i < childCount(); i++)
+    {
+        const QAccessibleInterface* a = this->child(i);
+        if(a == child)
+        {
+            return i;
+        }
+    }
+    return -1;
 }
 
 QAccessibleInterface* AccessibleAbstractTableView::focusChild() const
@@ -258,11 +111,6 @@ QAccessibleInterface* AccessibleAbstractTableView::focusChild() const
 bool AccessibleAbstractTableView::isValid() const
 {
     return true;
-}
-
-QAccessible::Role AccessibleAbstractTableView::role() const
-{
-    return QAccessible::Table;
 }
 
 QAccessible::State AccessibleAbstractTableView::state() const
@@ -297,16 +145,7 @@ QAccessibleInterface* AccessibleAbstractTableView::cellAt(int row, int column) c
     try
     {
         auto & id = cellArray(row, column);
-        if(id == 0)
-        {
-            AccessibleAbstractTableViewCell* cell = new AccessibleAbstractTableViewCell((AccessibleAbstractTableView*)this, row, column);
-            id = QAccessible::registerAccessibleInterface(cell);
-            return cell;
-        }
-        else
-        {
-            return QAccessible::accessibleInterface(id);
-        }
+        return QAccessible::accessibleInterface(id);
     }
     catch(std::out_of_range)
     {
@@ -321,7 +160,7 @@ int AccessibleAbstractTableView::columnCount() const
 
 QString AccessibleAbstractTableView::columnDescription(int column) const
 {
-    return QString();
+    return m_tableView->getColTitle(column);
 }
 
 bool AccessibleAbstractTableView::isColumnSelected(int column) const
@@ -341,8 +180,7 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
     int hiddenCols = 0;
     for(int i = 0; i < cols; i++)
     {
-        if(m_tableView->getColumnHidden(i))
-            hiddenCols++;
+        hiddenCols += (m_tableView->getColumnHidden(i)) ? 1 : 0;
     }
     newCols -= hiddenCols;
     // Resize array
@@ -352,11 +190,7 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         {
             for(int i = newRows * cols; i < rows * cols; i++)
             {
-                auto & id = cellInterfaces.at(i);
-                if(id != 0)
-                {
-                    QAccessible::deleteAccessibleInterface(id);
-                }
+                QAccessible::deleteAccessibleInterface(cellInterfaces.at(i));
             }
         }
         if(newRows != rows)
@@ -365,20 +199,26 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         }
         if(newRows > rows)
         {
-            memset(&cellInterfaces.at(rows * cols), 0, sizeof(QAccessible::Id) * (newRows - rows) * cols);
+            for(auto i = rows; i < newRows; i++)
+            {
+                for(int j = 0; j < newCols; j++)
+                {
+                    cellArray(i, j) = QAccessible::registerAccessibleInterface(new AccessibleAbstractTableViewCell(this, i, j));
+                }
+            }
         }
     }
     else
     {
-        for(int i = 0; i < rows * cols; i++)
+        std::for_each(cellInterfaces.cbegin(), cellInterfaces.cend(), QAccessible::deleteAccessibleInterface);
+        cellInterfaces = std::vector<QAccessible::Id>((size_t)(rows * cols), (QAccessible::Id)0);
+        for(auto i = 0; i < newRows; i++)
         {
-            auto & id = cellInterfaces.at(i);
-            if(id != 0)
+            for(int j = 0; j < newCols; j++)
             {
-                QAccessible::deleteAccessibleInterface(id);
+                cellArray(i, j) = QAccessible::registerAccessibleInterface(new AccessibleAbstractTableViewCell(this, i, j));
             }
         }
-        cellInterfaces = std::vector<QAccessible::Id>((size_t)(rows * cols), (QAccessible::Id)0);
     }
     rows = newRows;
     cols = newCols;
@@ -391,7 +231,11 @@ int AccessibleAbstractTableView::rowCount() const
 
 QString AccessibleAbstractTableView::rowDescription(int row) const
 {
-    return QString();
+    auto cell = cellAt(row, 0);
+    if(cell)
+        return cell->text(QAccessible::Value);
+    else
+        return QString();
 }
 
 bool AccessibleAbstractTableView::selectColumn(int column)

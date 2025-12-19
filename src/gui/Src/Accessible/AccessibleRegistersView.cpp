@@ -136,39 +136,28 @@ bool AccessibleRegistersViewItem::isValid() const
 AccessibleRegistersView::AccessibleRegistersView(QWidget* w) : QAccessibleWidget(w, QAccessible::List, dynamic_cast<RegistersView*>(w)->accessibleName())
 {
     m_registersView = dynamic_cast<RegistersView*>(w);
-    interfaces.fill(0);
+    for(int i = 0; i < interfaces.size(); i++)
+    {
+        interfaces[i] = QAccessible::registerAccessibleInterface(new AccessibleRegistersViewItem(this, (RegistersView::REGISTER_NAME)i));
+    }
 }
 
 AccessibleRegistersView::~AccessibleRegistersView()
 {
-    for(auto & i : interfaces)
-    {
-        if(i != 0)
-        {
-            QAccessible::deleteAccessibleInterface(i);
-        }
-    }
+    std::for_each(interfaces.cbegin(), interfaces.cend(), QAccessible::deleteAccessibleInterface);
 }
 
 int AccessibleRegistersView::childCount() const
 {
-    return RegistersView::REGISTER_NAME::UNKNOWN;
+    // TODO: interact with showFPU
+    return m_registersView->mAVX512RegistersShown ? RegistersView::REGISTER_NAME::UNKNOWN : RegistersView::REGISTER_NAME::XMM16;
 }
 
 QAccessibleInterface* AccessibleRegistersView::child(int index) const
 {
     if(index >= 0 && index < childCount())
     {
-        if(interfaces[index] != 0)
-        {
-            return QAccessible::accessibleInterface(interfaces[index]);
-        }
-        else
-        {
-            auto child = new AccessibleRegistersViewItem(const_cast<AccessibleRegistersView*>(this), (RegistersView::REGISTER_NAME)index);
-            interfaces[index] = QAccessible::registerAccessibleInterface(child);
-            return child;
-        }
+        return QAccessible::accessibleInterface(interfaces[index]);
     }
     else
         return nullptr;
@@ -186,16 +175,12 @@ QAccessibleInterface* AccessibleRegistersView::childAt(int x, int y) const
 
 int AccessibleRegistersView::indexOfChild(const QAccessibleInterface* child) const
 {
-    for(int i = 0; i < interfaces.size(); i++)
+    for(int i = 0; i < childCount(); i++)
     {
-        unsigned int id = interfaces[i];
-        if(id != 0)
+        const QAccessibleInterface* a = this->child(i);
+        if(a == child)
         {
-            QAccessibleInterface* a = QAccessible::accessibleInterface(id);
-            if(a == child)
-            {
-                return i;
-            }
+            return i;
         }
     }
     return -1;
@@ -212,11 +197,6 @@ QAccessibleInterface* AccessibleRegistersView::focusChild() const
 bool AccessibleRegistersView::isValid() const
 {
     return m_registersView->isActive;
-}
-
-QAccessible::Role AccessibleRegistersView::role() const
-{
-    return QAccessible::List;
 }
 
 QAccessible::State AccessibleRegistersView::state() const

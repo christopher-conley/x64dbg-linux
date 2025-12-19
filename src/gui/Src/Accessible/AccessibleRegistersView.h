@@ -43,7 +43,6 @@ public:
     int indexOfChild(const QAccessibleInterface* child) const override;
     QAccessibleInterface* focusChild() const override;
     bool isValid() const override;
-    QAccessible::Role role() const override;
     QAccessible::State state() const override;
     QRect rect() const override;
 };
