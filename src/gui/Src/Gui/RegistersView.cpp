@@ -3285,6 +3285,7 @@ void RegistersView::setRegisters(REGDUMP* reg)
         mCipRegDumpStruct = mRegDumpStruct;
 
     autoUpdateXMMModesAndRefresh();
+    accessibilityValueChanged();
 }
 
 void RegistersView::setRegisters(REGDUMP_AVX512* reg)
@@ -3314,6 +3315,7 @@ void RegistersView::setRegisters(REGDUMP_AVX512* reg)
         mCipRegDumpStruct = mRegDumpStruct;
 
     autoUpdateXMMModesAndRefresh();
+    accessibilityValueChanged();
 }
 
 // Scroll the viewport so that the register will be visible on the screen
@@ -3349,6 +3351,7 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
     emit refresh();
 }
 
+// Send focused accessibility event
 void RegistersView::accessibilitySelectionChanged()
 {
     if(QAccessible::isActive())
@@ -3368,6 +3371,27 @@ void RegistersView::accessibilitySelectionChanged()
         {
             QAccessibleEvent focusEvent(static_cast<RegistersView*>(this), QAccessible::Focus);
             QAccessible::updateAccessibility(&focusEvent);
+        }
+    }
+}
+
+// Send value changed accessibility event
+void RegistersView::accessibilityValueChanged()
+{
+    if(QAccessible::isActive() && !mRegisterUpdates.empty())
+    {
+        QAccessibleInterface* a = QAccessible::queryAccessibleInterface(this);
+        for(auto & i : mRegisterUpdates)
+        {
+            if(i < REGISTER_NAME::UNKNOWN)
+            {
+                if(a)
+                {
+                    QAccessibleInterface* child = a->child(i);
+                    QAccessibleValueChangeEvent valueChangeEvent(child, QVariant(child->text(QAccessible::Value)));
+                    QAccessible::updateAccessibility(&valueChangeEvent);
+                }
+            }
         }
     }
 }

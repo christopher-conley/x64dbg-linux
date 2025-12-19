@@ -299,6 +299,7 @@ protected:
     QAction* SIMDXMMSizeAuto;
     QAction* SIMDAlwaysShowAVX512;
     void accessibilitySelectionChanged();
+    void accessibilityValueChanged();
 
     friend class AccessibleRegistersView;
     friend class AccessibleRegistersViewItem;
