@@ -235,4 +235,7 @@ protected:
     void invalidateCachedFont();
 
     ColumnReorderDialog* mReorderDialog = nullptr;
+
+    friend class AccessibleAbstractTableView;
+    friend class AccessibleAbstractTableViewCell;
 };
