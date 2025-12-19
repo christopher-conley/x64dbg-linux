@@ -1,5 +1,6 @@
 #ifndef QT_NO_ACCESSIBILITY
 #include "Accessible.h"
+#include "AccessibleRegistersView.h"
 
 QAccessibleInterface* accessibleInterfaceFactory(const QString & classname, QObject* object)
 {

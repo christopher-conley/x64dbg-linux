@@ -1,4 +1,4 @@
 #pragma once
-#include "AccessibleRegistersView.h"
+#include <QAccessible>
 
 QAccessibleInterface* accessibleInterfaceFactory(const QString & classname, QObject* object);

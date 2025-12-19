@@ -181,7 +181,24 @@ QAccessibleInterface* AccessibleRegistersView::childAt(int x, int y) const
     if(m_registersView->identifyRegister((local.y() - m_registersView->yTopSpacing) / (double)m_registersView->mRowHeight, local.x() / (double)m_registersView->mCharWidth, &clickedReg))
         if(clickedReg < RegistersView::UNKNOWN)
             return child(static_cast<int>(clickedReg));
-    return (QAccessibleInterface*)this;
+    return nullptr;
+}
+
+int AccessibleRegistersView::indexOfChild(const QAccessibleInterface* child) const
+{
+    for(int i = 0; i < interfaces.size(); i++)
+    {
+        unsigned int id = interfaces[i];
+        if(id != 0)
+        {
+            QAccessibleInterface* a = QAccessible::accessibleInterface(id);
+            if(a == child)
+            {
+                return i;
+            }
+        }
+    }
+    return -1;
 }
 
 QAccessibleInterface* AccessibleRegistersView::focusChild() const
