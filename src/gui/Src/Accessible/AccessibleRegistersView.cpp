@@ -150,7 +150,7 @@ AccessibleRegistersView::~AccessibleRegistersView()
 int AccessibleRegistersView::childCount() const
 {
     // TODO: interact with showFPU
-    return m_registersView->mAVX512RegistersShown ? RegistersView::REGISTER_NAME::UNKNOWN : RegistersView::REGISTER_NAME::XMM16;
+    return m_registersView->mAVX512RegistersShown ? RegistersView::REGISTER_NAME::UNKNOWN : ArchValue(RegistersView::REGISTER_NAME::XMM7, RegistersView::REGISTER_NAME::XMM16);
 }
 
 QAccessibleInterface* AccessibleRegistersView::child(int index) const
