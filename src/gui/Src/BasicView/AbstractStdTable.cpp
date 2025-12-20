@@ -1,4 +1,3 @@
-#include <QAccessible>
 #include "AbstractStdTable.h"
 #include "Bridge.h"
 #include <Utils/RichTextPainter.h>

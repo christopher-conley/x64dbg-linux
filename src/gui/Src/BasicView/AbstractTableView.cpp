@@ -1412,13 +1412,17 @@ void AbstractTableView::accessibilitySelectionChanged()
         QAccessible::updateAccessibility(&selectionEvent);
         if(hasFocus())
         {
-            QAccessibleTableInterface* tableInterface = (QAccessibleTableInterface*)accessible->interface_cast(QAccessible::TableInterface);
-            assert(tableInterface);
-            QAccessibleInterface* cell = tableInterface->cellAt(accessibilitySelectedRow() + 1, accessibilitySelectedColumn);
-            if(cell)
+            auto sel = accessibilitySelectedRow();
+            if(sel != -1)
             {
-                QAccessibleEvent focusEvent(cell, QAccessible::Focus);
-                QAccessible::updateAccessibility(&focusEvent);
+                QAccessibleTableInterface* tableInterface = (QAccessibleTableInterface*)accessible->interface_cast(QAccessible::TableInterface);
+                assert(tableInterface);
+                QAccessibleInterface* cell = tableInterface->cellAt(sel + 1, accessibilitySelectedColumn);
+                if(cell)
+                {
+                    QAccessibleEvent focusEvent(cell, QAccessible::Focus);
+                    QAccessible::updateAccessibility(&focusEvent);
+                }
             }
         }
     }
@@ -1444,7 +1448,7 @@ void AbstractTableView::accessibilityTableModelChanged()
 void AbstractTableView::accessibilityMousePressSetColumn(QMouseEvent* event)
 {
     // update selected column
-    if(QAccessible::isActive() && mHeader.isVisible && getColumnCount() && event->y() > getHeaderHeight())
+    if(QAccessible::isActive() && getColumnCount() && event->y() > getHeaderHeight())
     {
         accessibilitySelectedColumn = getColumnDisplayIndexFromX(event->x());
         if(accessibilitySelectedColumn == -1)
