@@ -238,6 +238,7 @@ protected:
 
     friend class AccessibleAbstractTableView;
     friend class AccessibleAbstractTableViewCell;
+    friend class AccessibleAbstractTableViewCellTitle;
     void accessibilitySelectionChanged();
     void accessibilityTableModelChanged();
     int accessibilitySelectedColumn;

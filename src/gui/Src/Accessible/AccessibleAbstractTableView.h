@@ -3,11 +3,17 @@
 #include <QAccessibleWidget>
 #include "../BasicView/AbstractTableView.h"
 
+/**
+* Accessible interface for AbstractTableView.
+* This accessibility interface only exposes what is visible on the screen because the data scale of underlying AbstractTableView is uncontrollable.
+*/
 class AccessibleAbstractTableView : public QAccessibleWidget, public QAccessibleTableInterface
 {
     std::vector<QAccessible::Id> cellInterfaces;
+    std::vector<QAccessible::Id> columnTitleInterfaces;
     int rows, cols;
     friend class AccessibleAbstractTableViewCell;
+    friend class AccessibleAbstractTableViewCellTitle;
 public:
     AccessibleAbstractTableView(QWidget* w);
     ~AccessibleAbstractTableView();

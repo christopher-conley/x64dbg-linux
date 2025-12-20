@@ -2,8 +2,9 @@
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleAbstractTableView.h"
 #include "AccessibleAbstractTableViewCell.h"
+#include "AccessibleAbstractTableViewCellTitle.h"
 
-AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessibleWidget(w, QAccessible::Table, dynamic_cast<AbstractTableView*>(w)->accessibleName()), cellInterfaces()
+AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessibleWidget(w, QAccessible::Table, dynamic_cast<AbstractTableView*>(w)->accessibleName())
 {
     m_tableView = dynamic_cast<AbstractTableView*>(w);
     assert(m_tableView);
@@ -36,7 +37,13 @@ AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessib
             }
         }
     }
+    columnTitleInterfaces = std::vector<QAccessible::Id>(cols);
+    for(int i = 0; i < cols; i++)
+    {
+        columnTitleInterfaces[i] = QAccessible::registerAccessibleInterface(new AccessibleAbstractTableViewCellTitle(this, i));
+    }
     assert(cellInterfaces.size() == rows * cols);
+    assert(columnTitleInterfaces.size() == cols);
 }
 
 AccessibleAbstractTableView::~AccessibleAbstractTableView()
@@ -70,9 +77,13 @@ int AccessibleAbstractTableView::childCount() const
 
 QAccessibleInterface* AccessibleAbstractTableView::child(int index) const
 {
-    if(index >= 0 && index < childCount())
+    if(index >= cols && index < cols + childCount())
     {
-        return QAccessible::accessibleInterface(cellInterfaces[index]);
+        return QAccessible::accessibleInterface(cellInterfaces[index - cols]);
+    }
+    else if(index >= 0 && index < cols)
+    {
+        return QAccessible::accessibleInterface(columnTitleInterfaces[index]);
     }
     else
     {
@@ -82,12 +93,17 @@ QAccessibleInterface* AccessibleAbstractTableView::child(int index) const
 
 QAccessibleInterface* AccessibleAbstractTableView::childAt(int x, int y) const
 {
-    y = m_tableView->transY(y);
-    if(y < 0 || x < 0)
-        return nullptr;
+    int col = m_tableView->getColumnIndexFromX(x);
     try
     {
-        int col = m_tableView->getColumnIndexFromX(x);
+        if(y < 0 || x < 0)
+            return nullptr;
+        if(y < m_tableView->getHeaderHeight())
+        {
+            const QAccessible::Id & id = columnTitleInterfaces.at(col);
+            return QAccessible::accessibleInterface(id);
+        }
+        y = m_tableView->transY(y);
         auto row = m_tableView->getIndexOffsetFromY(y);
         const QAccessible::Id & id = cellArray(row, col);
         return QAccessible::accessibleInterface(id);
@@ -152,7 +168,17 @@ QAccessibleInterface* AccessibleAbstractTableView::cellAt(int row, int column) c
 {
     try
     {
-        auto & id = cellArray(row, column);
+        QAccessible::Id id;
+        if(row > 0)
+        {
+            id = cellArray(row - 1, column);
+        }
+        else if(row == 0)
+        {
+            id = columnTitleInterfaces.at(column);
+        }
+        else
+            return nullptr;
         return QAccessible::accessibleInterface(id);
     }
     catch(std::out_of_range)
@@ -231,6 +257,17 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         }
         else
         {
+            // column titles
+            for(int i = newCols; i < cols; i++)
+            {
+                QAccessible::deleteAccessibleInterface(columnTitleInterfaces.at(i));
+            }
+            columnTitleInterfaces.resize(newCols);
+            for(int i = cols; i < newCols; i++)
+            {
+                columnTitleInterfaces.at(i) = QAccessible::registerAccessibleInterface(new AccessibleAbstractTableViewCellTitle(this, i));
+            }
+            // rows
             std::for_each(cellInterfaces.cbegin(), cellInterfaces.cend(), QAccessible::deleteAccessibleInterface);
             cellInterfaces = std::vector<QAccessible::Id>();
             rows = newRows;
@@ -250,16 +287,20 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         __debugbreak();
     }
     assert(cellInterfaces.size() == rows * cols);
+    assert(columnTitleInterfaces.size() == cols);
 }
 
 int AccessibleAbstractTableView::rowCount() const
 {
-    return rows;
+    // returned row includes title
+    return rows + 1;
 }
 
 QString AccessibleAbstractTableView::rowDescription(int row) const
 {
-    auto cell = cellAt(row, 0);
+    if(row == 0)  // title row
+        return QString();
+    auto cell = cellAt(row + 1, 0);
     if(cell)
         return cell->text(QAccessible::Value);
     else

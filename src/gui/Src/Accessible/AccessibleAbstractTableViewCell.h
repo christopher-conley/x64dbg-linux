@@ -7,7 +7,8 @@ class AccessibleAbstractTableView;
 
 class AccessibleAbstractTableViewCell : public QAccessibleInterface, QAccessibleTableCellInterface
 {
-    duint row;
+protected:
+    duint row; // The first visible row is index 0. Off by 1 compared with AccessibleAbstractTableView row due to column titles.
     int column;
     AccessibleAbstractTableView* mParent;
 public:

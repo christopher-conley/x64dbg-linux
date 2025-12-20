@@ -13,12 +13,14 @@ AccessibleStdTable::~AccessibleStdTable()
 
 bool AccessibleStdTable::isRowSelected(int row) const
 {
+    // row includes title
     auto table = this->table();
-    return table->getInitialSelection() == row + table->getTableOffset();
+    return table->getInitialSelection() == row + table->getTableOffset() - 1;
 }
 
 QString AccessibleStdTable::getCellContent(int row, int column) const
 {
+    // row excludes title
     auto table = this->table();
     return table->getCellContent(table->getTableOffset() + row, column);
 }
@@ -33,7 +35,7 @@ int AccessibleStdTable::selectedRowCount() const
 {
     auto table = this->table();
     dsint r = table->getInitialSelection() - table->getTableOffset();
-    if(r >= 0 && r <= rowCount())
+    if(r >= 0 && r <= rowCount() - 1)
         return 1;
     else
         return 0;
@@ -43,7 +45,7 @@ QList<int> AccessibleStdTable::selectedRows() const
 {
     auto table = this->table();
     dsint r = table->getInitialSelection() - table->getTableOffset();
-    if(r >= 0 && r <= rowCount())
+    if(r >= 0 && r <= rowCount() - 1)
         return QList<int>({ (int)r });
     else
         return QList<int>();

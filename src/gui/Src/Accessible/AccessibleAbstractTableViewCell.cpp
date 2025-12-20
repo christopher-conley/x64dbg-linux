@@ -12,8 +12,6 @@ QString AccessibleAbstractTableViewCell::text(QAccessible::Text t) const
     AbstractTableView* w = mParent->m_tableView;
     switch(t)
     {
-    case QAccessible::Name:
-        return QString("Row %1 Column %2").arg(row).arg(column);
     case QAccessible::Value:
         return mParent->getCellContent(row, column);
     default:
@@ -62,7 +60,7 @@ QAccessible::State AccessibleAbstractTableViewCell::state() const
     state.focusable = mParent->m_tableView->getRowCount() > 0;
     state.active = state.focusable;
     state.selectable = state.focusable;
-    state.selected = mParent->isRowSelected(row);
+    state.selected = mParent->isRowSelected(row + 1);
     state.focused = state.selected && mParent->isColumnSelected(column);
     state.readOnly = true;
     return state;
@@ -112,12 +110,12 @@ bool AccessibleAbstractTableViewCell::isSelected() const
 
 QList<QAccessibleInterface*> AccessibleAbstractTableViewCell::columnHeaderCells() const
 {
-    return QList<QAccessibleInterface*>();
+    return QList<QAccessibleInterface*>({ mParent->cellAt(0, column) });
 }
 
 QList<QAccessibleInterface*> AccessibleAbstractTableViewCell::rowHeaderCells() const
 {
-    return QList<QAccessibleInterface*>({ mParent->cellAt(row, 0) });
+    return QList<QAccessibleInterface*>({ mParent->cellAt(row + 1, 0) });
 }
 
 int AccessibleAbstractTableViewCell::columnIndex() const
@@ -127,7 +125,7 @@ int AccessibleAbstractTableViewCell::columnIndex() const
 
 int AccessibleAbstractTableViewCell::rowIndex() const
 {
-    return row;
+    return row + 1;
 }
 
 int AccessibleAbstractTableViewCell::columnExtent() const

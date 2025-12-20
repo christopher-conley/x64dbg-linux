@@ -1414,7 +1414,7 @@ void AbstractTableView::accessibilitySelectionChanged()
         {
             QAccessibleTableInterface* tableInterface = (QAccessibleTableInterface*)accessible->interface_cast(QAccessible::TableInterface);
             assert(tableInterface);
-            QAccessibleInterface* cell = tableInterface->cellAt(accessibilitySelectedRow(), accessibilitySelectedColumn);
+            QAccessibleInterface* cell = tableInterface->cellAt(accessibilitySelectedRow() + 1, accessibilitySelectedColumn);
             if(cell)
             {
                 QAccessibleEvent focusEvent(cell, QAccessible::Focus);
@@ -1433,9 +1433,9 @@ void AbstractTableView::accessibilityTableModelChanged()
         model.setFirstColumn(0);
         model.setFirstRow(0);
         if(getViewableRowsCount() < getRowCount())
-            model.setLastRow(getViewableRowsCount());
+            model.setLastRow(getViewableRowsCount() + 1);
         else
-            model.setLastRow(getRowCount());
+            model.setLastRow(getRowCount() + 1);
         model.setLastColumn(getColumnCount());
         QAccessible::updateAccessibility(&model);
     }
