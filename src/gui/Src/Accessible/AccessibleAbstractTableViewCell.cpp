@@ -9,11 +9,11 @@ AccessibleAbstractTableViewCell::AccessibleAbstractTableViewCell(AccessibleAbstr
 
 QString AccessibleAbstractTableViewCell::text(QAccessible::Text t) const
 {
-    AbstractTableView* w = mParent->m_tableView;
+    AbstractTableView* w = mParent->getTable();
     switch(t)
     {
     case QAccessible::Value:
-        return mParent->getCellContent(row, column);
+        return mParent->getCellContent(row, mParent->logicalColumn(column));
     default:
         return QString();
     }
@@ -21,7 +21,7 @@ QString AccessibleAbstractTableViewCell::text(QAccessible::Text t) const
 
 QColor AccessibleAbstractTableViewCell::foregroundColor() const
 {
-    return mParent->m_tableView->mTextColor;
+    return mParent->getTable()->mTextColor;
 }
 
 int AccessibleAbstractTableViewCell::childCount() const
@@ -57,7 +57,7 @@ QAccessible::Role AccessibleAbstractTableViewCell::role() const
 QAccessible::State AccessibleAbstractTableViewCell::state() const
 {
     QAccessible::State state;
-    state.focusable = mParent->m_tableView->getRowCount() > 0;
+    state.focusable = mParent->getTable()->getRowCount() > 0;
     state.active = state.focusable;
     state.selectable = state.focusable;
     state.selected = mParent->isRowSelected(row + 1);
@@ -82,12 +82,11 @@ void AccessibleAbstractTableViewCell::setText(QAccessible::Text t, const QString
 
 QRect AccessibleAbstractTableViewCell::rect() const
 {
-    const auto & table = mParent->m_tableView;
+    const auto table = mParent->getTable();
     int height = table->getRowHeight();
-    auto & actualColumn = table->mColumnOrder[column];
     QPoint pos(table->getColumnPosition(column), table->getHeaderHeight() + row * height);
     pos = table->mapToGlobal(pos);
-    return QRect(pos, QSize(table->getColumnWidth(actualColumn), height));
+    return QRect(pos, QSize(table->getColumnWidth(mParent->logicalColumn(column)), height));
 }
 
 bool AccessibleAbstractTableViewCell::isValid() const

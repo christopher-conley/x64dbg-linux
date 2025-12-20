@@ -1446,7 +1446,20 @@ void AbstractTableView::accessibilityMousePressSetColumn(QMouseEvent* event)
     // update selected column
     if(QAccessible::isActive() && mHeader.isVisible && getColumnCount() && event->y() > getHeaderHeight())
     {
-        accessibilitySelectedColumn = getColumnIndexFromX(event->x());
+        accessibilitySelectedColumn = getColumnDisplayIndexFromX(event->x());
+        if(accessibilitySelectedColumn == -1)
+        {
+            accessibilitySelectedColumn = 0;
+        }
+        else
+        {
+            // Exclude hidden columns
+            for(int colIndex = 0; colIndex < accessibilitySelectedColumn; colIndex++)
+            {
+                if(getColumnHidden(mColumnOrder[colIndex]))
+                    accessibilitySelectedColumn--;
+            }
+        }
         accessibilitySelectionChanged();
     }
 }

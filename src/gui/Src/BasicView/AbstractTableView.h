@@ -241,7 +241,7 @@ protected:
     friend class AccessibleAbstractTableViewCellTitle;
     void accessibilitySelectionChanged();
     void accessibilityTableModelChanged();
-    int accessibilitySelectedColumn;
+    int accessibilitySelectedColumn; // display index excluding hidden columns
     virtual int accessibilitySelectedRow() const;
     void accessibilityMousePressSetColumn(QMouseEvent* event);
 };

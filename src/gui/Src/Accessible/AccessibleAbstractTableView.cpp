@@ -42,6 +42,7 @@ AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessib
     {
         columnTitleInterfaces[i] = QAccessible::registerAccessibleInterface(new AccessibleAbstractTableViewCellTitle(this, i));
     }
+    updateVisibleColumns();
     assert(cellInterfaces.size() == rows * cols);
     assert(columnTitleInterfaces.size() == cols);
 }
@@ -56,6 +57,11 @@ QString AccessibleAbstractTableView::getCellContent(int row, int column) const
     return QString("Row %1 Column %2").arg(row).arg(column);
 }
 
+AbstractTableView* AccessibleAbstractTableView::getTable() const
+{
+    return m_tableView;
+}
+
 QAccessible::Id & AccessibleAbstractTableView::cellArray(int row, int column)
 {
     if(row < 0 || column < 0 || row >= rows || column >= cols)
@@ -68,6 +74,26 @@ const QAccessible::Id & AccessibleAbstractTableView::cellArray(int row, int colu
     if(row < 0 || column < 0 || row >= rows || column >= cols)
         throw std::out_of_range("Table cell row or column out of range");
     return cellInterfaces.at(row * cols + column);
+}
+
+void AccessibleAbstractTableView::updateVisibleColumns()
+{
+    duint c = 0;
+    m_visibleColumns.clear();
+    m_visibleColumns.reserve(cols);
+    for(duint j = 0; j < m_tableView->getColumnCount(); j++)
+    {
+        duint i = m_tableView->mColumnOrder[j];
+        if(m_tableView->getColumnHidden(i))
+            continue;
+        m_visibleColumns.push_back(i);
+    }
+    assert(m_visibleColumns.size() == cols);
+}
+
+duint AccessibleAbstractTableView::logicalColumn(int physicalColumn) const
+{
+    return m_visibleColumns.at(physicalColumn);
 }
 
 int AccessibleAbstractTableView::childCount() const
@@ -194,7 +220,7 @@ int AccessibleAbstractTableView::columnCount() const
 
 QString AccessibleAbstractTableView::columnDescription(int column) const
 {
-    return m_tableView->getColTitle(column);
+    return m_tableView->getColTitle(logicalColumn(column));
 }
 
 bool AccessibleAbstractTableView::isColumnSelected(int column) const
@@ -281,6 +307,7 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
                 }
             }
         }
+        updateVisibleColumns();
     }
     catch(std::out_of_range)
     {
@@ -329,12 +356,12 @@ QList<QAccessibleInterface*> AccessibleAbstractTableView::selectedCells() const
 
 int AccessibleAbstractTableView::selectedColumnCount() const
 {
-    return 0;
+    return 1;
 }
 
 QList<int> AccessibleAbstractTableView::selectedColumns() const
 {
-    return QList<int>();
+    return QList<int>({m_tableView->accessibilitySelectedColumn});
 }
 
 int AccessibleAbstractTableView::selectedRowCount() const

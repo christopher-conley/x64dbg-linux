@@ -1,4 +1,4 @@
-// This file implements accessibility interface for RegistersView
+// This file implements accessibility interface for AccessibleStdTable
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleStdTable.h"
 #include "StdTable.h"
@@ -51,4 +51,23 @@ QList<int> AccessibleStdTable::selectedRows() const
         return QList<int>();
 }
 
+int AccessibleStdTable::selectedCellCount() const
+{
+    auto table = this->table();
+    dsint r = table->getInitialSelection() - table->getTableOffset();
+    if(r >= 0 && r <= rowCount() - 1)
+        return 1;
+    else
+        return 0;
+}
+
+QList<QAccessibleInterface*> AccessibleStdTable::selectedCells() const
+{
+    auto table = this->table();
+    dsint r = table->getInitialSelection() - table->getTableOffset();
+    if(r >= 0 && r <= rowCount() - 1)
+        return QList<QAccessibleInterface*>({ cellAt(r + 1, selectedColumns().first())});
+    else
+        return QList<QAccessibleInterface*>();
+}
 #endif

@@ -9,30 +9,28 @@ AccessibleAbstractTableViewCellTitle::AccessibleAbstractTableViewCellTitle(Acces
 
 QString AccessibleAbstractTableViewCellTitle::text(QAccessible::Text t) const
 {
-    AbstractTableView* w = mParent->m_tableView;
-    switch(t)
+    AbstractTableView* w = mParent->getTable();
+    if(t == QAccessible::Value)
     {
-    case QAccessible::Value:
-        return w->getColTitle(column);
-    default:
-        return QString();
+        return w->getColTitle(mParent->logicalColumn(column));
     }
+    return QString();
 }
 
 QColor AccessibleAbstractTableViewCellTitle::foregroundColor() const
 {
-    return mParent->m_tableView->mHeaderTextColor;
+    return mParent->getTable()->mHeaderTextColor;
 }
 
 QColor AccessibleAbstractTableViewCellTitle::backgroundColor() const
 {
-    return mParent->m_tableView->mHeaderBackgroundColor;
+    return mParent->getTable()->mHeaderBackgroundColor;
 }
 
 QAccessible::State AccessibleAbstractTableViewCellTitle::state() const
 {
     QAccessible::State state;
-    state.focusable = mParent->m_tableView->getRowCount() > 0;
+    state.focusable = mParent->getTable()->getRowCount() > 0;
     state.active = state.focusable;
     state.selectable = false;
     state.selected = false;
@@ -43,12 +41,11 @@ QAccessible::State AccessibleAbstractTableViewCellTitle::state() const
 
 QRect AccessibleAbstractTableViewCellTitle::rect() const
 {
-    const auto & table = mParent->m_tableView;
+    const auto table = mParent->getTable();
     int height = table->getHeaderHeight();
-    auto & actualColumn = table->mColumnOrder[column];
     QPoint pos(table->getColumnPosition(column), 0);
     pos = table->mapToGlobal(pos);
-    return QRect(pos, QSize(table->getColumnWidth(actualColumn), height));
+    return QRect(pos, QSize(table->getColumnWidth(mParent->logicalColumn(column)), height));
 }
 
 QList<QAccessibleInterface*> AccessibleAbstractTableViewCellTitle::rowHeaderCells() const

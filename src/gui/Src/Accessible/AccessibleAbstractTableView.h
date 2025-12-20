@@ -14,9 +14,14 @@ class AccessibleAbstractTableView : public QAccessibleWidget, public QAccessible
     int rows, cols;
     friend class AccessibleAbstractTableViewCell;
     friend class AccessibleAbstractTableViewCellTitle;
+    std::vector<duint> m_visibleColumns;
 public:
     AccessibleAbstractTableView(QWidget* w);
     ~AccessibleAbstractTableView();
+
+    AbstractTableView* getTable() const;
+    // Convert from displayed column to raw column (not reordered)
+    duint logicalColumn(int physicalColumn) const;
     // QAccessibleInterface
     int childCount() const override;
     QAccessibleInterface* child(int index) const override;
@@ -53,6 +58,7 @@ protected:
 private:
     QAccessible::Id & cellArray(int row, int col); // Get reference of accessible id, throws std::out_of_range exception
     const QAccessible::Id & cellArray(int row, int col) const;
+    void updateVisibleColumns();
 };
 
 #endif
