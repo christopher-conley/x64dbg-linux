@@ -62,8 +62,8 @@ QAccessible::State AccessibleAbstractTableViewCell::state() const
     state.focusable = mParent->m_tableView->getRowCount() > 0;
     state.active = state.focusable;
     state.selectable = state.focusable;
-    state.selected = false;
-    state.focused = false;
+    state.selected = mParent->isRowSelected(row);
+    state.focused = state.selected && mParent->isColumnSelected(column);
     state.readOnly = true;
     return state;
 }

@@ -238,4 +238,9 @@ protected:
 
     friend class AccessibleAbstractTableView;
     friend class AccessibleAbstractTableViewCell;
+    void accessibilitySelectionChanged();
+    void accessibilityTableModelChanged();
+    int accessibilitySelectedColumn;
+    virtual int accessibilitySelectedRow() const;
+    void accessibilityMousePressSetColumn(QMouseEvent* event);
 };

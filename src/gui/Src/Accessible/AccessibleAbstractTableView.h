@@ -8,7 +8,6 @@ class AccessibleAbstractTableView : public QAccessibleWidget, public QAccessible
     std::vector<QAccessible::Id> cellInterfaces;
     int rows, cols;
     friend class AccessibleAbstractTableViewCell;
-    AbstractTableView* m_tableView;
 public:
     AccessibleAbstractTableView(QWidget* w);
     ~AccessibleAbstractTableView();
@@ -42,10 +41,12 @@ public:
     QAccessibleInterface* summary() const override;
     bool unselectColumn(int column) override;
     bool unselectRow(int row) override;
+protected:
+    virtual QString getCellContent(int row, int col) const; // Get plain text of a cell
+    AbstractTableView* m_tableView;
 private:
     QAccessible::Id & cellArray(int row, int col); // Get reference of accessible id, throws std::out_of_range exception
     const QAccessible::Id & cellArray(int row, int col) const;
-    virtual QString getCellContent(int row, int col) const; // Get plain text of a cell
 };
 
 #endif

@@ -2,6 +2,7 @@
 #include "Accessible.h"
 #include "AccessibleRegistersView.h"
 #include "AccessibleAbstractTableView.h"
+#include "AccessibleStdTable.h"
 
 QAccessibleInterface* accessibleInterfaceFactory(const QString & classname, QObject* object)
 {
@@ -9,6 +10,10 @@ QAccessibleInterface* accessibleInterfaceFactory(const QString & classname, QObj
     if((classname == "CPUDisassembly") && object && dynamic_cast<AbstractTableView*>(object) != nullptr)
     {
         ptr = new AccessibleAbstractTableView(dynamic_cast<QWidget*>(object));
+    }
+    if((classname == "AbstractStdTable") && object && dynamic_cast<AbstractStdTable*>(object) != nullptr)
+    {
+        ptr = new AccessibleStdTable(dynamic_cast<QWidget*>(object));
     }
     if((classname == "RegistersView") && object && dynamic_cast<RegistersView*>(object) != nullptr)
     {
