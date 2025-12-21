@@ -1,4 +1,4 @@
-// This file implements accessibility interface for AccessibleStdTable
+// This file implements accessibility interface for StdTable
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleStdTable.h"
 #include "StdTable.h"

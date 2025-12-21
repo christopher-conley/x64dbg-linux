@@ -25,7 +25,7 @@ public:
     // QAccessibleInterface
     int childCount() const override;
     QAccessibleInterface* child(int index) const override;
-    QAccessibleInterface* QAccessibleInterface::childAt(int x, int y) const override;
+    QAccessibleInterface* childAt(int x, int y) const override;
     int indexOfChild(const QAccessibleInterface* child) const override;
     QAccessibleInterface* focusChild() const override;
     bool isValid() const override;

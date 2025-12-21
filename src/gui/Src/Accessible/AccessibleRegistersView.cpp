@@ -114,7 +114,7 @@ QRect AccessibleRegistersViewItem::rect() const
             || it.key() >= RegistersView::K0 && it.key() <= RegistersView::K7
             || it.key() >= RegistersView::XMM0 && it.key() <= ArchValue(RegistersView::XMM7, RegistersView::XMM31))
     {
-        const QScrollArea* upperScrollArea = (const QScrollArea*)parent->parentWidget()->parentWidget();
+        const QWidget* upperScrollArea = (const QWidget*)parent->parentWidget()->parentWidget();
         left = 0;
         right = upperScrollArea->width();
     }

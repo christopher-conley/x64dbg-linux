@@ -1,4 +1,4 @@
-// This file implements accessibility interface for RegistersView
+// This file implements accessibility interface for AbstractTableView
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleAbstractTableView.h"
 #include "AccessibleAbstractTableViewCell.h"
@@ -49,6 +49,7 @@ AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessib
 
 AccessibleAbstractTableView::~AccessibleAbstractTableView()
 {
+    std::for_each(columnTitleInterfaces.cbegin(), columnTitleInterfaces.cend(), QAccessible::deleteAccessibleInterface);
     std::for_each(cellInterfaces.cbegin(), cellInterfaces.cend(), QAccessible::deleteAccessibleInterface);
 }
 
@@ -243,6 +244,10 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         newRows = 10000;
     if(newCols > 1000)
         newCols = 1000;
+    if(newRows < 0)
+        newRows = 0;
+    if(newCols < 0)
+        newCols = 0;
     for(int i = 0; i < newCols; i++)
     {
         hiddenCols += (m_tableView->getColumnHidden(i)) ? 1 : 0;
@@ -327,7 +332,7 @@ QString AccessibleAbstractTableView::rowDescription(int row) const
 {
     if(row == 0)  // title row
         return QString();
-    auto cell = cellAt(row + 1, 0);
+    auto cell = cellAt(row, 0);
     if(cell)
         return cell->text(QAccessible::Value);
     else

@@ -1,4 +1,4 @@
-// This file implements accessibility interface for RegistersView
+// This file implements accessibility interface for table cells of TableViewCell
 #ifndef QT_NO_ACCESSIBILITY
 #include "AccessibleAbstractTableViewCell.h"
 #include "AccessibleAbstractTableView.h"

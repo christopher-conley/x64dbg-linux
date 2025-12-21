@@ -1828,6 +1828,7 @@ void RegistersView::paintEvent(QPaintEvent* event)
     }
 
     QPainter painter(this->viewport());
+    painter.setClipRect(event->rect());
     painter.setFont(font());
     painter.fillRect(painter.viewport(), QBrush(ConfigColor("RegistersBackgroundColor")));
 
