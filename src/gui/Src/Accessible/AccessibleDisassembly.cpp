@@ -133,7 +133,6 @@ QString AccessibleDisassembly::getCellContent(int row, int col) const
     }
     case Disassembly::ColMnemonicBrief:
     {
-        RichTextPainter::List richText;
         if(d.mShowMnemonicBrief)
             return getDisassemblyMnemonicBrief(inst);
         else

@@ -498,6 +498,8 @@ set(gui_SOURCES
 	"src/gui/Src/Accessible/AccessibleAbstractTableViewCellTitle.h"
 	"src/gui/Src/Accessible/AccessibleDisassembly.cpp"
 	"src/gui/Src/Accessible/AccessibleDisassembly.h"
+	"src/gui/Src/Accessible/AccessibleHexDump.cpp"
+	"src/gui/Src/Accessible/AccessibleHexDump.h"
 	"src/gui/Src/Accessible/AccessibleRegistersView.cpp"
 	"src/gui/Src/Accessible/AccessibleRegistersView.h"
 	"src/gui/Src/Accessible/AccessibleStdTable.cpp"

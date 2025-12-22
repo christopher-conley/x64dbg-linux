@@ -266,7 +266,7 @@ void CPUDump::getAttention()
     thread->start();
 }
 
-void CPUDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText)
+void CPUDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const
 {
     if(col && !mDescriptor.at(col - 1).isData && mDescriptor.at(col - 1).itemCount) //print comments
     {

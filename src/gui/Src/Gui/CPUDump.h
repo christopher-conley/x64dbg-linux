@@ -13,7 +13,7 @@ class CPUDump : public HexDump
     Q_OBJECT
 public:
     explicit CPUDump(CPUMultiDump* multiDump, CPUDisassembly* disasassembly, QWidget* parent = nullptr);
-    void getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) override;
+    void getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const override;
     QString paintContent(QPainter* painter, duint row, duint col, int x, int y, int w, int h) override;
     void setupContextMenu();
     void getAttention();

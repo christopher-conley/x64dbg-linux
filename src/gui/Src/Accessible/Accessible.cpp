@@ -3,6 +3,7 @@
 #include "AccessibleRegistersView.h"
 #include "AccessibleAbstractTableView.h"
 #include "AccessibleDisassembly.h"
+#include "AccessibleHexDump.h"
 #include "AccessibleStdTable.h"
 
 QAccessibleInterface* accessibleInterfaceFactory(const QString & classname, QObject* object)
@@ -12,11 +13,15 @@ QAccessibleInterface* accessibleInterfaceFactory(const QString & classname, QObj
     {
         ptr = new AccessibleDisassembly(dynamic_cast<QWidget*>(object));
     }
-    if((classname == "AbstractStdTable") && object && dynamic_cast<AbstractStdTable*>(object) != nullptr)
+    else if((classname == "HexDump") && object && dynamic_cast<HexDump*>(object) != nullptr)
+    {
+        ptr = new AccessibleHexDump(dynamic_cast<HexDump*>(object));
+    }
+    else if((classname == "AbstractStdTable") && object && dynamic_cast<AbstractStdTable*>(object) != nullptr)
     {
         ptr = new AccessibleStdTable(dynamic_cast<QWidget*>(object));
     }
-    if((classname == "RegistersView") && object && dynamic_cast<RegistersView*>(object) != nullptr)
+    else if((classname == "RegistersView") && object && dynamic_cast<RegistersView*>(object) != nullptr)
     {
         ptr = new AccessibleRegistersView(dynamic_cast<QWidget*>(object));
     }

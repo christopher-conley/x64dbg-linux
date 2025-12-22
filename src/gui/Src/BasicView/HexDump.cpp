@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QFloat16>
 #include <QDebug>
+#include <QAccessible>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QStringDecoder>
@@ -54,6 +55,7 @@ HexDump::HexDump(Architecture* architecture, QWidget* parent, MemoryPage* memPag
     connect(Bridge::getBridge(), SIGNAL(updateDump()), this, SLOT(updateDumpSlot()));
     connect(Bridge::getBridge(), SIGNAL(dbgStateChanged(DBGSTATE)), this, SLOT(debugStateChanged(DBGSTATE)));
     connect(this, &HexDump::selectionUpdated, this, &HexDump::updateSelectionUnderline);
+    connect(this, SIGNAL(selectionUpdated()), this, SLOT(selectionChangedSlot()));
     setupCopyMenu();
 
     Initialize();
@@ -347,7 +349,7 @@ QString HexDump::makeAddrText(duint va) const
     return std::move(addrText);
 }
 
-QString HexDump::makeCopyText()
+QString HexDump::makeCopyText() const
 {
     auto deltaRowBase = getSelectionStart() % getBytePerRowCount() + mByteOffset;
     if(deltaRowBase >= getBytePerRowCount())
@@ -559,6 +561,7 @@ void HexDump::mousePressEvent(QMouseEvent* event)
 
                         // TODO: only update if the selection actually changed
                         updateViewport();
+                        accessibilityMousePressSetColumn(event);
                     }
                 }
                 else if(colIndex == 0)
@@ -588,6 +591,7 @@ void HexDump::mousePressEvent(QMouseEvent* event)
 
                         // TODO: only update if the selection actually changed
                         updateViewport();
+                        accessibilityMousePressSetColumn(event);
                     }
                 }
 
@@ -699,6 +703,26 @@ void HexDump::keyPressEvent(QKeyEvent* event)
             if(granularity > 1)
                 expandSelectionUpTo(selStart + granularity - 1);
             reloadData();
+            if(QAccessible::isActive())
+            {
+                QAccessibleInterface* iface = QAccessible::queryAccessibleInterface(this);
+                if(iface)
+                {
+                    QAccessibleTableInterface* tface = (QAccessibleTableInterface*)iface->interface_cast(QAccessible::TableInterface);
+                    if(tface)
+                    {
+                        if(key == Qt::Key_Left && accessibilitySelectedColumn > 0)
+                        {
+                            accessibilitySelectedColumn--;
+                        }
+                        else if(key == Qt::Key_Right && accessibilitySelectedColumn < tface->columnCount() - 1)
+                        {
+                            accessibilitySelectedColumn++;
+                        }
+                    }
+                }
+                accessibilitySelectionChanged();
+            }
         }
     }
     else if(modifiers == Qt::ControlModifier || modifiers == (Qt::ControlModifier | Qt::AltModifier))
@@ -861,7 +885,7 @@ bool HexDump::isSelected(duint rva) const
     return rva >= mSelection.fromIndex && rva <= mSelection.toIndex;
 }
 
-void HexDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText)
+void HexDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const
 {
     RichTextPainter::CustomRichText_t curData;
     curData.underline = false;
@@ -1023,31 +1047,31 @@ void HexDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & ri
     }
 }
 
-void HexDump::toString(DataDescriptor desc, duint rva, uint8_t* data, RichTextPainter::CustomRichText_t & richText) //convert data to string
+void HexDump::toString(DataDescriptor desc, duint rva, const uint8_t* data, RichTextPainter::CustomRichText_t & richText) const //convert data to string
 {
     switch(desc.itemSize)
     {
     case Byte:
     {
-        byteToString(rva, *((uint8_t*)data), desc.byteMode, richText);
+        byteToString(rva, *((const uint8_t*)data), desc.byteMode, richText);
     }
     break;
 
     case Word:
     {
-        wordToString(rva, *((uint16_t*)data), desc.wordMode, richText);
+        wordToString(rva, *((const uint16_t*)data), desc.wordMode, richText);
     }
     break;
 
     case Dword:
     {
-        dwordToString(rva, *((uint32_t*)data), desc.dwordMode, richText);
+        dwordToString(rva, *((const uint32_t*)data), desc.dwordMode, richText);
     }
     break;
 
     case Qword:
     {
-        qwordToString(rva, *((uint64_t*)data), desc.qwordMode, richText);
+        qwordToString(rva, *((const uint64_t*)data), desc.qwordMode, richText);
     }
     break;
 
@@ -1073,7 +1097,7 @@ void HexDump::toString(DataDescriptor desc, duint rva, uint8_t* data, RichTextPa
         richText.textColor = ConfigColor("HexDumpModifiedBytesColor");
 }
 
-void HexDump::byteToString(duint rva, uint8_t byte, ByteViewMode mode, RichTextPainter::CustomRichText_t & richText)
+void HexDump::byteToString(duint rva, uint8_t byte, ByteViewMode mode, RichTextPainter::CustomRichText_t & richText) const
 {
     QString str = "";
 
@@ -1160,7 +1184,7 @@ void HexDump::byteToString(duint rva, uint8_t byte, ByteViewMode mode, RichTextP
     }
 }
 
-void HexDump::wordToString(duint rva, uint16_t word, WordViewMode mode, RichTextPainter::CustomRichText_t & richText)
+void HexDump::wordToString(duint rva, uint16_t word, WordViewMode mode, RichTextPainter::CustomRichText_t & richText) const
 {
     Q_UNUSED(rva);
     QString str;
@@ -1296,7 +1320,7 @@ void HexDump::qwordToString(duint rva, uint64_t qword, QwordViewMode mode, RichT
     richText.text = str;
 }
 
-void HexDump::twordToString(duint rva, void* tword, TwordViewMode mode, RichTextPainter::CustomRichText_t & richText)
+void HexDump::twordToString(duint rva, const void* tword, TwordViewMode mode, RichTextPainter::CustomRichText_t & richText)
 {
     Q_UNUSED(rva);
     QString str;
@@ -1652,4 +1676,18 @@ void HexDump::debugStateChanged(DBGSTATE state)
         setRowCount(0);
         reloadData();
     }
+}
+
+void HexDump::selectionChangedSlot()
+{
+    accessibilitySelectionChanged();
+}
+
+int HexDump::accessibilitySelectedRow() const
+{
+    auto sel = getInitialSelection();
+    if(sel >= getTableOffsetRva() && sel <= getTableOffsetRva() + getViewableRowsCount() * getBytePerRowCount())
+        return (getInitialSelection() - getTableOffsetRva()) / getBytePerRowCount();
+    else
+        return -1;
 }
