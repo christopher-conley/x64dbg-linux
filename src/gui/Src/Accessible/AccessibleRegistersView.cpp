@@ -69,13 +69,14 @@ QAccessible::Role AccessibleRegistersViewItem::role() const
 QAccessible::State AccessibleRegistersViewItem::state() const
 {
     QAccessible::State state;
-    state.focusable = mParent->m_registersView->isActive;
-    state.active = mParent->m_registersView->isActive;
-    state.selectable = mParent->m_registersView->isActive;
-    if(mParent->m_registersView->mSelected == id)
+    const RegistersView* parent = mParent->m_registersView;
+    state.focusable = parent->isActive;
+    state.active = parent->isActive;
+    state.selectable = parent->isActive;
+    if(parent->mSelected == id)
     {
         state.selected = true;
-        if(mParent->m_registersView->hasFocus())
+        if(parent->hasFocus())
             state.focused = true;
     }
     return state;

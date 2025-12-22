@@ -36,6 +36,7 @@ QAccessible::State AccessibleAbstractTableViewCellTitle::state() const
     state.selected = false;
     state.focused = false;
     state.readOnly = true;
+    state.invisible = mParent->getTable()->getHeaderHeight() == 0;
     return state;
 }
 

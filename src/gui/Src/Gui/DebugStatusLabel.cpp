@@ -1,4 +1,5 @@
 #include "DebugStatusLabel.h"
+#include <QAccessible>
 #include <QTextDocument>
 #include <QStyle>
 #include <QMetaEnum>
@@ -45,4 +46,11 @@ void DebugStatusLabel::debugStateChangedSlot(DBGSTATE state)
     this->style()->unpolish(this);
     this->style()->polish(this);
     this->update();
+
+    // Send accesibility events
+    if(QAccessible::isActive())
+    {
+        QAccessibleValueChangeEvent updateEvent(this, mStatusTexts[state]);
+        QAccessible::updateAccessibility(&updateEvent);
+    }
 }
