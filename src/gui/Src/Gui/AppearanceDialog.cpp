@@ -528,6 +528,7 @@ void AppearanceDialog::colorInfoListInit()
     colorInfoListAppend(tr("Addresses"), "InstructionAddressColor", "InstructionAddressBackgroundColor");
     colorInfoListAppend(tr("Values"), "InstructionValueColor", "InstructionValueBackgroundColor");
     colorInfoListAppend(tr("Commas"), "InstructionCommaColor", "InstructionCommaBackgroundColor");
+    colorInfoListAppend(tr("New Values (Trace View)"), "TraceNewValueColor", "TraceNewValueBackgroundColor");
 
     colorInfoListAppend(tr("General Registers"), "InstructionGeneralRegisterColor", "InstructionGeneralRegisterBackgroundColor");
     colorInfoListAppend(tr("FPU Registers"), "InstructionFpuRegisterColor", "InstructionFpuRegisterBackgroundColor");

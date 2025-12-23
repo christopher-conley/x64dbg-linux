@@ -45,6 +45,7 @@ void ZydisTokenizer::UpdateColors()
     addColorName(TokenType::Uncategorized, "InstructionUncategorizedColor", "InstructionUncategorizedBackgroundColor");
     addColorName(TokenType::Address, "InstructionAddressColor", "InstructionAddressBackgroundColor"); //jump/call destinations
     addColorName(TokenType::Value, "InstructionValueColor", "InstructionValueBackgroundColor");
+    addColorName(TokenType::TraceNewValue, "TraceNewValueColor", "TraceNewValueBackgroundColor");
     //mnemonics
     addColorName(TokenType::MnemonicNormal, "InstructionMnemonicColor", "InstructionMnemonicBackgroundColor");
     addColorName(TokenType::MnemonicPushPop, "InstructionPushPopColor", "InstructionPushPopBackgroundColor");
@@ -215,7 +216,7 @@ void ZydisTokenizer::TokenizeTraceRegister(const char* reg, duint oldValue, duin
     tokens.push_back(SingleToken(TokenType::ArgumentSpace, ": ", TokenValue()));
     tokens.push_back(SingleToken(TokenType::Value, ToHexString(oldValue), TokenValue(8, oldValue)));
     tokens.push_back(SingleToken(TokenType::ArgumentSpace, QString::fromUtf8("\xe2\x86\x92"), TokenValue())); // Right Arrow
-    tokens.push_back(SingleToken(TokenType::Value, ToHexString(newValue), TokenValue(8, newValue)));
+    tokens.push_back(SingleToken(TokenType::TraceNewValue, ToHexString(newValue), TokenValue(8, newValue)));
 }
 
 void ZydisTokenizer::TokenizeTraceMemory(duint address, duint oldValue, duint newValue, std::vector<SingleToken> & tokens)
@@ -228,7 +229,7 @@ void ZydisTokenizer::TokenizeTraceMemory(duint address, duint oldValue, duint ne
     tokens.push_back(SingleToken(TokenType::ArgumentSpace, ": ", TokenValue()));
     tokens.push_back(SingleToken(TokenType::Value, ToHexString(oldValue), TokenValue(8, oldValue)));
     tokens.push_back(SingleToken(TokenType::ArgumentSpace, QString::fromUtf8("\xe2\x86\x92"), TokenValue())); // Right Arrow
-    tokens.push_back(SingleToken(TokenType::Value, ToHexString(newValue), TokenValue(8, newValue)));
+    tokens.push_back(SingleToken(TokenType::TraceNewValue, ToHexString(newValue), TokenValue(8, newValue)));
 }
 
 void ZydisTokenizer::UpdateConfig()

@@ -244,6 +244,8 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     defaultColors.insert("LinkColor", QColor("#0000ff"));
     defaultColors.insert("LogColor", QColor("#000000"));
     defaultColors.insert("LogBackgroundColor", QColor("#FFF8F0"));
+    defaultColors.insert("TraceNewValueColor", QColor("#FF0000"));
+    defaultColors.insert("TraceNewValueBackgroundColor", Qt::transparent);
 
     //bool settings
     QMap<QString, bool> disassemblyBool;

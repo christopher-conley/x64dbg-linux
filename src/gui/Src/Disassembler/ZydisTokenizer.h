@@ -35,6 +35,7 @@ public:
         //values
         Address, //jump/call destinations or displacements inside memory
         Value,
+        TraceNewValue,
         //memory
         MemorySize,
         MemorySegment,
