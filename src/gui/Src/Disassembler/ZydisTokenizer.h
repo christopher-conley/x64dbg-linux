@@ -111,6 +111,14 @@ public:
     {
         std::vector<SingleToken> tokens; //list of tokens that form the instruction
         int x = 0; //x of the first character
+
+        QString toString() const
+        {
+            QString text;
+            for(const auto & token : tokens)
+                text += token.text;
+            return text;
+        }
     };
 
     struct TokenColor

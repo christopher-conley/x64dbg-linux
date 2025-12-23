@@ -214,7 +214,7 @@ void ZydisTokenizer::TokenizeTraceRegister(const char* reg, duint oldValue, duin
     tokens.push_back(SingleToken(TokenType::GeneralRegister, ConfigBool("Disassembler", "Uppercase") ? regName.toUpper() : regName, TokenValue()));
     tokens.push_back(SingleToken(TokenType::ArgumentSpace, ": ", TokenValue()));
     tokens.push_back(SingleToken(TokenType::Value, ToHexString(oldValue), TokenValue(8, oldValue)));
-    tokens.push_back(SingleToken(TokenType::ArgumentSpace, "-> ", TokenValue()));
+    tokens.push_back(SingleToken(TokenType::ArgumentSpace, QString::fromUtf8("\xe2\x86\x92"), TokenValue())); // Right Arrow
     tokens.push_back(SingleToken(TokenType::Value, ToHexString(newValue), TokenValue(8, newValue)));
 }
 
@@ -227,7 +227,7 @@ void ZydisTokenizer::TokenizeTraceMemory(duint address, duint oldValue, duint ne
     tokens.push_back(SingleToken(TokenType::Address, ToPtrString(address), TokenValue(8, address)));
     tokens.push_back(SingleToken(TokenType::ArgumentSpace, ": ", TokenValue()));
     tokens.push_back(SingleToken(TokenType::Value, ToHexString(oldValue), TokenValue(8, oldValue)));
-    tokens.push_back(SingleToken(TokenType::ArgumentSpace, "-> ", TokenValue()));
+    tokens.push_back(SingleToken(TokenType::ArgumentSpace, QString::fromUtf8("\xe2\x86\x92"), TokenValue())); // Right Arrow
     tokens.push_back(SingleToken(TokenType::Value, ToHexString(newValue), TokenValue(8, newValue)));
 }
 

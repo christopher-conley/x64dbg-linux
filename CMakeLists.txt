@@ -504,6 +504,8 @@ set(gui_SOURCES
 	"src/gui/Src/Accessible/AccessibleRegistersView.h"
 	"src/gui/Src/Accessible/AccessibleStdTable.cpp"
 	"src/gui/Src/Accessible/AccessibleStdTable.h"
+	"src/gui/Src/Accessible/AccessibleTraceBrowser.cpp"
+	"src/gui/Src/Accessible/AccessibleTraceBrowser.h"
 	"src/gui/Src/BasicView/AbstractSearchList.h"
 	"src/gui/Src/BasicView/AbstractStdTable.cpp"
 	"src/gui/Src/BasicView/AbstractStdTable.h"
