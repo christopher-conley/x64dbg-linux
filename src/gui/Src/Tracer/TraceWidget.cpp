@@ -39,7 +39,7 @@ TraceWidget::TraceWidget(Architecture* architecture, const QString & fileName, Q
         mMemoryPage = nullptr;
         mDump = nullptr;
         mStack = nullptr;
-        mLoadDump = new QPushButton(tr("Load dump"), this);
+        mLoadDump = new QPushButton(DIcon("dump"), tr("Load dump"), this);
         connect(mLoadDump, SIGNAL(clicked()), this, SLOT(loadDump()));
     }
     mXrefDlg = nullptr;
