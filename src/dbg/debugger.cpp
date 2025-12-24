@@ -3123,7 +3123,11 @@ bool dbgrestartadmin()
         if(last)
             *last = L'\0';
         //TODO: possibly escape characters in gInitCmd
-        std::wstring params = L"\"" + gInitExe + L"\" \"" + gInitCmd + L"\" \"" + gInitDir + L"\"";
+        std::wstring params = L"\"" + gInitExe + L"\"";
+        if(!gInitCmd.empty())
+            params += L" -- " + gInitCmd;
+        if(!gInitDir.empty())
+            params = L"-workingDir \"" + gInitDir + L"\" " + params;
         auto result = ShellExecuteW(NULL, L"runas", file.c_str(), params.c_str(), wszProgramPath, SW_SHOWDEFAULT);
         return INT_PTR(result) > 32 && GetLastError() == ERROR_SUCCESS;
     }
