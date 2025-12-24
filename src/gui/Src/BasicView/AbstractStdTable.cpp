@@ -679,8 +679,12 @@ void AbstractStdTable::selectPrevious()
 
 void AbstractStdTable::selectAll()
 {
+    duint rowCount = getRowCount();
+    if(rowCount == 0)
+        return;
+
     duint index = 0;
-    duint indexEnd = getRowCount() - 1;
+    duint indexEnd = rowCount - 1;
 
     mSelection.firstSelectedIndex = index;
     mSelection.fromIndex = index;
