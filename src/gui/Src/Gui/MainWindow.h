@@ -281,6 +281,7 @@ protected:
 private slots:
     void setupLanguagesMenu2();
     void updateStyle();
+    void updateFont();
 
     void on_actionFaq_triggered();
     void on_actionReloadStylesheet_triggered();
