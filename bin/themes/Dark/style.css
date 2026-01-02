@@ -6,10 +6,6 @@ ShortcutEdit[error="true"] {
     color: #EF5350;
 }
 
-QTabWidget::pane {
-    border: 0px;
-}
-
 QTabBar::tear { 
     width: 0px;
     border: none;
@@ -323,7 +319,7 @@ QAbstractItemView QLineEdit {
 }
 
 QGroupBox {
-    border: 1px solid #212121;
+    border: 1px solid #515151;
     border-radius: 2px;
     margin-top: 20px;
 }
@@ -469,16 +465,8 @@ QTextEdit {
 
 QPlainTextEdit {
     background-color: #313131;
-    ;
     color: #e0e0e0;
     border-radius: 2px;
-    border: 1px solid #212121;
-}
-
-QHeaderView::section {
-    background-color: #2a2b2f;
-    color: #e0e0e0;
-    padding: 5px;
     border: 1px solid #212121;
 }
 
@@ -958,10 +946,6 @@ QToolButton:pressed {
     border: 1px solid #414141;
 }
 
-QHeaderView {
-    border-radius: 0px;
-}
-
 QListView::item:pressed,
 QTreeView::item:pressed {
     background: #414141;
@@ -978,6 +962,7 @@ QHeaderView {
     background-color: #212121;
     margin: 0px;
     padding: 0px;
+    border-radius: 0px;
 }
 
 QHeaderView::section {
@@ -1017,10 +1002,6 @@ QHeaderView::down-arrow {
 
 QHeaderView::up-arrow {
     image: url(./rc/up_arrow.png);
-}
-
-QStatusBar::item {
-    border: none;
 }
 
 QSplitter::handle {
@@ -1097,15 +1078,6 @@ ShortcutEdit {
 
 ShortcutEdit[error="true"] {
     color: #dd0000;
-}
-
-QTabWidget::pane {
-    border: 0px;
-}
-
-QTabBar::tear { 
-    width: 0px;
-    border: none;
 }
 
 /* e.g. "Exception filters" list, "Patch file" modules list, "Set page memory rights" table, "Select font" list, etc */
