@@ -2877,6 +2877,14 @@ static void debugLoopFunction(INIT_STRUCT* init)
                     GuiCloseApplication();
                     return;
                 }
+                if(answer == IDNO)
+                {
+                    //No auto launching the binary on the other admin restart
+                    //https://github.com/x64dbg/x64dbg/issues/3658
+                    gInitExe.clear();
+                    gInitCmd.clear();
+                    gInitDir.clear();
+                }
             }
             else if(isElevated)
             {
