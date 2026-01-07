@@ -349,9 +349,11 @@ bool SearchListView::eventFilter(QObject* obj, QEvent* event)
             case Qt::Key_Insert:
                 return QWidget::eventFilter(obj, event);
             // Search box shortcuts reliant on mSearchBox not being empty
+            case Qt::Key_C: //Ctrl+C
             case Qt::Key_X: //Ctrl+X
                 if(keyEvent->modifiers() == Qt::ControlModifier)
                     return QWidget::eventFilter(obj, event);
+                break;
             }
         }
         switch(key)
@@ -362,6 +364,11 @@ bool SearchListView::eventFilter(QObject* obj, QEvent* event)
         case Qt::Key_Y: //Ctrl+Y
             if(keyEvent->modifiers() == Qt::ControlModifier)
                 return QWidget::eventFilter(obj, event);
+            break;
+        case Qt::Key_Insert: //Shift+Insert
+            if(keyEvent->modifiers() == Qt::ShiftModifier)
+                return QWidget::eventFilter(obj, event);
+            break;
         }
         // Printable characters go to the search box
         QString keyText = keyEvent->text();
