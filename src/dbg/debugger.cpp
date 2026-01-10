@@ -1851,7 +1851,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
 
     //1 - Try kernel path from file handle
     if(GetFileNameFromHandle(LoadDll->hFile, DLLDebugFileName, _countof(DLLDebugFileName)) &&
-       FileExists(DLLDebugFileName))
+            FileExists(DLLDebugFileName))
     {
         validPath = true;
     }
@@ -1867,7 +1867,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
         constexpr ULONG FSCTL_CHECK_FOR_SECTION = 0x90348;
         NtFsControlFile(LoadDll->hFile, nullptr, nullptr, nullptr, &iosb, FSCTL_CHECK_FOR_SECTION, nullptr, 0, nullptr, 0);
         if(GetFileNameFromHandle(LoadDll->hFile, DLLDebugFileName, _countof(DLLDebugFileName)) &&
-           FileExists(DLLDebugFileName))
+                FileExists(DLLDebugFileName))
         {
             validPath = true;
         }
