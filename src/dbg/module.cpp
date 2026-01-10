@@ -1009,6 +1009,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                 info.mappedData.realloc(actualSize);
                 if(MemRead(Base, info.mappedData(), info.mappedData.size()))
                 {
+                    info.isVirtual = true; // Process memory is SEC_IMAGE mapped
                     info.loadedSize = (DWORD)actualSize;
                     GetModuleInfo(info, (ULONG_PTR)info.mappedData());
                     info.size = HEADER_FIELD(info.headers, SizeOfImage);
