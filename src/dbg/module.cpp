@@ -1011,6 +1011,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                 {
                     info.loadedSize = (DWORD)actualSize;
                     GetModuleInfo(info, (ULONG_PTR)info.mappedData());
+                    info.size = HEADER_FIELD(info.headers, SizeOfImage);
                 }
                 else
                 {
