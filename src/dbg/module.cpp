@@ -971,11 +971,54 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
         // Note: This may not work perfectly for file offset -> RVA conversions since process memory is SEC_IMAGE mapped
         if(!fileLoaded)
         {
-            info.mappedData.realloc(Size);
-            if(MemRead(Base, info.mappedData(), info.mappedData.size()))
+            // The Size parameter is unreliable here (all pass 1 as a placeholder).
+            // This is consistent with steps 1 and 2 which also determine size from their source.
+            duint actualSize = 0;
+            unsigned char headerBuf[0x1000] = {0};
+            if(MemRead(Base, headerBuf, sizeof(headerBuf)))
             {
-                info.loadedSize = (DWORD)Size;
-                GetModuleInfo(info, (ULONG_PTR)info.mappedData());
+                PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)headerBuf;
+                if(dosHeader->e_magic == IMAGE_DOS_SIGNATURE &&
+                        dosHeader->e_lfanew > 0 &&
+                        dosHeader->e_lfanew < 0x1000 - sizeof(IMAGE_NT_HEADERS))
+                {
+                    PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(headerBuf + dosHeader->e_lfanew);
+                    if(ntHeaders->Signature == IMAGE_NT_SIGNATURE)
+                        actualSize = HEADER_FIELD(ntHeaders, SizeOfImage);
+                }
+            }
+
+            //fallback if PE header parsing failed
+            if(actualSize == 0)
+            {
+                MEMORY_BASIC_INFORMATION mbi;
+                duint regionSize = 0;
+                duint addr = Base;
+                while(VirtualQueryEx(fdProcessInfo->hProcess, (LPCVOID)addr, &mbi, sizeof(mbi)))
+                {
+                    if(mbi.AllocationBase != (PVOID)Base)
+                        break;
+                    regionSize += mbi.RegionSize;
+                    addr += mbi.RegionSize;
+                }
+                actualSize = regionSize;
+            }
+
+            if(actualSize > 0)
+            {
+                info.mappedData.realloc(actualSize);
+                if(MemRead(Base, info.mappedData(), info.mappedData.size()))
+                {
+                    info.loadedSize = (DWORD)actualSize;
+                    GetModuleInfo(info, (ULONG_PTR)info.mappedData());
+                }
+                else
+                {
+                    info.fileHandle = nullptr;
+                    info.loadedSize = 0;
+                    info.fileMap = nullptr;
+                    info.fileMapVA = 0;
+                }
             }
             else
             {

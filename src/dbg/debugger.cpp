@@ -1857,9 +1857,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
     }
 
     //2 - Invalidate section cache and retry
-    // FSCTL_CHECK_FOR_SECTION releases cached image sections. This primarily helps step 3 (GetMappedFileNameW)
-    // which uses NtQueryVirtualMemory. The retry here is kinda speculative - GetFileNameFromHandle uses
-    // NtQueryInformationFile which may not benefit, but we retry anyway in case it helps.
+    // FSCTL_CHECK_FOR_SECTION releases cached image sections, fixing stale paths from kernel section caching.
     // https://github.com/x64dbg/x64dbg/issues/3756
     if(!validPath && LoadDll->hFile)
     {
@@ -1883,7 +1881,21 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
     if(!validPath)
         strcpy_s(DLLDebugFileName, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "??? (GetFileNameFromHandle failed)")));
 
-    ModLoad((duint)base, 1, DLLDebugFileName, true, LoadDll->hFile);
+    // If hFile is NULL but we have a valid path, try to open the file ourselves
+    HANDLE effectiveHFile = LoadDll->hFile;
+    if(!effectiveHFile && validPath)
+    {
+        effectiveHFile = CreateFileA(DLLDebugFileName, GENERIC_READ,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if(effectiveHFile == INVALID_HANDLE_VALUE)
+            effectiveHFile = NULL;
+    }
+
+    ModLoad((duint)base, 1, DLLDebugFileName, true, effectiveHFile);
+
+    if(effectiveHFile && effectiveHFile != LoadDll->hFile)
+        CloseHandle(effectiveHFile);
 
     // Update memory map
     MemUpdateMapAsync();
