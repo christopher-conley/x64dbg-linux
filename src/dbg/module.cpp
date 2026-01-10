@@ -958,6 +958,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                         info.fileMap = hMap;
                         info.fileMapVA = (ULONG_PTR)mapView;
                         fileLoaded = true;
+                        dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
                     }
                     else
                     {
@@ -968,7 +969,6 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
         }
 
         // 3. If both failed, try reading from process memory as last resort
-        // Note: This may not work perfectly for file offset -> RVA conversions since process memory is SEC_IMAGE mapped
         if(!fileLoaded)
         {
             // The Size parameter is unreliable here (all pass 1 as a placeholder).
@@ -1013,6 +1013,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                     info.loadedSize = (DWORD)actualSize;
                     GetModuleInfo(info, (ULONG_PTR)info.mappedData());
                     info.size = HEADER_FIELD(info.headers, SizeOfImage);
+                    dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from process memory (file inaccessible)\n"), info.name, info.extension);
                 }
                 else
                 {
