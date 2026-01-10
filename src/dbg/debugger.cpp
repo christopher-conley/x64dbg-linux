@@ -1844,14 +1844,46 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
     hActiveThread = ThreadGetHandle(GetDebugData()->dwThreadId);
     void* base = LoadDll->lpBaseOfDll;
 
+    // Retrieve the DLL path using a fallback
+    // https://github.com/x64dbg/x64dbg/issues/3756
     char DLLDebugFileName[MAX_PATH] = "";
-    if(!GetFileNameFromHandle(LoadDll->hFile, DLLDebugFileName, _countof(DLLDebugFileName)))
+    bool validPath = false;
+
+    //1 - Try kernel path from file handle
+    if(GetFileNameFromHandle(LoadDll->hFile, DLLDebugFileName, _countof(DLLDebugFileName)) &&
+       FileExists(DLLDebugFileName))
     {
-        if(!GetFileNameFromModuleHandle(fdProcessInfo->hProcess, HMODULE(base), DLLDebugFileName, _countof(DLLDebugFileName)))
-            strcpy_s(DLLDebugFileName, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "??? (GetFileNameFromHandle failed)")));
+        validPath = true;
     }
 
-    ModLoad((duint)base, 1, DLLDebugFileName);
+    //2 - Invalidate section cache and retry
+    // FSCTL_CHECK_FOR_SECTION releases cached image sections. This primarily helps step 3 (GetMappedFileNameW)
+    // which uses NtQueryVirtualMemory. The retry here is kinda speculative - GetFileNameFromHandle uses
+    // NtQueryInformationFile which may not benefit, but we retry anyway in case it helps.
+    // https://github.com/x64dbg/x64dbg/issues/3756
+    if(!validPath && LoadDll->hFile)
+    {
+        IO_STATUS_BLOCK iosb = {};
+        constexpr ULONG FSCTL_CHECK_FOR_SECTION = 0x90348;
+        NtFsControlFile(LoadDll->hFile, nullptr, nullptr, nullptr, &iosb, FSCTL_CHECK_FOR_SECTION, nullptr, 0, nullptr, 0);
+        if(GetFileNameFromHandle(LoadDll->hFile, DLLDebugFileName, _countof(DLLDebugFileName)) &&
+           FileExists(DLLDebugFileName))
+        {
+            validPath = true;
+        }
+    }
+
+    //3 - Try GetMappedFileNameW (with internal fallback to PEB)
+    if(!validPath)
+    {
+        validPath = GetFileNameFromModuleHandle(fdProcessInfo->hProcess, HMODULE(base), DLLDebugFileName, _countof(DLLDebugFileName));
+    }
+
+    //Give up
+    if(!validPath)
+        strcpy_s(DLLDebugFileName, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "??? (GetFileNameFromHandle failed)")));
+
+    ModLoad((duint)base, 1, DLLDebugFileName, true, LoadDll->hFile);
 
     // Update memory map
     MemUpdateMapAsync();

@@ -859,7 +859,7 @@ void GetModuleInfo(MODINFO & Info, ULONG_PTR FileMapVA)
 #undef GetUnsafeModuleInfo
 }
 
-bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols)
+bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HANDLE hFile)
 {
     // Handle a new module being loaded
     if(!Base || !Size || !FullPath)
@@ -928,25 +928,68 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols)
     if(!info.isVirtual)
     {
         auto wszFullPath = StringUtils::Utf8ToUtf16(FullPath);
+        bool fileLoaded = false;
 
-        // Load the physical module from disk
+        // 1. Try loading the physical module from disk
         if(StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
         {
             // Fix an anti-debug trick, which opens exclusive access to the file
             CloseHandle(info.fileHandle);
             info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
+            fileLoaded = true;
+        }
 
-            GetModuleInfo(info, info.fileMapVA);
+        // 2. If path-based loading failed and we have a file handle, try mapping from it
+        // This handles cases where the file is locked with exclusive access
+        // https://github.com/x64dbg/x64dbg/issues/3756
+        if(!fileLoaded && hFile)
+        {
+            DWORD fileSize = GetFileSize(hFile, nullptr);
+            if(fileSize != INVALID_FILE_SIZE && fileSize > 0)
+            {
+                HANDLE hMap = CreateFileMappingW(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+                if(hMap)
+                {
+                    LPVOID mapView = MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+                    if(mapView)
+                    {
+                        info.fileHandle = (HANDLE)1; // Non-zero for TitanEngine compatibility
+                        info.loadedSize = fileSize;
+                        info.fileMap = hMap;
+                        info.fileMapVA = (ULONG_PTR)mapView;
+                        fileLoaded = true;
+                    }
+                    else
+                    {
+                        CloseHandle(hMap);
+                    }
+                }
+            }
+        }
 
-            Size = HEADER_FIELD(info.headers, SizeOfImage);
-            info.size = Size;
+        // 3. If both failed, try reading from process memory as last resort
+        // Note: This may not work perfectly for file offset -> RVA conversions since process memory is SEC_IMAGE mapped
+        if(!fileLoaded)
+        {
+            info.mappedData.realloc(Size);
+            if(MemRead(Base, info.mappedData(), info.mappedData.size()))
+            {
+                info.loadedSize = (DWORD)Size;
+                GetModuleInfo(info, (ULONG_PTR)info.mappedData());
+            }
+            else
+            {
+                info.fileHandle = nullptr;
+                info.loadedSize = 0;
+                info.fileMap = nullptr;
+                info.fileMapVA = 0;
+            }
         }
         else
         {
-            info.fileHandle = nullptr;
-            info.loadedSize = 0;
-            info.fileMap = nullptr;
-            info.fileMapVA = 0;
+            GetModuleInfo(info, info.fileMapVA);
+            Size = HEADER_FIELD(info.headers, SizeOfImage);
+            info.size = Size;
         }
     }
     else
