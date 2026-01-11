@@ -930,19 +930,9 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
         auto wszFullPath = StringUtils::Utf8ToUtf16(FullPath);
         bool fileLoaded = false;
 
-        // 1. Try loading the physical module from disk
-        if(StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
-        {
-            // Fix an anti-debug trick, which opens exclusive access to the file
-            CloseHandle(info.fileHandle);
-            info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
-            fileLoaded = true;
-        }
-
-        // 2. If path-based loading failed and we have a file handle, try mapping from it
-        // This handles cases where the file is locked with exclusive access
+        // 1. If we have a file handle from the debug event, try mapping from it first
         // https://github.com/x64dbg/x64dbg/issues/3756
-        if(!fileLoaded && hFile)
+        if(hFile)
         {
             DWORD fileSize = GetFileSize(hFile, nullptr);
             if(fileSize != INVALID_FILE_SIZE && fileSize > 0)
@@ -958,7 +948,6 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                         info.fileMap = hMap;
                         info.fileMapVA = (ULONG_PTR)mapView;
                         fileLoaded = true;
-                        dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
                     }
                     else
                     {
@@ -966,6 +955,14 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                     }
                 }
             }
+        }
+
+        // 2. If no file handle or mapping failed, try loading from disk path
+        if(!fileLoaded && StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
+        {
+            CloseHandle(info.fileHandle);
+            info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
+            fileLoaded = true;
         }
 
         // 3. If both failed, try reading from process memory as last resort

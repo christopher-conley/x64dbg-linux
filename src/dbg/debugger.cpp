@@ -1881,21 +1881,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
     if(!validPath)
         strcpy_s(DLLDebugFileName, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "??? (GetFileNameFromHandle failed)")));
 
-    // If hFile is NULL but we have a valid path, try to open the file ourselves
-    HANDLE effectiveHFile = LoadDll->hFile;
-    if(!effectiveHFile && validPath)
-    {
-        effectiveHFile = CreateFileA(DLLDebugFileName, GENERIC_READ,
-                                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-        if(effectiveHFile == INVALID_HANDLE_VALUE)
-            effectiveHFile = NULL;
-    }
-
-    ModLoad((duint)base, 1, DLLDebugFileName, true, effectiveHFile);
-
-    if(effectiveHFile && effectiveHFile != LoadDll->hFile)
-        CloseHandle(effectiveHFile);
+    ModLoad((duint)base, 1, DLLDebugFileName, true, LoadDll->hFile);
 
     // Update memory map
     MemUpdateMapAsync();
