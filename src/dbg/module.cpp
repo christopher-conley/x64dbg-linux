@@ -963,6 +963,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
             CloseHandle(info.fileHandle);
             info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
             fileLoaded = true;
+            dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
         }
 
         // 3. If both failed, try reading from process memory as last resort
