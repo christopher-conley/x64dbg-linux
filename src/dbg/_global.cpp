@@ -272,10 +272,17 @@ bool GetFileNameFromModuleHandle(HANDLE hProcess, HMODULE hModule, char* szFileN
     auto result = false;
     if(GetMappedFileNameW(hProcess, hModule, wszDosFileName, _countof(wszDosFileName)))
     {
-        if(!DevicePathToPathW(wszDosFileName, wszFileName, _countof(wszFileName)))
+        if(DevicePathToPathW(wszDosFileName, wszFileName, _countof(wszFileName)))
+        {
+            // Verify the file exists - GetMappedFileNameW can return stale paths due to kernel section caching
+            // https://github.com/x64dbg/x64dbg/issues/3756
+            if(GetFileAttributesW(wszFileName) != INVALID_FILE_ATTRIBUTES)
+                result = true;
+        }
+
+        // Fall back to GetModuleFileNameExW if the path conversion failed or the file doesn't exist
+        if(!result)
             result = !!GetModuleFileNameExW(hProcess, hModule, wszFileName, _countof(wszFileName));
-        else
-            result = true;
     }
     else
         result = !!GetModuleFileNameExW(hProcess, hModule, wszFileName, _countof(wszFileName));

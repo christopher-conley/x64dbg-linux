@@ -859,7 +859,7 @@ void GetModuleInfo(MODINFO & Info, ULONG_PTR FileMapVA)
 #undef GetUnsafeModuleInfo
 }
 
-bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols)
+bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HANDLE hFile)
 {
     // Handle a new module being loaded
     if(!Base || !Size || !FullPath)
@@ -928,25 +928,112 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols)
     if(!info.isVirtual)
     {
         auto wszFullPath = StringUtils::Utf8ToUtf16(FullPath);
+        bool fileLoaded = false;
 
-        // Load the physical module from disk
-        if(StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
+        // 1. If we have a file handle from the debug event, try mapping from it first
+        // https://github.com/x64dbg/x64dbg/issues/3756
+        if(hFile)
         {
-            // Fix an anti-debug trick, which opens exclusive access to the file
+            DWORD fileSize = GetFileSize(hFile, nullptr);
+            if(fileSize != INVALID_FILE_SIZE && fileSize > 0)
+            {
+                HANDLE hMap = CreateFileMappingW(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+                if(hMap)
+                {
+                    LPVOID mapView = MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+                    if(mapView)
+                    {
+                        info.fileHandle = (HANDLE)1; // Non-zero for TitanEngine compatibility
+                        info.loadedSize = fileSize;
+                        info.fileMap = hMap;
+                        info.fileMapVA = (ULONG_PTR)mapView;
+                        fileLoaded = true;
+                    }
+                    else
+                    {
+                        CloseHandle(hMap);
+                    }
+                }
+            }
+        }
+
+        // 2. If no file handle or mapping failed, try loading from disk path
+        if(!fileLoaded && StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
+        {
             CloseHandle(info.fileHandle);
             info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
+            fileLoaded = true;
+            dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
+        }
 
-            GetModuleInfo(info, info.fileMapVA);
+        // 3. If both failed, try reading from process memory as last resort
+        if(!fileLoaded)
+        {
+            // The Size parameter is unreliable here (all pass 1 as a placeholder).
+            // This is consistent with steps 1 and 2 which also determine size from their source.
+            duint actualSize = 0;
+            unsigned char headerBuf[0x1000] = {0};
+            if(MemRead(Base, headerBuf, sizeof(headerBuf)))
+            {
+                PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)headerBuf;
+                if(dosHeader->e_magic == IMAGE_DOS_SIGNATURE &&
+                        dosHeader->e_lfanew > 0 &&
+                        dosHeader->e_lfanew < 0x1000 - sizeof(IMAGE_NT_HEADERS))
+                {
+                    PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(headerBuf + dosHeader->e_lfanew);
+                    if(ntHeaders->Signature == IMAGE_NT_SIGNATURE)
+                        actualSize = HEADER_FIELD(ntHeaders, SizeOfImage);
+                }
+            }
 
-            Size = HEADER_FIELD(info.headers, SizeOfImage);
-            info.size = Size;
+            //fallback if PE header parsing failed
+            if(actualSize == 0)
+            {
+                MEMORY_BASIC_INFORMATION mbi;
+                duint regionSize = 0;
+                duint addr = Base;
+                while(VirtualQueryEx(fdProcessInfo->hProcess, (LPCVOID)addr, &mbi, sizeof(mbi)))
+                {
+                    if(mbi.AllocationBase != (PVOID)Base)
+                        break;
+                    regionSize += mbi.RegionSize;
+                    addr += mbi.RegionSize;
+                }
+                actualSize = regionSize;
+            }
+
+            if(actualSize > 0)
+            {
+                info.mappedData.realloc(actualSize);
+                if(MemRead(Base, info.mappedData(), info.mappedData.size()))
+                {
+                    info.isVirtual = true; // Process memory is SEC_IMAGE mapped
+                    info.loadedSize = (DWORD)actualSize;
+                    GetModuleInfo(info, (ULONG_PTR)info.mappedData());
+                    info.size = HEADER_FIELD(info.headers, SizeOfImage);
+                    dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from process memory (file inaccessible)\n"), info.name, info.extension);
+                }
+                else
+                {
+                    info.fileHandle = nullptr;
+                    info.loadedSize = 0;
+                    info.fileMap = nullptr;
+                    info.fileMapVA = 0;
+                }
+            }
+            else
+            {
+                info.fileHandle = nullptr;
+                info.loadedSize = 0;
+                info.fileMap = nullptr;
+                info.fileMapVA = 0;
+            }
         }
         else
         {
-            info.fileHandle = nullptr;
-            info.loadedSize = 0;
-            info.fileMap = nullptr;
-            info.fileMapVA = 0;
+            GetModuleInfo(info, info.fileMapVA);
+            Size = HEADER_FIELD(info.headers, SizeOfImage);
+            info.size = Size;
         }
     }
     else
