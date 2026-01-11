@@ -295,7 +295,7 @@ MainWindow::MainWindow(QWidget* parent)
     makeCommandAction(ui->actioneStepInto, "eStepInto");
     makeCommandAction(ui->actioneRun, "eRun");
     makeCommandAction(ui->actioneRtr, "eRtr");
-    makeCommandAction(ui->actionRtu, "TraceOverConditional mod.user(cip)");
+    makeCommandAction(ui->actionRtu, "rtu");
     connect(ui->actionTicnd, SIGNAL(triggered()), this, SLOT(execTicnd()));
     connect(ui->actionTocnd, SIGNAL(triggered()), this, SLOT(execTocnd()));
     connect(ui->actionTRBit, SIGNAL(triggered()), mCpuWidget->getDisasmWidget(), SLOT(traceCoverageBitSlot()));
