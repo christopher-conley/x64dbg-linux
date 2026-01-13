@@ -264,8 +264,6 @@ bool cbDebugAttach(int argc, char* argv[])
             CloseHandle(hDebugLoopThread);
             hDebugLoopThread = nullptr;
         }
-
-        HistoryClear();
     }
     else
     {
@@ -361,6 +359,7 @@ bool cbDebugDetach(int argc, char* argv[])
         dputs(QT_TRANSLATE_NOOP("DBG", "Detached!"));
     _dbg_animatestop(); // Stop animating
     unlock(WAITID_RUN); // run to resume the debug loop if necessary
+    HistoryClear();
     return true;
 }
 
