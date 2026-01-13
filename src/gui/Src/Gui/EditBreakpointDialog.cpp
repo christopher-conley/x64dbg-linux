@@ -126,7 +126,7 @@ void EditBreakpointDialog::updateExpressionStyle(QLineEdit* edit, const QString 
     }
     else if(DbgIsValidExpression(text.toUtf8().constData()))
     {
-        edit->setStyleSheet("QLineEdit { border: 1px solid green; }");
+        edit->setStyleSheet("QLineEdit { border: 1px solid #00DD00; }");
     }
     else
     {
