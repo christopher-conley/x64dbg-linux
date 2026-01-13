@@ -65,6 +65,7 @@ private slots:
     void on_chkVerboseExceptionLogging_toggled(bool checked);
     void on_chkNoWow64SingleStepWorkaround_toggled(bool checked);
     void on_chkDisableAslr_toggled(bool checked);
+    void on_chkDetachOnAttach_toggled(bool checked);
     void on_spinMaxTraceCount_valueChanged(int arg1);
     void on_spinAnimateInterval_valueChanged(int arg1);
     //Exception tab
@@ -212,6 +213,7 @@ private:
         bool engineVerboseExceptionLogging = true;
         bool engineNoWow64SingleStepWorkaround = false;
         bool engineDisableAslr = false;
+        bool engineDetachOnAttach = false;
         int engineMaxTraceCount = 50000;
         int engineAnimateInterval = 50;
         //Exception Tab

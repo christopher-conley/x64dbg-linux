@@ -403,6 +403,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="chkDetachOnAttach">
+         <property name="text">
+          <string>Detach from process when attaching to another</string>
+         </property>
+         <property name="toolTip">
+          <string>When enabled, attaching to a new process will detach from the current process instead of terminating it</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayoutMaxTraceCount">
          <item>
           <widget class="QLabel" name="lblMaxTraceCount">

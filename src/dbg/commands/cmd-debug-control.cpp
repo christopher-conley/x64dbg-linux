@@ -252,7 +252,26 @@ bool cbDebugAttach(int argc, char* argv[])
         return false;
 
     EXCLUSIVE_ACQUIRE(LockDebugStartStop);
-    cbDebugStop(argc, argv);
+
+    // Detach instead of terminate when attaching to a new process (if setting enabled)
+    if(bIsDebugging && settingboolget("Engine", "DetachOnAttach", false))
+    {
+        cbDebugDetach(argc, argv);
+
+        if(hDebugLoopThread)
+        {
+            WaitForSingleObject(hDebugLoopThread, INFINITE);
+            CloseHandle(hDebugLoopThread);
+            hDebugLoopThread = nullptr;
+        }
+
+        HistoryClear();
+    }
+    else
+    {
+        cbDebugStop(argc, argv);
+    }
+
     ASSERT_TRUE(hDebugLoopThread == nullptr);
 
     Handle hProcess = TitanOpenProcess(PROCESS_ALL_ACCESS, false, (DWORD)pid);
