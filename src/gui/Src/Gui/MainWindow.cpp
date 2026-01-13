@@ -783,6 +783,18 @@ void MainWindow::setupLanguagesMenu2()
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    if(DbgIsDebugging())
+    {
+        duint detachOnExit = 0;
+        if(BridgeSettingGetUint("Engine", "DetachOnExit", &detachOnExit) && detachOnExit)
+        {
+            bExitWhenDetached = true;
+            DbgCmdExec("detach");
+            event->ignore();
+            return;
+        }
+    }
+
     if(DbgIsDebugging() && ConfigBool("Gui", "ShowExitConfirmation"))
     {
         auto cb = new QCheckBox(tr("Always stop the debuggee and exit"));

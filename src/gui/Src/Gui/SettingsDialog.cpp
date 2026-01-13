@@ -127,6 +127,7 @@ void SettingsDialog::LoadSettings()
     GetSettingBool("Engine", "NoWow64SingleStepWorkaround", &settings.engineNoWow64SingleStepWorkaround);
     GetSettingBool("Engine", "DisableAslr", &settings.engineDisableAslr);
     GetSettingBool("Engine", "DetachOnAttach", &settings.engineDetachOnAttach);
+    GetSettingBool("Engine", "DetachOnExit", &settings.engineDetachOnExit);
     if(BridgeSettingGetUint("Engine", "MaxTraceCount", &cur))
         settings.engineMaxTraceCount = int(cur);
     if(BridgeSettingGetUint("Engine", "AnimateInterval", &cur))
@@ -176,6 +177,7 @@ void SettingsDialog::LoadSettings()
     ui->chkNoWow64SingleStepWorkaround->setChecked(settings.engineNoWow64SingleStepWorkaround);
     ui->chkDisableAslr->setChecked(settings.engineDisableAslr);
     ui->chkDetachOnAttach->setChecked(settings.engineDetachOnAttach);
+    ui->chkDetachOnExit->setChecked(settings.engineDetachOnExit);
     ui->spinMaxTraceCount->setValue(settings.engineMaxTraceCount);
     ui->spinAnimateInterval->setValue(settings.engineAnimateInterval);
 
@@ -408,6 +410,7 @@ void SettingsDialog::SaveSettings()
     BridgeSettingSetUint("Engine", "NoWow64SingleStepWorkaround", settings.engineNoWow64SingleStepWorkaround);
     BridgeSettingSetUint("Engine", "DisableAslr", settings.engineDisableAslr);
     BridgeSettingSetUint("Engine", "DetachOnAttach", settings.engineDetachOnAttach);
+    BridgeSettingSetUint("Engine", "DetachOnExit", settings.engineDetachOnExit);
 
     //Exceptions tab
     QString exceptionRange = "";
@@ -1083,6 +1086,11 @@ void SettingsDialog::on_chkDisableAslr_toggled(bool checked)
 void SettingsDialog::on_chkDetachOnAttach_toggled(bool checked)
 {
     settings.engineDetachOnAttach = checked;
+}
+
+void SettingsDialog::on_chkDetachOnExit_toggled(bool checked)
+{
+    settings.engineDetachOnExit = checked;
 }
 
 void SettingsDialog::on_chkNoCurrentModuleText_toggled(bool checked)

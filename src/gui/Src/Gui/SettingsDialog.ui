@@ -413,6 +413,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="chkDetachOnExit">
+         <property name="text">
+          <string>Detach from process when exiting debugger</string>
+         </property>
+         <property name="toolTip">
+          <string>When enabled, exiting x64dbg will detach from the current process instead of terminating it</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayoutMaxTraceCount">
          <item>
           <widget class="QLabel" name="lblMaxTraceCount">
