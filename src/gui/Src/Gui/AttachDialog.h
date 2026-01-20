@@ -26,7 +26,7 @@ private slots:
     void processListContextMenu(QMenu* menu);
 
 private:
-    void attachToProcess(duint pid);
+    void attachToProcess(quint32 pid);
 
     Ui::AttachDialog* ui;
     StdIconSearchListView* mSearchListView;

@@ -86,7 +86,7 @@ void AttachDialog::on_btnAttach_clicked()
 {
     QString pid = mSearchListView->mCurList->getCellContent(mSearchListView->mCurList->getInitialSelection(), ColPid);
     if(!pid.isEmpty())
-        attachToProcess(pid.toULongLong());
+        attachToProcess(pid.toUInt());
 }
 
 void AttachDialog::on_btnFindWindow_clicked()
@@ -148,7 +148,7 @@ void AttachDialog::processListContextMenu(QMenu* menu)
     menu->addAction(mRefreshAction);
 }
 
-void AttachDialog::attachToProcess(duint pid)
+void AttachDialog::attachToProcess(quint32 pid)
 {
     // If not currently debugging, just attach directly
     if(!DbgIsDebugging())
