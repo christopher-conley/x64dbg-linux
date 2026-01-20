@@ -4,6 +4,8 @@
 #include "Bridge.h"
 #include "Breakpoints.h"
 
+class QLineEdit;
+
 namespace Ui
 {
     class EditBreakpointDialog;
@@ -25,6 +27,7 @@ private slots:
     void on_editLogText_textEdited(const QString & arg1);
     void on_buttonLogFile_clicked();
     void acceptedSlot();
+    void onExpressionChanged(const QString & text);
 
 private:
     Ui::EditBreakpointDialog* ui;
@@ -32,4 +35,5 @@ private:
     QString mLogFile;
 
     void loadFromBp();
+    void updateExpressionStyle(QLineEdit* edit, const QString & text);
 };
