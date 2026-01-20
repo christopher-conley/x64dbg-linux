@@ -158,6 +158,13 @@ void AttachDialog::attachToProcess(quint32 pid)
         return;
     }
 
+    // Check if trying to attach to the same process we're already debugging
+    if(DbgValFromString("$pid") == pid)
+    {
+        QMessageBox::information(this, tr("Already attached"), tr("You are already debugging this process."));
+        return;
+    }
+
     // Check if we should show the confirmation dialog
     if(ConfigBool("Gui", "ShowAttachConfirmation"))
     {
