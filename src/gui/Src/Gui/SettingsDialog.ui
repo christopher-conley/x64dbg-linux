@@ -975,6 +975,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="chkShowAttachConfirmation">
+         <property name="text">
+          <string>Show attach confirmation dialog</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="chkDisableAutoComplete">
          <property name="text">
           <string>Disable auto completion in goto dialog</string>

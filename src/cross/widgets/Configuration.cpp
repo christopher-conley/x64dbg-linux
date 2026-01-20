@@ -333,6 +333,7 @@ Configuration::Configuration(const ConfigurationPalette & p) : QObject(), noMore
     guiBool.insert("ShowGraphRva", false);
     guiBool.insert("GraphZoomMode", true);
     guiBool.insert("ShowExitConfirmation", false);
+    guiBool.insert("ShowAttachConfirmation", true);
     guiBool.insert("DisableAutoComplete", false);
     guiBool.insert("CaseSensitiveAutoComplete", false);
     guiBool.insert("AutoRepeatOnEnter", false);

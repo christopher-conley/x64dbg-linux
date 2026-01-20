@@ -106,6 +106,7 @@ private slots:
     void on_chkSidebarWatchLabels_stateChanged(int arg1);
     void on_chkNoForegroundWindow_toggled(bool checked);
     void on_chkShowExitConfirmation_toggled(bool checked);
+    void on_chkShowAttachConfirmation_toggled(bool checked);
     void on_chkDisableAutoComplete_toggled(bool checked);
     void on_chkAutoFollowInStack_toggled(bool checked);
     void on_chkHideSeasonalIcons_toggled(bool checked);
@@ -246,6 +247,7 @@ private:
         bool guiShowGraphRva = false;
         bool guiGraphZoomMode = true;
         bool guiShowExitConfirmation = true;
+        bool guiShowAttachConfirmation = true;
         bool guiDisableAutoComplete = false;
         bool guiAutoFollowInStack = false;
         bool guiHideSeasonalIcons = false;
