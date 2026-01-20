@@ -185,7 +185,7 @@ PLUG_IMPEXP bool _plugin_load(const char* pluginName)
 
 duint _plugin_hash(const void* data, duint size)
 {
-    return murmurhash(data, int(size));
+    return murmurhash(data, (size_t)size);
 }
 
 PLUG_IMPEXP bool _plugin_registerformatfunction(int pluginHandle, const char* type, CBPLUGINFORMATFUNCTION cbFunction, void* userdata)

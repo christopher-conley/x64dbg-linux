@@ -934,9 +934,10 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
         // https://github.com/x64dbg/x64dbg/issues/3756
         if(hFile)
         {
-            DWORD fileSize = GetFileSize(hFile, nullptr);
-            if(fileSize != INVALID_FILE_SIZE && fileSize > 0)
+            LARGE_INTEGER fileSizeLI;
+            if(GetFileSizeEx(hFile, &fileSizeLI) && fileSizeLI.QuadPart > 0)
             {
+                uint64_t fileSize = fileSizeLI.QuadPart;
                 HANDLE hMap = CreateFileMappingW(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
                 if(hMap)
                 {
@@ -957,9 +958,11 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
             }
         }
 
-        // 2. If no file handle or mapping failed, try loading from disk path
-        if(!fileLoaded && StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
+        // 2. If no file handle or mapping failed, try loading from disk path (TitanEngine path, limited to 4GB)
+        DWORD titanLoadedSize = 0;
+        if(!fileLoaded && StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &titanLoadedSize, &info.fileMap, &info.fileMapVA))
         {
+            info.loadedSize = titanLoadedSize;
             CloseHandle(info.fileHandle);
             info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
             fileLoaded = true;
@@ -1008,7 +1011,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
                 if(MemRead(Base, info.mappedData(), info.mappedData.size()))
                 {
                     info.isVirtual = true; // Process memory is SEC_IMAGE mapped
-                    info.loadedSize = (DWORD)actualSize;
+                    info.loadedSize = actualSize;
                     GetModuleInfo(info, (ULONG_PTR)info.mappedData());
                     info.size = HEADER_FIELD(info.headers, SizeOfImage);
                     dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from process memory (file inaccessible)\n"), info.name, info.extension);
@@ -1044,7 +1047,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
 
         // Get information from the local buffer
         // TODO: this does not properly work for file offset -> rva conversions (since virtual modules are SEC_IMAGE)
-        info.loadedSize = (DWORD)Size;
+        info.loadedSize = Size;
         GetModuleInfo(info, (ULONG_PTR)info.mappedData());
     }
 
@@ -1580,9 +1583,8 @@ void MODINFO::unloadSymbols()
 
 void MODINFO::unmapFile()
 {
-    // Unload the mapped file from memory
     if(fileMapVA)
-        StaticFileUnloadW(StringUtils::Utf8ToUtf16(path).c_str(), false, fileHandle, loadedSize, fileMap, fileMapVA);
+        StaticFileUnloadW(StringUtils::Utf8ToUtf16(path).c_str(), false, fileHandle, (DWORD)loadedSize, fileMap, fileMapVA);
 }
 
 const MODEXPORT* MODINFO::findExport(duint rva) const
@@ -1625,10 +1627,12 @@ static bool resolveApiSetForward(const String & originatingDll, String & forward
     wcsncat_s(szApiSetDllPath, L".dll", _TRUNCATE);
 
     auto ticks = GetTickCount();
-    // Load the physical module from disk
+    // Load the physical module from disk (TitanEngine path, limited to 4GB)
     MODINFO info = {};
-    if(!StaticFileLoadW(szApiSetDllPath, UE_ACCESS_READ, false, &info.fileHandle, &info.loadedSize, &info.fileMap, &info.fileMapVA))
+    DWORD titanLoadedSize = 0;
+    if(!StaticFileLoadW(szApiSetDllPath, UE_ACCESS_READ, false, &info.fileHandle, &titanLoadedSize, &info.fileMap, &info.fileMapVA))
         return false;
+    info.loadedSize = titanLoadedSize;
 
     GetModuleInfo(info, info.fileMapVA);
 

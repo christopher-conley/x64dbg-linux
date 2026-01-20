@@ -56,18 +56,32 @@ static bool VerifyEmbeddedSignature(LPCWSTR pwszSourceFile, bool checkRevocation
         return false;
     }
 
-    auto fileSize = GetFileSize(hFile, nullptr);
-    SetFilePointer(hFile, fileSize - sizeof(EmbeddedSignature), nullptr, FILE_BEGIN);
+    LARGE_INTEGER fileSizeLI;
+    if(!GetFileSizeEx(hFile, &fileSizeLI) || fileSizeLI.QuadPart < (LONGLONG)sizeof(EmbeddedSignature))
+    {
+        CloseHandle(hFile);
+        return false;
+    }
+    LONGLONG fileSize = fileSizeLI.QuadPart;
+    LARGE_INTEGER seekPos;
+    seekPos.QuadPart = fileSize - sizeof(EmbeddedSignature);
+    SetFilePointerEx(hFile, seekPos, nullptr, FILE_BEGIN);
     EmbeddedSignature signature = {};
     DWORD read = 0;
     ReadFile(hFile, &signature, sizeof(signature), &read, nullptr);
-    SetFilePointer(hFile, 0, nullptr, FILE_BEGIN);
+    seekPos.QuadPart = 0;
+    SetFilePointerEx(hFile, seekPos, nullptr, FILE_BEGIN);
     if(signature.magic == 0xDEAD13371337BEEF)
     {
         // Read the file in memory
         fileSize -= sizeof(EmbeddedSignature);
-        std::vector<uint8_t> fileData(fileSize);
-        auto success = ReadFile(hFile, fileData.data(), fileSize, &read, nullptr);
+        if(fileSize > MAXDWORD)
+        {
+            CloseHandle(hFile);
+            return false;
+        }
+        std::vector<uint8_t> fileData((size_t)fileSize);
+        auto success = ReadFile(hFile, fileData.data(), (DWORD)fileSize, &read, nullptr);
         CloseHandle(hFile);
         if(!success)
         {
@@ -76,7 +90,7 @@ static bool VerifyEmbeddedSignature(LPCWSTR pwszSourceFile, bool checkRevocation
 
         // Hash the file contents
         uint8_t expected[64] = {};
-        crypto_hash(expected, fileData.data(), fileSize);
+        crypto_hash(expected, fileData.data(), (size_t)fileSize);
 
         // Verify the signature block
         u8 pk[32] =

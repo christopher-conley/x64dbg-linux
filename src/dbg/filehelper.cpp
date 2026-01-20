@@ -9,12 +9,17 @@ bool FileHelper::ReadAllData(const String & fileName, std::vector<unsigned char>
         Handle hFile = CreateFileW(StringUtils::Utf8ToUtf16(fileName).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         if(hFile == INVALID_HANDLE_VALUE)
             return false;
-        unsigned int filesize = GetFileSize(hFile, nullptr);
-        if(!filesize)
+        LARGE_INTEGER fileSizeLI;
+        if(!GetFileSizeEx(hFile, &fileSizeLI))
+            return false;
+        if(fileSizeLI.QuadPart == 0)
         {
             content.clear();
             return true;
         }
+        if(fileSizeLI.QuadPart > MAXDWORD)
+            return false; // File too large to read into memory
+        DWORD filesize = (DWORD)fileSizeLI.QuadPart;
         content.resize(filesize);
         DWORD read = 0;
         return !!ReadFile(hFile, content.data(), filesize, &read, nullptr);

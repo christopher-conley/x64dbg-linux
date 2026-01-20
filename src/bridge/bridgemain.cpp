@@ -114,11 +114,15 @@ static const wchar_t* InitializeUserDirectory(HINSTANCE hMainModule, const wchar
         auto hFile = CreateFileW(szFolderRedirect, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         if(hFile != INVALID_HANDLE_VALUE)
         {
-            auto size = GetFileSize(hFile, nullptr);
-            userDirUtf8.resize(size + 1);
-            DWORD read = 0;
-            if(!ReadFile(hFile, userDirUtf8.data(), size, &read, nullptr))
-                userDirUtf8.clear();
+            LARGE_INTEGER fileSizeLI;
+            if(GetFileSizeEx(hFile, &fileSizeLI) && fileSizeLI.QuadPart > 0 && fileSizeLI.QuadPart < MAXDWORD)
+            {
+                DWORD size = (DWORD)fileSizeLI.QuadPart;
+                userDirUtf8.resize(size + 1);
+                DWORD read = 0;
+                if(!ReadFile(hFile, userDirUtf8.data(), size, &read, nullptr))
+                    userDirUtf8.clear();
+            }
             CloseHandle(hFile);
             userDirUtf16 = Utf8ToUtf16(userDirUtf8.data());
         }
@@ -404,9 +408,10 @@ BRIDGE_IMPEXP bool BridgeSettingRead(int* errorLine)
     HANDLE hFile = CreateFileW(szIniFile, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
     if(hFile != INVALID_HANDLE_VALUE)
     {
-        DWORD fileSize = GetFileSize(hFile, nullptr);
-        if(fileSize)
+        LARGE_INTEGER fileSizeLI;
+        if(GetFileSizeEx(hFile, &fileSizeLI) && fileSizeLI.QuadPart > 0 && fileSizeLI.QuadPart < MAXDWORD)
         {
+            DWORD fileSize = (DWORD)fileSizeLI.QuadPart;
             unsigned char utf8bom[] = { 0xEF, 0xBB, 0xBF };
             char* fileData = (char*)BridgeAlloc(sizeof(utf8bom) + fileSize + 1);
             DWORD read = 0;
