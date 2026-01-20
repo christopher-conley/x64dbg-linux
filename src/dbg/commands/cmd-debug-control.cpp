@@ -252,7 +252,24 @@ bool cbDebugAttach(int argc, char* argv[])
         return false;
 
     EXCLUSIVE_ACQUIRE(LockDebugStartStop);
-    cbDebugStop(argc, argv);
+
+    // Detach instead of terminate when attaching to a new process (if setting enabled)
+    if(bIsDebugging && settingboolget("Engine", "DetachOnAttach", false))
+    {
+        cbDebugDetach(argc, argv);
+
+        if(hDebugLoopThread)
+        {
+            WaitForSingleObject(hDebugLoopThread, INFINITE);
+            CloseHandle(hDebugLoopThread);
+            hDebugLoopThread = nullptr;
+        }
+    }
+    else
+    {
+        cbDebugStop(argc, argv);
+    }
+
     ASSERT_TRUE(hDebugLoopThread == nullptr);
 
     Handle hProcess = TitanOpenProcess(PROCESS_ALL_ACCESS, false, (DWORD)pid);
@@ -342,6 +359,7 @@ bool cbDebugDetach(int argc, char* argv[])
         dputs(QT_TRANSLATE_NOOP("DBG", "Detached!"));
     _dbg_animatestop(); // Stop animating
     unlock(WAITID_RUN); // run to resume the debug loop if necessary
+    HistoryClear();
     return true;
 }
 

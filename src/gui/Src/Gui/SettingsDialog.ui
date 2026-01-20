@@ -403,6 +403,26 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="chkDetachOnAttach">
+         <property name="text">
+          <string>Detach from process when attaching to another</string>
+         </property>
+         <property name="toolTip">
+          <string>When enabled, attaching to a new process will detach from the current process instead of terminating it</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkDetachOnExit">
+         <property name="text">
+          <string>Detach from process when exiting debugger</string>
+         </property>
+         <property name="toolTip">
+          <string>When enabled, exiting x64dbg will detach from the current process instead of terminating it</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayoutMaxTraceCount">
          <item>
           <widget class="QLabel" name="lblMaxTraceCount">
@@ -951,6 +971,13 @@
         <widget class="QCheckBox" name="chkShowExitConfirmation">
          <property name="text">
           <string>Show exit confirmation dialog</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkShowAttachConfirmation">
+         <property name="text">
+          <string>Show attach confirmation dialog</string>
          </property>
         </widget>
        </item>

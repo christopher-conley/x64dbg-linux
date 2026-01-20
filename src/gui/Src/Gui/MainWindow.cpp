@@ -783,9 +783,21 @@ void MainWindow::setupLanguagesMenu2()
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    if(DbgIsDebugging())
+    {
+        duint detachOnExit = 0;
+        if(BridgeSettingGetUint("Engine", "DetachOnExit", &detachOnExit) && detachOnExit)
+        {
+            bExitWhenDetached = true;
+            DbgCmdExec("detach");
+            event->ignore();
+            return;
+        }
+    }
+
     if(DbgIsDebugging() && ConfigBool("Gui", "ShowExitConfirmation"))
     {
-        auto cb = new QCheckBox(tr("Always stop the debuggee and exit"));
+        auto cb = new QCheckBox(tr("Remember my choice"));
         QMessageBox msgbox(this);
         msgbox.setText(tr("The debuggee is still running and will be terminated if you exit. What do you want to do?"));
         msgbox.setWindowTitle(tr("Debuggee is still running"));
@@ -806,21 +818,19 @@ void MainWindow::closeEvent(QCloseEvent* event)
         msgbox.setEscapeButton(QMessageBox::Cancel);
         msgbox.setCheckBox(cb);
 
-        QObject::connect(cb, &QCheckBox::toggled, [detachButton, restartButton](bool checked)
-        {
-            auto showConfirmation = !checked;
-            detachButton->setEnabled(showConfirmation);
-            restartButton->setEnabled(showConfirmation);
-            Config()->setBool("Gui", "ShowExitConfirmation", showConfirmation);
-        });
-
         auto code = msgbox.exec();
         if(code == QMessageBox::Retry)
             restartDebugging();
         else if(code == QMessageBox::Abort)
         {
+            if(cb->isChecked())
+                BridgeSettingSetUint("Engine", "DetachOnExit", 1);
             bExitWhenDetached = true;
             DbgCmdExec("detach");
+        }
+        else if(code == QMessageBox::Yes && cb->isChecked())
+        {
+            Config()->setBool("Gui", "ShowExitConfirmation", false);
         }
         if(code != QMessageBox::Yes)
         {

@@ -65,6 +65,8 @@ private slots:
     void on_chkVerboseExceptionLogging_toggled(bool checked);
     void on_chkNoWow64SingleStepWorkaround_toggled(bool checked);
     void on_chkDisableAslr_toggled(bool checked);
+    void on_chkDetachOnAttach_toggled(bool checked);
+    void on_chkDetachOnExit_toggled(bool checked);
     void on_spinMaxTraceCount_valueChanged(int arg1);
     void on_spinAnimateInterval_valueChanged(int arg1);
     //Exception tab
@@ -104,6 +106,7 @@ private slots:
     void on_chkSidebarWatchLabels_stateChanged(int arg1);
     void on_chkNoForegroundWindow_toggled(bool checked);
     void on_chkShowExitConfirmation_toggled(bool checked);
+    void on_chkShowAttachConfirmation_toggled(bool checked);
     void on_chkDisableAutoComplete_toggled(bool checked);
     void on_chkAutoFollowInStack_toggled(bool checked);
     void on_chkHideSeasonalIcons_toggled(bool checked);
@@ -212,6 +215,8 @@ private:
         bool engineVerboseExceptionLogging = true;
         bool engineNoWow64SingleStepWorkaround = false;
         bool engineDisableAslr = false;
+        bool engineDetachOnAttach = false;
+        bool engineDetachOnExit = false;
         int engineMaxTraceCount = 50000;
         int engineAnimateInterval = 50;
         //Exception Tab
@@ -242,6 +247,7 @@ private:
         bool guiShowGraphRva = false;
         bool guiGraphZoomMode = true;
         bool guiShowExitConfirmation = true;
+        bool guiShowAttachConfirmation = true;
         bool guiDisableAutoComplete = false;
         bool guiAutoFollowInStack = false;
         bool guiHideSeasonalIcons = false;

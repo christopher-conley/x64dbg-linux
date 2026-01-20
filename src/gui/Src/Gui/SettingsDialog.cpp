@@ -126,6 +126,8 @@ void SettingsDialog::LoadSettings()
     GetSettingBool("Engine", "VerboseExceptionLogging", &settings.engineVerboseExceptionLogging);
     GetSettingBool("Engine", "NoWow64SingleStepWorkaround", &settings.engineNoWow64SingleStepWorkaround);
     GetSettingBool("Engine", "DisableAslr", &settings.engineDisableAslr);
+    GetSettingBool("Engine", "DetachOnAttach", &settings.engineDetachOnAttach);
+    GetSettingBool("Engine", "DetachOnExit", &settings.engineDetachOnExit);
     if(BridgeSettingGetUint("Engine", "MaxTraceCount", &cur))
         settings.engineMaxTraceCount = int(cur);
     if(BridgeSettingGetUint("Engine", "AnimateInterval", &cur))
@@ -174,6 +176,8 @@ void SettingsDialog::LoadSettings()
     ui->chkVerboseExceptionLogging->setChecked(settings.engineVerboseExceptionLogging);
     ui->chkNoWow64SingleStepWorkaround->setChecked(settings.engineNoWow64SingleStepWorkaround);
     ui->chkDisableAslr->setChecked(settings.engineDisableAslr);
+    ui->chkDetachOnAttach->setChecked(settings.engineDetachOnAttach);
+    ui->chkDetachOnExit->setChecked(settings.engineDetachOnExit);
     ui->spinMaxTraceCount->setValue(settings.engineMaxTraceCount);
     ui->spinAnimateInterval->setValue(settings.engineAnimateInterval);
 
@@ -281,6 +285,7 @@ void SettingsDialog::LoadSettings()
     GetSettingBool("Gui", "ShowGraphRva", &settings.guiShowGraphRva);
     GetSettingBool("Gui", "GraphZoomMode", &settings.guiGraphZoomMode);
     GetSettingBool("Gui", "ShowExitConfirmation", &settings.guiShowExitConfirmation);
+    GetSettingBool("Gui", "ShowAttachConfirmation", &settings.guiShowAttachConfirmation);
     GetSettingBool("Gui", "DisableAutoComplete", &settings.guiDisableAutoComplete);
     GetSettingBool("Gui", "AutoFollowInStack", &settings.guiAutoFollowInStack);
     GetSettingBool("Gui", "NoSeasons", &settings.guiHideSeasonalIcons);
@@ -297,6 +302,7 @@ void SettingsDialog::LoadSettings()
     ui->chkShowGraphRva->setChecked(settings.guiShowGraphRva);
     ui->chkGraphZoomMode->setChecked(settings.guiGraphZoomMode);
     ui->chkShowExitConfirmation->setChecked(settings.guiShowExitConfirmation);
+    ui->chkShowAttachConfirmation->setChecked(settings.guiShowAttachConfirmation);
     ui->chkDisableAutoComplete->setChecked(settings.guiDisableAutoComplete);
     ui->chkAutoFollowInStack->setChecked(settings.guiAutoFollowInStack);
     ui->chkHideSeasonalIcons->setChecked(settings.guiHideSeasonalIcons);
@@ -405,6 +411,8 @@ void SettingsDialog::SaveSettings()
     BridgeSettingSetUint("Engine", "HardcoreThreadSwitchWarning", settings.engineHardcoreThreadSwitchWarning);
     BridgeSettingSetUint("Engine", "NoWow64SingleStepWorkaround", settings.engineNoWow64SingleStepWorkaround);
     BridgeSettingSetUint("Engine", "DisableAslr", settings.engineDisableAslr);
+    BridgeSettingSetUint("Engine", "DetachOnAttach", settings.engineDetachOnAttach);
+    BridgeSettingSetUint("Engine", "DetachOnExit", settings.engineDetachOnExit);
 
     //Exceptions tab
     QString exceptionRange = "";
@@ -450,6 +458,7 @@ void SettingsDialog::SaveSettings()
     BridgeSettingSetUint("Gui", "ShowGraphRva", settings.guiShowGraphRva);
     BridgeSettingSetUint("Gui", "GraphZoomMode", settings.guiGraphZoomMode);
     BridgeSettingSetUint("Gui", "ShowExitConfirmation", settings.guiShowExitConfirmation);
+    BridgeSettingSetUint("Gui", "ShowAttachConfirmation", settings.guiShowAttachConfirmation);
     BridgeSettingSetUint("Gui", "DisableAutoComplete", settings.guiDisableAutoComplete);
     BridgeSettingSetUint("Gui", "AutoFollowInStack", settings.guiAutoFollowInStack);
     BridgeSettingSetUint("Gui", "NoSeasons", settings.guiHideSeasonalIcons);
@@ -1077,6 +1086,16 @@ void SettingsDialog::on_chkDisableAslr_toggled(bool checked)
     settings.engineDisableAslr = checked;
 }
 
+void SettingsDialog::on_chkDetachOnAttach_toggled(bool checked)
+{
+    settings.engineDetachOnAttach = checked;
+}
+
+void SettingsDialog::on_chkDetachOnExit_toggled(bool checked)
+{
+    settings.engineDetachOnExit = checked;
+}
+
 void SettingsDialog::on_chkNoCurrentModuleText_toggled(bool checked)
 {
     bTokenizerConfigUpdated = true;
@@ -1133,6 +1152,11 @@ void SettingsDialog::on_chkGraphZoomMode_toggled(bool checked)
 void SettingsDialog::on_chkShowExitConfirmation_toggled(bool checked)
 {
     settings.guiShowExitConfirmation = checked;
+}
+
+void SettingsDialog::on_chkShowAttachConfirmation_toggled(bool checked)
+{
+    settings.guiShowAttachConfirmation = checked;
 }
 
 void SettingsDialog::on_chkDisableAutoComplete_toggled(bool checked)

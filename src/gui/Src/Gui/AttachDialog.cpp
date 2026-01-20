@@ -5,6 +5,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QFileInfo>
+#include <QCheckBox>
 
 AttachDialog::AttachDialog(QWidget* parent) : QDialog(parent), ui(new Ui::AttachDialog)
 {
@@ -84,8 +85,8 @@ void AttachDialog::refresh()
 void AttachDialog::on_btnAttach_clicked()
 {
     QString pid = mSearchListView->mCurList->getCellContent(mSearchListView->mCurList->getInitialSelection(), ColPid);
-    DbgCmdExec(QString("attach %1%2").arg(".").arg(pid));
-    accept();
+    if(!pid.isEmpty())
+        attachToProcess(pid.toUInt());
 }
 
 void AttachDialog::on_btnFindWindow_clicked()
@@ -128,8 +129,7 @@ retryFindWindow:
                                                 QMessageBox::Yes | QMessageBox::No, this);
                 if(hiddenProcessDialog.exec() == QMessageBox::Yes)
                 {
-                    DbgCmdExec(QString("attach %1").arg(pid, 0, 16));
-                    accept();
+                    attachToProcess(pid);
                 }
             }
         }
@@ -146,4 +146,74 @@ void AttachDialog::processListContextMenu(QMenu* menu)
 
     menu->addAction(mAttachAction);
     menu->addAction(mRefreshAction);
+}
+
+void AttachDialog::attachToProcess(quint32 pid)
+{
+    // If not currently debugging, just attach directly
+    if(!DbgIsDebugging())
+    {
+        DbgCmdExec(QString("attach .%1").arg(pid));
+        accept();
+        return;
+    }
+
+    // Check if trying to attach to the same process we're already debugging
+    if(DbgValFromString("$pid") == pid)
+    {
+        QMessageBox::information(this, tr("Already attached"), tr("You are already debugging this process."));
+        return;
+    }
+
+    // Check if we should show the confirmation dialog
+    if(ConfigBool("Gui", "ShowAttachConfirmation"))
+    {
+        // Show confirmation dialog
+        auto cb = new QCheckBox(tr("Remember my choice"));
+        QMessageBox msgbox(this);
+        msgbox.setText(tr("You are already debugging a process. What would you like to do with the current process?"));
+        msgbox.setWindowTitle(tr("Already debugging"));
+        msgbox.setWindowIcon(DIcon("bug"));
+
+        auto terminateButton = msgbox.addButton(QMessageBox::Yes);
+        terminateButton->setText(tr("&Terminate"));
+        terminateButton->setToolTip(tr("Terminate the current process and attach to the new one."));
+
+        auto detachButton = msgbox.addButton(QMessageBox::No);
+        detachButton->setText(tr("&Detach"));
+        detachButton->setToolTip(tr("Detach from the current process (leaving it running) and attach to the new one."));
+
+        auto cancelButton = msgbox.addButton(QMessageBox::Cancel);
+        cancelButton->setText(tr("&Cancel"));
+        cancelButton->setToolTip(tr("Cancel and don't attach to the new process."));
+
+        msgbox.setDefaultButton(QMessageBox::Cancel);
+        msgbox.setEscapeButton(QMessageBox::Cancel);
+        msgbox.setCheckBox(cb);
+
+        auto code = msgbox.exec();
+
+        if(code == QMessageBox::Cancel)
+            return; // User cancelled
+
+        if(code == QMessageBox::No) // Detach
+        {
+            // Set DetachOnAttach so backend will detach instead of terminate
+            BridgeSettingSetUint("Engine", "DetachOnAttach", 1);
+            if(cb->isChecked())
+                Config()->setBool("Gui", "ShowAttachConfirmation", false);
+        }
+        else if(code == QMessageBox::Yes) // Terminate
+        {
+            // Ensure DetachOnAttach is off so backend will terminate
+            BridgeSettingSetUint("Engine", "DetachOnAttach", 0);
+            if(cb->isChecked())
+                Config()->setBool("Gui", "ShowAttachConfirmation", false);
+        }
+    }
+    // If ShowAttachConfirmation is false, backend uses existing DetachOnAttach setting
+    // (set by a previous "Remember my choice" selection)
+
+    DbgCmdExec(QString("attach .%1").arg(pid));
+    accept();
 }
