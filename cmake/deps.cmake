@@ -12,7 +12,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     message(STATUS "Copying dependencies from ${DEPS_DIR} to ${GUI_DIR}")
 
     execute_process(
-        COMMAND ${WINDEPLOYQT} --no-compiler-runtime --no-translations --no-opengl-sw --force ${GUI_DLL} --list relative
+        COMMAND ${WINDEPLOYQT} --pdb --no-compiler-runtime --no-translations --no-opengl-sw --force ${GUI_DLL} --list relative
         OUTPUT_VARIABLE DEPS_COPIED
     )
 
