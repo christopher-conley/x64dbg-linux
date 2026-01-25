@@ -176,6 +176,7 @@ SymbolView::SymbolView(QWidget* parent) : QWidget(parent), ui(new Ui::SymbolView
     // Create reference view
     mSymbolSearchList = new SymbolSearchList();
     mSymbolList = new SearchListView(this, mSymbolSearchList, true, true);
+    mSymbolList->setAccessibleName(tr("Symbols"));
     mSymbolList->mSearchStartCol = 1;
 
     // Add a disassembly popup
@@ -184,6 +185,7 @@ SymbolView::SymbolView(QWidget* parent) : QWidget(parent), ui(new Ui::SymbolView
 
     // Create module list
     mModuleList = new StdIconSearchListView(this, true, false, new StdTableSearchList(new ModuleStdTable(), new ModuleStdTable()));
+    mModuleList->setAccessibleName(tr("Modules"));
     mModuleList->setSearchStartCol(ColBase);
     mModuleList->enableMultiSelection(true);
     mModuleList->setAddressColumn(ColBase, true);

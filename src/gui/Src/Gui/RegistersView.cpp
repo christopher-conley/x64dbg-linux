@@ -916,7 +916,7 @@ QAction* RegistersView::setupAction(const QString & text)
 
 RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOffset(0)
 {
-    setWindowTitle("Registers");
+    setAccessibleName(tr("Registers"));
     mChangeViewButton = NULL;
     mFpuMode = 0;
     mXMMModeAuto = true;

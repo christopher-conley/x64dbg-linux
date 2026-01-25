@@ -243,6 +243,7 @@ void CPUArgumentWidget::loadConfig()
 void CPUArgumentWidget::setupTable()
 {
     connect(mTable, SIGNAL(contextMenuSignal(QPoint)), this, SLOT(contextMenuSlot(QPoint)));
+    mTable->setAccessibleName(tr("Arguments"));
     mTable->enableMultiSelection(false);
     mTable->setShowHeader(false);
     mTable->addColumnAt(0, "", false);
