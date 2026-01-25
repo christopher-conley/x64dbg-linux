@@ -1005,7 +1005,7 @@ bool ExpressionParser::Calculate(EvalValue & value, bool signedcalc, bool allowa
                 return signature;
             };
 
-            if(stack.size() < requiredArguments || argCount > argTypes.size())
+            if(argCount < requiredArguments || argCount > argTypes.size() || stack.size() < argCount)
             {
                 if(!silent)
                 {
