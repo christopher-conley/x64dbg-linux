@@ -10,15 +10,19 @@ struct FileMap
         hFile = CreateFileW(szFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         if(hFile != INVALID_HANDLE_VALUE)
         {
-            size = GetFileSize(hFile, nullptr);
-            hMap = CreateFileMappingW(hFile, nullptr, PAGE_READONLY | (mapImage ? SEC_IMAGE : 0), 0, 0, nullptr);
-            if(hMap)
-                data = (const T*)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+            LARGE_INTEGER fileSizeLI;
+            if(GetFileSizeEx(hFile, &fileSizeLI))
+            {
+                size = fileSizeLI.QuadPart;
+                hMap = CreateFileMappingW(hFile, nullptr, PAGE_READONLY | (mapImage ? SEC_IMAGE : 0), 0, 0, nullptr);
+                if(hMap)
+                    data = (const T*)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+            }
         }
         return data != nullptr;
     }
 
-    unsigned int Size()
+    uint64_t Size()
     {
         return size;
     }
@@ -52,7 +56,7 @@ private:
     HANDLE hFile = INVALID_HANDLE_VALUE;
     HANDLE hMap = nullptr;
     const T* data = nullptr;
-    unsigned int size = 0;
+    uint64_t size = 0;
 };
 
 struct BufferedWriter

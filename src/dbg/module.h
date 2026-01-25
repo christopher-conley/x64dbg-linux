@@ -116,7 +116,7 @@ struct MODINFO
     std::vector<String> pdbPaths; // Possible PDB paths (tried in order)
 
     HANDLE fileHandle = nullptr;
-    DWORD loadedSize = 0;
+    uint64_t loadedSize = 0;
     HANDLE fileMap = nullptr;
     ULONG_PTR fileMapVA = 0;
 

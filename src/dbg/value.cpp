@@ -2617,7 +2617,9 @@ duint valvatofileoffset(duint va)
     const auto modInfo = ModInfoFromAddr(va);
     if(modInfo && modInfo->fileMapVA)
     {
-        ULONGLONG offset = ConvertVAtoFileOffsetEx(modInfo->fileMapVA, modInfo->loadedSize, 0, va - modInfo->base, true, false);
+        if(modInfo->loadedSize > MAXDWORD)
+            return 0;
+        ULONGLONG offset = ConvertVAtoFileOffsetEx(modInfo->fileMapVA, (DWORD)modInfo->loadedSize, 0, va - modInfo->base, true, false);
         return (duint)offset;
     }
     return 0;

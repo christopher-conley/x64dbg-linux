@@ -16,21 +16,24 @@ typedef unsigned char uint8_t;
 typedef unsigned int uint32_t;
 typedef unsigned __int64 uint64_t;
 
+#include <stddef.h>
+
 // Other compilers
 
 #else    // defined(_MSC_VER)
 
 #include <stdint.h>
+#include <stddef.h>
 
 #endif // !defined(_MSC_VER)
 
 //-----------------------------------------------------------------------------
 
-void MurmurHash3_x86_32(const void* key, int len, uint32_t seed, void* out);
+void MurmurHash3_x86_32(const void* key, size_t len, uint32_t seed, void* out);
 
-void MurmurHash3_x86_128(const void* key, int len, uint32_t seed, void* out);
+void MurmurHash3_x86_128(const void* key, size_t len, uint32_t seed, void* out);
 
-void MurmurHash3_x64_128(const void* key, int len, uint32_t seed, void* out);
+void MurmurHash3_x64_128(const void* key, size_t len, uint32_t seed, void* out);
 
 //-----------------------------------------------------------------------------
 
@@ -39,13 +42,13 @@ static inline
 unsigned long long murmurhash(const void* data, size_t len)
 {
     unsigned long long hash[2];
-    MurmurHash3_x64_128(data, (int)len, 0x1337, hash);
+    MurmurHash3_x64_128(data, len, 0x1337, hash);
 #else //x86
 static inline
 unsigned long murmurhash(const void* data, size_t len)
 {
     unsigned int hash[1];
-    MurmurHash3_x86_32(data, (int)len, 0x1337, hash);
+    MurmurHash3_x86_32(data, len, 0x1337, hash);
 #endif //_WIN64
     return hash[0];
 }
