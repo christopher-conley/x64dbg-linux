@@ -77,9 +77,11 @@ QString AccessibleHexDump::getCellContent(int row, int col) const
     QString str;
     for(const auto & i : richText)
     {
-        str += i.text + ' ';
+        str += i.text;
     }
-    return str;
+    if(col == 0)
+        return str.trimmed();
+    return str.simplified();
 }
 
 #endif
