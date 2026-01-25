@@ -97,6 +97,16 @@ duint AccessibleAbstractTableView::logicalColumn(int physicalColumn) const
     return m_visibleColumns.at(physicalColumn);
 }
 
+int AccessibleAbstractTableView::physicalColumnFromLogical(int logicalColumn) const
+{
+    for(size_t i = 0; i < m_visibleColumns.size(); i++)
+    {
+        if(static_cast<int>(m_visibleColumns[i]) == logicalColumn)
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
 int AccessibleAbstractTableView::childCount() const
 {
     return cellInterfaces.size();
@@ -124,6 +134,9 @@ QAccessibleInterface* AccessibleAbstractTableView::childAt(int x, int y) const
     try
     {
         if(y < 0 || x < 0)
+            return nullptr;
+        col = physicalColumnFromLogical(col);
+        if(col < 0 || col >= cols)
             return nullptr;
         if(y < m_tableView->getHeaderHeight())
         {

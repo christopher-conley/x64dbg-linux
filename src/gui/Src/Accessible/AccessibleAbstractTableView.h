@@ -59,6 +59,7 @@ private:
     QAccessible::Id & cellArray(int row, int col); // Get reference of accessible id, throws std::out_of_range exception
     const QAccessible::Id & cellArray(int row, int col) const;
     void updateVisibleColumns();
+    int physicalColumnFromLogical(int logicalColumn) const;
 };
 
 #endif
