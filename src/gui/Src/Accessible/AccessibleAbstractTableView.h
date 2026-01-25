@@ -60,6 +60,7 @@ private:
     const QAccessible::Id & cellArray(int row, int col) const;
     void updateVisibleColumns();
     int physicalColumnFromLogical(int logicalColumn) const;
+    void ensureModelUpToDate() const;
 };
 
 #endif

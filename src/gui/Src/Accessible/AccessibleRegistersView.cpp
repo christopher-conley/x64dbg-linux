@@ -145,7 +145,11 @@ AccessibleRegistersView::AccessibleRegistersView(QWidget* w) : QAccessibleWidget
 
 AccessibleRegistersView::~AccessibleRegistersView()
 {
-    std::for_each(interfaces.cbegin(), interfaces.cend(), QAccessible::deleteAccessibleInterface);
+    for(const auto & id : interfaces)
+    {
+        if(id != 0)
+            QAccessible::deleteAccessibleInterface(id);
+    }
 }
 
 int AccessibleRegistersView::childCount() const
@@ -158,7 +162,12 @@ QAccessibleInterface* AccessibleRegistersView::child(int index) const
 {
     if(index >= 0 && index < childCount())
     {
-        return QAccessible::accessibleInterface(interfaces[index]);
+        auto & id = interfaces[index];
+        if(id == 0)
+        {
+            id = QAccessible::registerAccessibleInterface(new AccessibleRegistersViewItem(const_cast<AccessibleRegistersView*>(this), (RegistersView::REGISTER_NAME)index));
+        }
+        return QAccessible::accessibleInterface(id);
     }
     else
         return nullptr;
