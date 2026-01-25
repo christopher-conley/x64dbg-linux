@@ -1,4 +1,5 @@
 #include "AbstractTableView.h"
+#include <QAccessible>
 #include <QStyleOptionButton>
 #include <cinttypes>
 #include "Configuration.h"
@@ -67,6 +68,7 @@ void AbstractTableView::Initialize()
     // of VTable changes
     //
     // Init all other updates once
+    accessibilitySelectedColumn = 0;
     updateColors();
     updateFonts();
     updateShortcuts();
@@ -467,6 +469,7 @@ void AbstractTableView::mousePressEvent(QMouseEvent* event)
                 updateViewport();
             }
         }
+        accessibilityMousePressSetColumn(event);
     }
     else //right/middle click
     {
@@ -685,6 +688,7 @@ void AbstractTableView::resizeEvent(QResizeEvent* event)
     {
         emit viewableRowsChanged(getViewableRowsCount());
         mShouldReload = true;
+        accessibilityTableModelChanged();
     }
     QAbstractScrollArea::resizeEvent(event);
 }
@@ -728,6 +732,27 @@ void AbstractTableView::keyPressEvent(QKeyEvent* event)
     }
     else
     {
+        if(QAccessible::isActive())
+        {
+            QAccessibleInterface* iface = QAccessible::queryAccessibleInterface(this);
+            if(iface)
+            {
+                QAccessibleTableInterface* tface = (QAccessibleTableInterface*)iface->interface_cast(QAccessible::TableInterface);
+                if(tface)
+                {
+                    if(key == Qt::Key_Left && accessibilitySelectedColumn > 0)
+                    {
+                        accessibilitySelectedColumn--;
+                        accessibilitySelectionChanged();
+                    }
+                    else if(key == Qt::Key_Right && accessibilitySelectedColumn < tface->columnCount() - 1)
+                    {
+                        accessibilitySelectedColumn++;
+                        accessibilitySelectionChanged();
+                    }
+                }
+            }
+        }
         QAbstractScrollArea::keyPressEvent(event);
     }
 }
@@ -1090,7 +1115,7 @@ int AbstractTableView::transY(int y) const
  */
 duint AbstractTableView::getViewableRowsCount() const
 {
-    auto tableHeight = viewport()->height() - getHeaderHeight();
+    auto tableHeight = std::max(0, viewport()->height() - getHeaderHeight());
     auto count = tableHeight / getRowHeight();
 
     count += (tableHeight % getRowHeight()) > 0 ? 1 : 0;
@@ -1125,6 +1150,7 @@ void AbstractTableView::addColumnAt(int width, const QString & title, bool isCli
     mColumnList.append(column);
 
     updateLastColumnWidth();
+    accessibilityTableModelChanged();
 }
 
 void AbstractTableView::setRowCount(duint count)
@@ -1139,12 +1165,14 @@ void AbstractTableView::setRowCount(duint count)
     });
 
     // TODO: report if mTableOffset is out of view
+    accessibilityTableModelChanged();
 }
 
 void AbstractTableView::deleteAllColumns()
 {
     mColumnList.clear();
     mColumnOrder.clear();
+    accessibilityTableModelChanged();
 }
 
 void AbstractTableView::setColTitle(duint col, const QString & title)
@@ -1368,4 +1396,74 @@ duint AbstractTableView::getAddressForPosition(int x, int y)
     Q_UNUSED(x);
     Q_UNUSED(y);
     return 0;
+}
+
+int AbstractTableView::accessibilitySelectedRow() const
+{
+    return 0;
+}
+
+void AbstractTableView::accessibilitySelectionChanged()
+{
+    if(QAccessible::isActive())
+    {
+        QAccessibleInterface* accessible = QAccessible::queryAccessibleInterface(this);
+        QAccessibleEvent selectionEvent(accessible, QAccessible::SectionChanged);
+        QAccessible::updateAccessibility(&selectionEvent);
+        if(hasFocus())
+        {
+            auto sel = accessibilitySelectedRow();
+            if(sel != -1)
+            {
+                QAccessibleTableInterface* tableInterface = (QAccessibleTableInterface*)accessible->interface_cast(QAccessible::TableInterface);
+                assert(tableInterface);
+                QAccessibleInterface* cell = tableInterface->cellAt(sel + 1, accessibilitySelectedColumn);
+                if(cell)
+                {
+                    QAccessibleEvent focusEvent(cell, QAccessible::Focus);
+                    QAccessible::updateAccessibility(&focusEvent);
+                }
+            }
+        }
+    }
+}
+
+void AbstractTableView::accessibilityTableModelChanged()
+{
+    if(QAccessible::isActive())
+    {
+        QAccessibleInterface* accessibleInterface = QAccessible::queryAccessibleInterface(this);
+        QAccessibleTableModelChangeEvent model(accessibleInterface, QAccessibleTableModelChangeEvent::ModelReset);
+        model.setFirstColumn(0);
+        model.setFirstRow(0);
+        if(getViewableRowsCount() < getRowCount())
+            model.setLastRow(getViewableRowsCount() + 1);
+        else
+            model.setLastRow(getRowCount() + 1);
+        model.setLastColumn(getColumnCount());
+        QAccessible::updateAccessibility(&model);
+    }
+}
+
+void AbstractTableView::accessibilityMousePressSetColumn(QMouseEvent* event)
+{
+    // update selected column
+    if(QAccessible::isActive() && getColumnCount() && event->y() > getHeaderHeight())
+    {
+        accessibilitySelectedColumn = getColumnDisplayIndexFromX(event->x());
+        if(accessibilitySelectedColumn == -1)
+        {
+            accessibilitySelectedColumn = 0;
+        }
+        else
+        {
+            // Exclude hidden columns
+            for(int colIndex = 0; colIndex < accessibilitySelectedColumn; colIndex++)
+            {
+                if(getColumnHidden(mColumnOrder[colIndex]))
+                    accessibilitySelectedColumn--;
+            }
+        }
+        accessibilitySelectionChanged();
+    }
 }

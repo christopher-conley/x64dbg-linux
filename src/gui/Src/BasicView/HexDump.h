@@ -106,17 +106,17 @@ public:
     duint getSelectionEnd() const;
     bool isSelected(duint rva) const;
 
-    virtual void getColumnRichText(duint column, duint rva, RichTextPainter::List & richText);
+    virtual void getColumnRichText(duint column, duint rva, RichTextPainter::List & richText) const;
 
     static size_t getSizeOf(DataSize size);
 
-    void toString(DataDescriptor desc, duint rva, uint8_t* data, RichTextPainter::CustomRichText_t & richText);
+    void toString(DataDescriptor desc, duint rva, const uint8_t* data, RichTextPainter::CustomRichText_t & richText) const;
 
-    void byteToString(duint rva, uint8_t byte, ByteViewMode mode, RichTextPainter::CustomRichText_t & richText);
-    void wordToString(duint rva, uint16_t word, WordViewMode mode, RichTextPainter::CustomRichText_t & richText);
+    void byteToString(duint rva, uint8_t byte, ByteViewMode mode, RichTextPainter::CustomRichText_t & richText) const;
+    void wordToString(duint rva, uint16_t word, WordViewMode mode, RichTextPainter::CustomRichText_t & richText) const;
     static void dwordToString(duint rva, uint32_t dword, DwordViewMode mode, RichTextPainter::CustomRichText_t & richText);
     static void qwordToString(duint rva, uint64_t qword, QwordViewMode mode, RichTextPainter::CustomRichText_t & richText);
-    static void twordToString(duint rva, void* tword, TwordViewMode mode, RichTextPainter::CustomRichText_t & richText);
+    static void twordToString(duint rva, const void* tword, TwordViewMode mode, RichTextPainter::CustomRichText_t & richText);
 
     int getItemIndexFromX(int x) const;
     duint getItemStartingAddress(int x, int y);
@@ -134,7 +134,7 @@ public:
 
     duint getTableOffsetRva() const;
     QString makeAddrText(duint va) const;
-    QString makeCopyText();
+    QString makeCopyText() const;
 
     void setupCopyMenu();
 
@@ -153,6 +153,7 @@ public slots:
     void gotoPreviousSlot();
     void gotoNextSlot();
     void updateSelectionUnderline();
+    void selectionChangedSlot();
 
 private:
     enum GuiState
@@ -208,7 +209,7 @@ private:
     } mUpdateCache;
     std::vector<uint8_t> mUpdateCacheData;
     std::vector<uint8_t> mUpdateCacheTemp;
-    std::vector<uint8_t> mReadBuffer;
+    mutable std::vector<uint8_t> mReadBuffer;
 
     std::vector<uint8_t> mUnderlineBuffer;
     std::vector<std::pair<duint, duint>> mUnderlineRanges;
@@ -232,4 +233,5 @@ protected:
     duint mUnderlineRangeEndVa = 0;
     bool mPointerUnderliningEnabled = true;
     bool mSelectionUnderliningEnabled = false;
+    int accessibilitySelectedRow() const override;
 };

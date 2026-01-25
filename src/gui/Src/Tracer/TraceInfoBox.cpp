@@ -107,7 +107,7 @@ void TraceInfoBox::update(TRACEINDEX selection, TraceFileReader* traceFile, cons
                         {
                             memoryLine += "= ";
                             memoryLine += ToDoubleString(&MemoryOldContent[memaccessindex]);
-                            memoryLine += " -> ";
+                            memoryLine += QString::fromUtf8("\xe2\x86\x92"); // Right Arrow
                             memoryLine += ToDoubleString(&MemoryNewContent[memaccessindex]);
                             break;
                         }
@@ -123,7 +123,7 @@ void TraceInfoBox::update(TRACEINDEX selection, TraceFileReader* traceFile, cons
                             memcpy(&dblval, &MemoryOldContent[memaccessindex], 4);
                             memcpy(((char*)&dblval) + 4, &MemoryOldContent[memaccessindex + 1], 4);
                             memoryLine += ToDoubleString(&dblval);
-                            memoryLine += " -> ";
+                            memoryLine += QString::fromUtf8("\xe2\x86\x92"); // Right Arrow
                             memcpy(&dblval, &MemoryNewContent[memaccessindex], 4);
                             memcpy(((char*)&dblval) + 4, &MemoryNewContent[memaccessindex + 1], 4);
                             memoryLine += ToDoubleString(&dblval);
@@ -141,7 +141,7 @@ void TraceInfoBox::update(TRACEINDEX selection, TraceFileReader* traceFile, cons
                         {
                             memoryLine += "= ";
                             memoryLine += ToFloatString(&MemoryOldContent[memaccessindex]);
-                            memoryLine += " -> ";
+                            memoryLine += QString::fromUtf8("\xe2\x86\x92"); // Right Arrow
                             memoryLine += ToFloatString(&MemoryNewContent[memaccessindex]);
                             break;
                         }
@@ -161,7 +161,7 @@ void TraceInfoBox::update(TRACEINDEX selection, TraceFileReader* traceFile, cons
                         {
                             memoryLine += "=";
                             memoryLine += ToHexString(MemoryOldContent[memaccessindex] & mask);
-                            memoryLine += " -> ";
+                            memoryLine += QString::fromUtf8("\xe2\x86\x92"); // Right Arrow
                             memoryLine += ToHexString(MemoryNewContent[memaccessindex] & mask);
                             break;
                         }

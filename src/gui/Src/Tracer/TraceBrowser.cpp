@@ -100,7 +100,7 @@ bool TraceBrowser::toggleTraceRecording(QWidget* parent)
     return false;
 }
 
-QString TraceBrowser::getAddrText(dsint cur_addr, char label[MAX_LABEL_SIZE], bool getLabel)
+QString TraceBrowser::getAddrText(dsint cur_addr, char label[MAX_LABEL_SIZE], bool getLabel) const
 {
     QString addrText = "";
     if(mRvaDisplayEnabled) //RVA display
@@ -1033,6 +1033,7 @@ void TraceBrowser::mousePressEvent(QMouseEvent* event)
                 setSingleSelection(index);
             mHistory.addVaToHistory(index);
             emit selectionChanged(getInitialSelection());
+            accessibilityMousePressSetColumn(event);
         }
         updateViewport();
         return;
@@ -1180,6 +1181,7 @@ void TraceBrowser::selectionChangedSlot(TRACEINDEX selection)
     {
         GuiDisasmAt(getTraceFile()->Address(selection), 0);
     }
+    accessibilitySelectionChanged();
 }
 
 void TraceBrowser::tokenizerConfigUpdatedSlot()
@@ -1210,22 +1212,22 @@ void TraceBrowser::setSingleSelection(duint index)
     mSelection.toIndex = index;
 }
 
-duint TraceBrowser::getInitialSelection()
+duint TraceBrowser::getInitialSelection() const
 {
     return mSelection.firstSelectedIndex;
 }
 
-duint TraceBrowser::getSelectionSize()
+duint TraceBrowser::getSelectionSize() const
 {
     return mSelection.toIndex - mSelection.fromIndex + 1;
 }
 
-duint TraceBrowser::getSelectionStart()
+duint TraceBrowser::getSelectionStart() const
 {
     return mSelection.fromIndex;
 }
 
-duint TraceBrowser::getSelectionEnd()
+duint TraceBrowser::getSelectionEnd() const
 {
     return mSelection.toIndex;
 }
@@ -1547,8 +1549,7 @@ void TraceBrowser::pushSelectionInto(bool copyBytes, QTextStream & stream, QText
         }
         else
         {
-            for(const auto & token : inst.tokens.tokens)
-                disassembly += token.text;
+            disassembly = inst.tokens.toString();
         }
         QString fullComment;
         QString comment;
@@ -1570,8 +1571,7 @@ void TraceBrowser::pushSelectionInto(bool copyBytes, QTextStream & stream, QText
         }
         else
         {
-            for(const auto & token : regTokens.tokens)
-                registersText += token.text;
+            registersText = regTokens.toString();
         }
 
         QString memoryText;
@@ -1588,8 +1588,7 @@ void TraceBrowser::pushSelectionInto(bool copyBytes, QTextStream & stream, QText
         }
         else
         {
-            for(const auto & token : memTokens.tokens)
-                memoryText += token.text;
+            memoryText = memTokens.toString();
         }
 
         stream << getTraceFile()->getIndexText(i) + " | " + address.leftJustified(addressLen, QChar(' '), true);
@@ -1960,4 +1959,13 @@ bool TraceBrowser::hightlightToken(const ZydisTokenizer::SingleToken & token)
     mHighlightToken = token;
     mHighlightingMode = false;
     return true;
+}
+
+int TraceBrowser::accessibilitySelectedRow() const
+{
+    int row = getInitialSelection() - getTableOffset();
+    if(row >= 0 && row < getViewableRowsCount())
+        return row;
+    else
+        return -1;
 }

@@ -387,6 +387,7 @@ void AbstractStdTable::mousePressEvent(QMouseEvent* event)
 
                     // TODO: only update if the selection actually changed
                     updateViewport();
+                    accessibilityMousePressSetColumn(event);
 
                     accept = true;
                 }
@@ -538,12 +539,14 @@ void AbstractStdTable::expandSelectionUpTo(duint to)
         mSelection.fromIndex = to;
         mSelection.toIndex = mSelection.firstSelectedIndex;
         emit selectionChanged(to);
+        accessibilitySelectionChanged();
     }
     else if(to > mSelection.firstSelectedIndex)
     {
         mSelection.fromIndex = mSelection.firstSelectedIndex;
         mSelection.toIndex = to;
         emit selectionChanged(to);
+        accessibilitySelectionChanged();
     }
     else if(to == mSelection.firstSelectedIndex)
     {
@@ -569,6 +572,7 @@ void AbstractStdTable::expandUp()
         }
 
         emit selectionChanged(rowIndex);
+        accessibilitySelectionChanged();
     }
 }
 
@@ -593,6 +597,7 @@ void AbstractStdTable::expandDown()
 
 
         emit selectionChanged(rowIndex);
+        accessibilitySelectionChanged();
     }
 }
 
@@ -619,6 +624,7 @@ void AbstractStdTable::setSingleSelection(duint index)
     mSelection.fromIndex = index;
     mSelection.toIndex = index;
     emit selectionChanged(index);
+    accessibilitySelectionChanged();
 }
 
 duint AbstractStdTable::getInitialSelection() const
@@ -1077,4 +1083,9 @@ duint AbstractStdTable::getAddressForPosition(int x, int y)
     }
     else
         return 0;
+}
+
+int AbstractStdTable::accessibilitySelectedRow() const
+{
+    return getInitialSelection() - getTableOffset();
 }

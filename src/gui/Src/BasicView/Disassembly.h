@@ -83,7 +83,7 @@ public:
     QList<Instruction_t>* instructionsBuffer(); // ugly
     const duint baseAddress() const;
 
-    QString getAddrText(duint cur_addr, QString & label, bool getLabel = true);
+    QString getAddrText(duint cur_addr, QString & label, bool getLabel = true) const;
     void prepareDataCount(const QList<duint> & rvas, QList<Instruction_t>* instBuffer);
     void prepareDataRange(duint startRva, duint endRva, const std::function<bool(int, const Instruction_t &)> & disassembled);
     RichTextPainter::List getRichBytes(const Instruction_t & instr, bool isSelected) const;
@@ -279,4 +279,6 @@ protected:
 
     void paintRichText(int x, int y, int w, int h, int xinc, const RichTextPainter::List & richText, int rowOffset, int column);
     void paintRichText(int x, int y, int w, int h, int xinc, RichTextPainter::List && richText, int rowOffset, int column);
+    friend class AccessibleDisassembly;
+    int accessibilitySelectedRow() const override;
 };

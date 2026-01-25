@@ -145,7 +145,10 @@ void CPURegistersView::mousePressEvent(QMouseEvent* event)
             emit refresh();
         }
         else
+        {
             mSelected = UNKNOWN;
+        }
+        accessibilitySelectionChanged();
     }
 }
 

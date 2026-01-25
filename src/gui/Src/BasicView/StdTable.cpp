@@ -42,6 +42,7 @@ void StdTable::addColumnAt(int width, QString title, bool isClickable, QString c
 
     //append column sort function
     mColumnSortFunctions.push_back(sortFn);
+    accessibilityTableModelChanged();
 }
 
 void StdTable::deleteAllColumns()
@@ -50,6 +51,7 @@ void StdTable::deleteAllColumns()
     AbstractTableView::deleteAllColumns();
     mCopyTitles.clear();
     mColumnSortFunctions.clear();
+    accessibilityTableModelChanged();
 }
 
 void StdTable::setRowCount(duint count)
@@ -64,6 +66,7 @@ void StdTable::setRowCount(duint count)
         }
     }
     AbstractTableView::setRowCount(count);
+    accessibilityTableModelChanged();
 }
 
 void StdTable::setCellContent(duint r, duint c, QString s)

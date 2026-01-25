@@ -1590,8 +1590,7 @@ void CPUDisassembly::pushSelectionInto(bool copyBytes, QTextStream & stream, QTe
         }
         else
         {
-            for(const auto & token : inst.tokens.tokens)
-                disassembly += token.text;
+            disassembly = inst.tokens.toString();
         }
         QString fullComment;
         QString comment;

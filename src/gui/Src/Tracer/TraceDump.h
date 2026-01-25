@@ -16,7 +16,7 @@ class TraceDump : public HexDump
 public:
     explicit TraceDump(Architecture* architecture, TraceWidget* parent, TraceFileDumpMemoryPage* memoryPage);
     ~TraceDump();
-    void getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) override;
+    void getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const override;
     QString paintContent(QPainter* painter, duint row, duint col, int x, int y, int w, int h) override;
     void setupContextMenu();
     //void getAttention();

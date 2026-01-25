@@ -190,7 +190,7 @@ void TraceStack::setupContextMenu()
 //    mFreezeStack->setChecked(bStackFrozen);
 //}
 
-void TraceStack::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText)
+void TraceStack::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const
 {
     // Compute VA
     duint va = rvaToVa(rva);

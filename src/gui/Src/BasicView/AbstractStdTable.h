@@ -151,4 +151,5 @@ protected:
     QAction* mCopyTableToLog;
     QAction* mCopyTableResizeToLog;
     QAction* mExportTableCSV;
+    int accessibilitySelectedRow() const override;
 };

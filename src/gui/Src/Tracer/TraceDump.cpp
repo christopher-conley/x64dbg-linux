@@ -251,7 +251,7 @@ void TraceDump::printDumpAt(duint parVA, bool select, bool repaint, bool updateT
         reloadData();
 }
 
-void TraceDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText)
+void TraceDump::getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const
 {
     if(col && !mDescriptor.at(col - 1).isData && mDescriptor.at(col - 1).itemCount) //print comments
     {

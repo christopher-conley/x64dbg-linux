@@ -2,6 +2,7 @@
 #include <QListWidget>
 #include <QToolTip>
 #include <stdint.h>
+#include <QAccessibleEvent>
 #include "RegistersView.h"
 #include "CPUDisassembly.h"
 #include "CPUMultiDump.h"
@@ -1775,7 +1776,10 @@ void RegistersView::mousePressEvent(QMouseEvent* event)
             emit refresh();
         }
         else
+        {
             mSelected = UNKNOWN;
+        }
+        accessibilitySelectionChanged();
     }
 }
 
@@ -1815,8 +1819,6 @@ void RegistersView::mouseDoubleClickEvent(QMouseEvent* event)
 
 void RegistersView::paintEvent(QPaintEvent* event)
 {
-    Q_UNUSED(event);
-
     if(mChangeViewButton != NULL)
     {
         if(mShowFpu)
@@ -1826,6 +1828,7 @@ void RegistersView::paintEvent(QPaintEvent* event)
     }
 
     QPainter painter(this->viewport());
+    painter.setClipRect(event->rect());
     painter.setFont(font());
     painter.fillRect(painter.viewport(), QBrush(ConfigColor("RegistersBackgroundColor")));
 
@@ -1869,6 +1872,7 @@ void RegistersView::keyPressEvent(QKeyEvent* event)
             mSelected = newRegister;
             ensureRegisterVisible(newRegister);
             emit refresh();
+            accessibilitySelectionChanged();
         }
     }
     QScrollArea::keyPressEvent(event);
@@ -2813,30 +2817,36 @@ void RegistersView::onCopyAllAction()
         appendRegister(text, REGISTER_NAME::XMM14, "XMM14 : ", "XMM14 : ");
         appendRegister(text, REGISTER_NAME::XMM15, "XMM15 : ", "XMM15 : ");
         appendRegister(text, REGISTER_NAME::XMM16, "XMM16 : ", "XMM16 : ");
-        appendRegister(text, REGISTER_NAME::XMM17, "XMM17 : ", "XMM17 : ");
-        appendRegister(text, REGISTER_NAME::XMM18, "XMM18 : ", "XMM18 : ");
-        appendRegister(text, REGISTER_NAME::XMM19, "XMM19 : ", "XMM19 : ");
-        appendRegister(text, REGISTER_NAME::XMM20, "XMM20 : ", "XMM20 : ");
-        appendRegister(text, REGISTER_NAME::XMM21, "XMM21 : ", "XMM21 : ");
-        appendRegister(text, REGISTER_NAME::XMM22, "XMM22 : ", "XMM22 : ");
-        appendRegister(text, REGISTER_NAME::XMM23, "XMM23 : ", "XMM23 : ");
-        appendRegister(text, REGISTER_NAME::XMM24, "XMM24 : ", "XMM24 : ");
-        appendRegister(text, REGISTER_NAME::XMM25, "XMM25 : ", "XMM25 : ");
-        appendRegister(text, REGISTER_NAME::XMM26, "XMM26 : ", "XMM26 : ");
-        appendRegister(text, REGISTER_NAME::XMM27, "XMM27 : ", "XMM27 : ");
-        appendRegister(text, REGISTER_NAME::XMM28, "XMM28 : ", "XMM28 : ");
-        appendRegister(text, REGISTER_NAME::XMM29, "XMM29 : ", "XMM29 : ");
-        appendRegister(text, REGISTER_NAME::XMM30, "XMM30 : ", "XMM30 : ");
-        appendRegister(text, REGISTER_NAME::XMM31, "XMM31 : ", "XMM31 : ");
+        if(mAVX512RegistersShown)
+        {
+            appendRegister(text, REGISTER_NAME::XMM17, "XMM17 : ", "XMM17 : ");
+            appendRegister(text, REGISTER_NAME::XMM18, "XMM18 : ", "XMM18 : ");
+            appendRegister(text, REGISTER_NAME::XMM19, "XMM19 : ", "XMM19 : ");
+            appendRegister(text, REGISTER_NAME::XMM20, "XMM20 : ", "XMM20 : ");
+            appendRegister(text, REGISTER_NAME::XMM21, "XMM21 : ", "XMM21 : ");
+            appendRegister(text, REGISTER_NAME::XMM22, "XMM22 : ", "XMM22 : ");
+            appendRegister(text, REGISTER_NAME::XMM23, "XMM23 : ", "XMM23 : ");
+            appendRegister(text, REGISTER_NAME::XMM24, "XMM24 : ", "XMM24 : ");
+            appendRegister(text, REGISTER_NAME::XMM25, "XMM25 : ", "XMM25 : ");
+            appendRegister(text, REGISTER_NAME::XMM26, "XMM26 : ", "XMM26 : ");
+            appendRegister(text, REGISTER_NAME::XMM27, "XMM27 : ", "XMM27 : ");
+            appendRegister(text, REGISTER_NAME::XMM28, "XMM28 : ", "XMM28 : ");
+            appendRegister(text, REGISTER_NAME::XMM29, "XMM29 : ", "XMM29 : ");
+            appendRegister(text, REGISTER_NAME::XMM30, "XMM30 : ", "XMM30 : ");
+            appendRegister(text, REGISTER_NAME::XMM31, "XMM31 : ", "XMM31 : ");
+        }
 #endif
-        appendRegister(text, REGISTER_NAME::K0, "K0  : ", "K0  : ");
-        appendRegister(text, REGISTER_NAME::K1, "K1  : ", "K1  : ");
-        appendRegister(text, REGISTER_NAME::K2, "K2  : ", "K2  : ");
-        appendRegister(text, REGISTER_NAME::K3, "K3  : ", "K3  : ");
-        appendRegister(text, REGISTER_NAME::K4, "K4  : ", "K4  : ");
-        appendRegister(text, REGISTER_NAME::K5, "K5  : ", "K5  : ");
-        appendRegister(text, REGISTER_NAME::K6, "K6  : ", "K6  : ");
-        appendRegister(text, REGISTER_NAME::K7, "K7  : ", "K7  : ");
+        if(mAVX512RegistersShown)
+        {
+            appendRegister(text, REGISTER_NAME::K0, "K0  : ", "K0  : ");
+            appendRegister(text, REGISTER_NAME::K1, "K1  : ", "K1  : ");
+            appendRegister(text, REGISTER_NAME::K2, "K2  : ", "K2  : ");
+            appendRegister(text, REGISTER_NAME::K3, "K3  : ", "K3  : ");
+            appendRegister(text, REGISTER_NAME::K4, "K4  : ", "K4  : ");
+            appendRegister(text, REGISTER_NAME::K5, "K5  : ", "K5  : ");
+            appendRegister(text, REGISTER_NAME::K6, "K6  : ", "K6  : ");
+            appendRegister(text, REGISTER_NAME::K7, "K7  : ", "K7  : ");
+        }
     }
     appendRegister(text, REGISTER_NAME::DR0, "DR0 : ", "DR0 : ");
     appendRegister(text, REGISTER_NAME::DR1, "DR1 : ", "DR1 : ");
@@ -3281,6 +3291,7 @@ void RegistersView::setRegisters(REGDUMP* reg)
         mCipRegDumpStruct = mRegDumpStruct;
 
     autoUpdateXMMModesAndRefresh();
+    accessibilityValueChanged();
 }
 
 void RegistersView::setRegisters(REGDUMP_AVX512* reg)
@@ -3310,6 +3321,7 @@ void RegistersView::setRegisters(REGDUMP_AVX512* reg)
         mCipRegDumpStruct = mRegDumpStruct;
 
     autoUpdateXMMModesAndRefresh();
+    accessibilityValueChanged();
 }
 
 // Scroll the viewport so that the register will be visible on the screen
@@ -3343,4 +3355,49 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
 
     // force repaint
     emit refresh();
+}
+
+// Send focused accessibility event
+void RegistersView::accessibilitySelectionChanged()
+{
+    if(QAccessible::isActive())
+    {
+        QAccessibleEvent updateEvent(static_cast<RegistersView*>(this), QAccessible::Selection);
+        QAccessible::updateAccessibility(&updateEvent);
+        if(mSelected < REGISTER_NAME::UNKNOWN)
+        {
+            QAccessibleInterface* a = QAccessible::queryAccessibleInterface(this);
+            if(a)
+            {
+                QAccessibleEvent focusEvent(a->child(mSelected), QAccessible::Focus);
+                QAccessible::updateAccessibility(&focusEvent);
+            }
+        }
+        else
+        {
+            QAccessibleEvent focusEvent(static_cast<RegistersView*>(this), QAccessible::Focus);
+            QAccessible::updateAccessibility(&focusEvent);
+        }
+    }
+}
+
+// Send value changed accessibility event
+void RegistersView::accessibilityValueChanged()
+{
+    if(QAccessible::isActive() && !mRegisterUpdates.empty())
+    {
+        QAccessibleInterface* a = QAccessible::queryAccessibleInterface(this);
+        for(auto & i : mRegisterUpdates)
+        {
+            if(i < REGISTER_NAME::UNKNOWN)
+            {
+                if(a)
+                {
+                    QAccessibleInterface* child = a->child(i);
+                    QAccessibleValueChangeEvent valueChangeEvent(child, QVariant(child->text(QAccessible::Value)));
+                    QAccessible::updateAccessibility(&valueChangeEvent);
+                }
+            }
+        }
+    }
 }

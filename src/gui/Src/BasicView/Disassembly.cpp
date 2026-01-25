@@ -831,6 +831,7 @@ void Disassembly::mousePressEvent(QMouseEvent* event)
                     updateViewport();
 
                     accept = true;
+                    accessibilityMousePressSetColumn(event);
                 }
             }
         }
@@ -1589,6 +1590,7 @@ void Disassembly::selectionChangedSlot(duint Va)
     }
     if(DbgIsDebugging())
         DbgXrefGet(Va, &mXrefInfo);
+    accessibilitySelectionChanged();
 }
 
 void Disassembly::selectNext(bool expand)
@@ -2261,7 +2263,7 @@ bool Disassembly::historyHasNext() const
     return true;
 }
 
-QString Disassembly::getAddrText(duint cur_addr, QString & label, bool getLabel)
+QString Disassembly::getAddrText(duint cur_addr, QString & label, bool getLabel) const
 {
     QString addrText = "";
     if(mRvaDisplayEnabled) //RVA display
@@ -2388,4 +2390,15 @@ bool Disassembly::followInstruction(duint rva)
     }
 #endif // X64DBG
     return false;
+}
+
+int Disassembly::accessibilitySelectedRow() const
+{
+    auto sel = getInitialSelection();
+    for(int i = 0; i < mInstBuffer.size(); i++)
+    {
+        if(mInstBuffer[i].rva == sel)
+            return i;
+    }
+    return -1;
 }
