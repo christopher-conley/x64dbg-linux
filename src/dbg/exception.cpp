@@ -38,6 +38,7 @@ static bool UniversalCodeInit(const String & file, std::unordered_map<unsigned i
             result = false;
             break;
         }
+        // TODO: Detect invalid constant names that is indistinguishable from numbers (deadbeef)
         names.insert({ (unsigned int)code, split[1] });
     }
     return result;

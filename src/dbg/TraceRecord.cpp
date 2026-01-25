@@ -233,7 +233,7 @@ static void HandleZydisOperand(const Zydis & zydis, int opindex, DISASM_ARGTYPE*
         const auto & mem = op.mem;
         if(mem.segment == ArchValue(ZYDIS_REGISTER_FS, ZYDIS_REGISTER_GS))
         {
-            *value += ThreadGetLocalBase(ThreadGetId(hActiveThread));
+            *value += ThreadGetLocalBase(GetDebugData()->dwThreadId);
         }
         *memorySize = op.size / 8;
         if(*memorySize <= memoryContentSize && DbgMemIsValidReadPtr(*value))
@@ -264,7 +264,7 @@ void TraceRecordManager::TraceExecuteRecord(const Zydis & newInstruction)
     duint oldMemory[memoryArrayCount];
     unsigned char newMemoryArrayCount = 0;
     DbgGetRegDumpEx((REGDUMP_AVX512*)&newContext.registers, sizeof(REGDUMP)); //TODO: Migrate
-    newThreadId = ThreadGetId(hActiveThread);
+    newThreadId = GetDebugData()->dwThreadId;
     // Don't try to resolve memory values for invalid/lea/nop instructions
     if(newInstruction.Success() && !newInstruction.IsNop() && newInstruction.GetId() != ZYDIS_MNEMONIC_LEA)
     {

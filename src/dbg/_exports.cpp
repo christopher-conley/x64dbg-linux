@@ -728,7 +728,7 @@ extern "C" DLL_EXPORT bool _dbg_getregdump(REGDUMP_AVX512* regdump)
 
     TranslateTitanContextToRegContext(titcontext, titcontext_AVX512, regdump->regcontext);
 
-    auto threadId = ThreadGetId(hActiveThread);
+    auto threadId = GetDebugData()->dwThreadId;
     regdump->lastError = ThreadGetLastError(threadId);
     regdump->lastStatus =  ThreadGetLastStatus(threadId);
 
@@ -1528,7 +1528,7 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
 
     case DBG_GET_THREAD_ID:
     {
-        return duint(ThreadGetId(hActiveThread));
+        return duint(GetDebugData()->dwThreadId);
     }
     break;
 

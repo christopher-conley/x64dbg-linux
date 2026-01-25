@@ -58,7 +58,7 @@ bool cbDebugSwitchthread(int argc, char* argv[])
         return false;
     }
     //switch thread
-    if(ThreadGetId(hActiveThread) != threadid)
+    if(GetDebugData()->dwThreadId != threadid)
     {
         hActiveThread = ThreadGetHandle((DWORD)threadid);
         HistoryClear();
