@@ -17,6 +17,8 @@ public:
     QList<QAccessibleInterface*> rowHeaderCells() const override;
     QList<QAccessibleInterface*> columnHeaderCells() const override;
     QRect rect() const override;
+    QAccessible::Role role() const override;
+    int rowIndex() const override;
 };
 
 #endif

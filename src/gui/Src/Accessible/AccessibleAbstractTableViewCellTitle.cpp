@@ -49,6 +49,16 @@ QRect AccessibleAbstractTableViewCellTitle::rect() const
     return QRect(pos, QSize(table->getColumnWidth(mParent->logicalColumn(column)), height));
 }
 
+QAccessible::Role AccessibleAbstractTableViewCellTitle::role() const
+{
+    return QAccessible::ColumnHeader;
+}
+
+int AccessibleAbstractTableViewCellTitle::rowIndex() const
+{
+    return 0;
+}
+
 QList<QAccessibleInterface*> AccessibleAbstractTableViewCellTitle::rowHeaderCells() const
 {
     return QList<QAccessibleInterface*>();
