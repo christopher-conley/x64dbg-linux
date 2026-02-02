@@ -41,6 +41,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include("cmake/VSToolchain.cmake")
 
 project(x64dbg
+	LANGUAGES
+		C
+		CXX
 	DESCRIPTION
 		"An open-source x64/x32 debugger for windows."
 )
@@ -912,53 +915,6 @@ set_target_properties(gui PROPERTIES
 set(CMKR_TARGET gui)
 include("cmake/deps.cmake")
 
-# Target: loaddll
-set(loaddll_SOURCES
-	cmake.toml
-	"src/loaddll/loaddll.cpp"
-)
-
-add_executable(loaddll)
-
-target_sources(loaddll PRIVATE ${loaddll_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${loaddll_SOURCES})
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
-	target_link_libraries(loaddll PRIVATE
-		"${CMAKE_CURRENT_SOURCE_DIR}/src/dbg/ntdll/ntdll_x86.lib"
-	)
-endif()
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8) # x64
-	target_link_libraries(loaddll PRIVATE
-		"${CMAKE_CURRENT_SOURCE_DIR}/src/dbg/ntdll/ntdll_x64.lib"
-	)
-endif()
-
-if(MSVC) # msvc
-	target_link_libraries(loaddll PRIVATE
-		Delayimp
-	)
-endif()
-
-if(MSVC) # msvc
-	target_link_options(loaddll PRIVATE
-		"/DELAYLOAD:user32.dll"
-	)
-endif()
-
-set_target_properties(loaddll PROPERTIES
-	MSVC_RUNTIME_LIBRARY
-		"MultiThreaded$<$<CONFIG:Debug>:Debug>"
-	WIN32_EXECUTABLE
-		ON
-)
-
-get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
-if(NOT CMKR_VS_STARTUP_PROJECT)
-	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT loaddll)
-endif()
-
 # Target: exe
 set(exe_SOURCES
 	cmake.toml
@@ -1019,6 +975,19 @@ if(MSVC) # msvc
 	)
 endif()
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
+	add_dependencies(exe
+		launcher
+	)
+endif()
+
+add_dependencies(exe
+	dbg
+	gui
+	loaddll
+	deps
+)
+
 set_target_properties(exe PROPERTIES
 	MSVC_RUNTIME_LIBRARY
 		"MultiThreaded$<$<CONFIG:Debug>:Debug>"
@@ -1049,9 +1018,52 @@ if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT exe)
 endif()
 
-set(CMKR_TARGET exe)
-# Make the executable the main target
-add_dependencies(exe dbg gui loaddll deps)
+# Target: loaddll
+set(loaddll_SOURCES
+	cmake.toml
+	"src/loaddll/loaddll.cpp"
+)
+
+add_executable(loaddll)
+
+target_sources(loaddll PRIVATE ${loaddll_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${loaddll_SOURCES})
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
+	target_link_libraries(loaddll PRIVATE
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/dbg/ntdll/ntdll_x86.lib"
+	)
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8) # x64
+	target_link_libraries(loaddll PRIVATE
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/dbg/ntdll/ntdll_x64.lib"
+	)
+endif()
+
+if(MSVC) # msvc
+	target_link_libraries(loaddll PRIVATE
+		Delayimp
+	)
+endif()
+
+if(MSVC) # msvc
+	target_link_options(loaddll PRIVATE
+		"/DELAYLOAD:user32.dll"
+	)
+endif()
+
+set_target_properties(loaddll PROPERTIES
+	MSVC_RUNTIME_LIBRARY
+		"MultiThreaded$<$<CONFIG:Debug>:Debug>"
+	WIN32_EXECUTABLE
+		ON
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT loaddll)
+endif()
 
 # Target: headless
 set(headless_SOURCES
@@ -1082,13 +1094,14 @@ if(MSVC) # msvc
 	)
 endif()
 
+add_dependencies(headless
+	exe
+)
+
 get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT headless)
 endif()
-
-set(CMKR_TARGET headless)
-add_dependencies(headless exe)
 
 # Target: launcher
 if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
@@ -1130,8 +1143,5 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
 	if(NOT CMKR_VS_STARTUP_PROJECT)
 		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT launcher)
 	endif()
-
-	set(CMKR_TARGET launcher)
-	add_dependencies(exe launcher)
 
 endif()

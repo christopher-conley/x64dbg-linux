@@ -5,7 +5,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/init-submodules.cmake)
 
 # Change these defaults to point to your infrastructure if desired
 set(CMKR_REPO "https://github.com/build-cpp/cmkr" CACHE STRING "cmkr git repository" FORCE)
-set(CMKR_TAG "v0.2.44" CACHE STRING "cmkr git tag (this needs to be available forever)" FORCE)
+set(CMKR_TAG "v0.2.46" CACHE STRING "cmkr git tag (this needs to be available forever)" FORCE)
 set(CMKR_COMMIT_HASH "" CACHE STRING "cmkr git commit hash (optional)" FORCE)
 
 # To bootstrap/generate a cmkr project: cmake -P cmkr.cmake
@@ -15,7 +15,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}")
 endif()
 
-# Signed executable from this release: https://github.com/build-cpp/cmkr/releases/tag/v0.2.44
+# Signed executable from this release: https://github.com/build-cpp/cmkr/releases/tag/v0.2.46
 # To build cmkr from source: cmake -B build -DCMKR_EXECUTABLE=
 if(WIN32)
     set(CMKR_EXECUTABLE_DEFAULT "${CMAKE_CURRENT_LIST_DIR}/cmkr.exe")

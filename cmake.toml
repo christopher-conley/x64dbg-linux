@@ -183,28 +183,6 @@ AUTOMOC = true
 AUTORCC = true
 AUTOUIC = true
 
-[target.loaddll]
-type = "executable"
-msvc-runtime = "static"
-sources = [
-    "src/loaddll/loaddll.cpp",
-]
-x86.link-libraries = [
-    "src/dbg/ntdll/ntdll_x86.lib",
-]
-x64.link-libraries = [
-    "src/dbg/ntdll/ntdll_x64.lib",
-]
-msvc.link-options = [
-    "/DELAYLOAD:user32.dll",
-]
-msvc.link-libraries = [
-    "Delayimp",
-]
-
-[target.loaddll.properties]
-WIN32_EXECUTABLE = "ON"
-
 [target.exe]
 type = "executable"
 msvc-runtime = "static"
@@ -232,16 +210,37 @@ msvc.link-options = [
 msvc.link-libraries = [
     "Delayimp",
 ]
-cmake-after = """
-# Make the executable the main target
-add_dependencies(exe dbg gui loaddll deps)
-"""
+# Make the executable build everything
+dependencies = ["dbg", "gui", "loaddll", "deps"]
+x86.dependencies = ["launcher"]
 
 [target.exe.properties]
 x86.OUTPUT_NAME = "x32dbg"
 x64.OUTPUT_NAME = "x64dbg"
 x86.PDB_NAME = "x32dbg_exe"
 x64.PDB_NAME = "x64dbg_exe"
+WIN32_EXECUTABLE = "ON"
+
+[target.loaddll]
+type = "executable"
+msvc-runtime = "static"
+sources = [
+    "src/loaddll/loaddll.cpp",
+]
+x86.link-libraries = [
+    "src/dbg/ntdll/ntdll_x86.lib",
+]
+x64.link-libraries = [
+    "src/dbg/ntdll/ntdll_x64.lib",
+]
+msvc.link-options = [
+    "/DELAYLOAD:user32.dll",
+]
+msvc.link-libraries = [
+    "Delayimp",
+]
+
+[target.loaddll.properties]
 WIN32_EXECUTABLE = "ON"
 
 [target.headless]
@@ -256,7 +255,7 @@ link-libraries = [
 msvc.link-options = [
     "/DEF:${CMAKE_SOURCE_DIR}/src/exe/signaturecheck.def",
 ]
-cmake-after = "add_dependencies(headless exe)"
+dependencies = ["exe"]
 
 [target.launcher]
 type = "executable"
@@ -272,7 +271,6 @@ link-libraries = [
     "Shlwapi",
     "Comctl32",
 ]
-cmake-after = "add_dependencies(exe launcher)"
 
 [target.launcher.properties]
 OUTPUT_NAME = "x96dbg"
