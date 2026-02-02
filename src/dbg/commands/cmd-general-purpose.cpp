@@ -81,7 +81,7 @@ bool cbInstrMulhi(int argc, char* argv[])
     {
 #ifdef _WIN64
         unsigned __int64 res;
-        _umul128(*value, value2, &res);
+        (void)_umul128(*value, value2, &res);
         *value = res;
 #else //x86
         *value = (((unsigned long long)value2) * (*value)) >> 32;

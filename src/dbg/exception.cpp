@@ -238,10 +238,9 @@ bool SyscallInit()
 
     // See: https://github.com/x64dbg/ScyllaHide/blob/6817d32581b7a420322f34e36b1a1c8c3e4b434c/Scylla/Win32kSyscalls.h
     auto result = retrieveSyscalls("ntdll.dll");
-    OSVERSIONINFOW versionInfo = { sizeof(OSVERSIONINFOW) };
-    GetVersionExW(&versionInfo);
+    auto buildNumber = BridgeGetNtBuildNumber();
 
-    if(versionInfo.dwBuildNumber >= 14393)
+    if(buildNumber >= 14393)
     {
         result = result && retrieveSyscalls("win32u.dll");
     }
@@ -250,7 +249,7 @@ bool SyscallInit()
         SyscallIndices.reserve(sizeof(Win32kSyscalls) / sizeof(Win32kSyscalls[0]));
         for(auto & syscall : Win32kSyscalls)
         {
-            auto index = syscall.GetSyscallIndex((USHORT)versionInfo.dwBuildNumber, ArchValue(true, false));
+            auto index = syscall.GetSyscallIndex((USHORT)buildNumber, ArchValue(true, false));
             if(index != -1)
                 SyscallIndices.insert({ index, syscall.Name });
         }

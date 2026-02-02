@@ -200,6 +200,6 @@ private:
     void disasmByAddress(duint address, bool history = true);
     TraceWidget* mParent;
     friend class AccessibleTraceBrowser;
-    int accessibilitySelectedRow() const;
+    int accessibilitySelectedRow() const override;
 };
 

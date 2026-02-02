@@ -71,66 +71,52 @@ bool cbInstrVarList(int argc, char* argv[])
             filter = VAR_SYSTEM;
     }
 
-    size_t cbsize = 0;
-    if(!varenum(0, &cbsize))
-    {
-        dputs(QT_TRANSLATE_NOOP("DBG", "No variables!"));
-        return true;
-    }
-    Memory<VAR*> variables(cbsize, "cbInstrVarList:variables");
-    if(!varenum(variables(), 0))
-    {
-        dputs(QT_TRANSLATE_NOOP("DBG", "Error listing variables!"));
-        return false;
-    }
-
     GuiReferenceInitialize(GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Variables")));
     GuiReferenceAddColumn(2 * sizeof(duint), GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Value (Hex)"))); //The GUI only follows address in column 0
     GuiReferenceAddColumn(30, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Variable")));
     GuiReferenceAddColumn(3 * sizeof(duint), GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Value (Decimal)")));
     GuiReferenceAddColumn(20, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Property")));
-    int varcount = (int)cbsize / sizeof(VAR);
-    int realvarcount = 0;
     GuiReferenceSetRowCount(0);
-    for(int i = 0; i < varcount; i++)
+    int realvarcount = 0;
+    auto vars = varenum();
+    for(auto & var : vars)
     {
-        char value[32];
-        if(variables()[i].alias.length())
+        // Skip empty and alias variables
+        if(var.type == VAR_HIDDEN || !var.alias.empty())
             continue;
-        if(variables()[i].type != VAR_HIDDEN)
-        {
-            GuiReferenceSetRowCount(realvarcount + 1);
-            GuiReferenceSetCellContent(realvarcount, 1, variables()[i].name.c_str());
+
+        GuiReferenceSetRowCount(realvarcount + 1);
+        GuiReferenceSetCellContent(realvarcount, 1, var.name.c_str());
+        char value[32] = "";
 #ifdef _WIN64
-            sprintf_s(value, "%llX", variables()[i].value.u.value);
-            GuiReferenceSetCellContent(realvarcount, 0, value);
-            sprintf_s(value, "%llu", variables()[i].value.u.value);
-            GuiReferenceSetCellContent(realvarcount, 2, value);
+        sprintf_s(value, "%llX", var.value.u.value);
+        GuiReferenceSetCellContent(realvarcount, 0, value);
+        sprintf_s(value, "%llu", var.value.u.value);
+        GuiReferenceSetCellContent(realvarcount, 2, value);
 #else //x86
-            sprintf_s(value, "%X", variables()[i].value.u.value);
-            GuiReferenceSetCellContent(realvarcount, 0, value);
-            sprintf_s(value, "%u", variables()[i].value.u.value);
-            GuiReferenceSetCellContent(realvarcount, 2, value);
+        sprintf_s(value, "%X", var.value.u.value);
+        GuiReferenceSetCellContent(realvarcount, 0, value);
+        sprintf_s(value, "%u", var.value.u.value);
+        GuiReferenceSetCellContent(realvarcount, 2, value);
 #endif //_WIN64
-            const char* szType;
-            switch(variables()[i].type)
-            {
-            case VAR_USER:
-                szType = QT_TRANSLATE_NOOP("DBG", "User Variable");
-                break;
-            case VAR_SYSTEM:
-                szType = QT_TRANSLATE_NOOP("DBG", "System Variable");
-                break;
-            case VAR_READONLY:
-                szType = QT_TRANSLATE_NOOP("DBG", "Read Only Variable");
-                break;
-            default://other variables
-                szType = QT_TRANSLATE_NOOP("DBG", "System Variable");
-                break;
-            }
-            GuiReferenceSetCellContent(realvarcount, 3, GuiTranslateText(szType));
-            realvarcount++;
+        const char* szType;
+        switch(var.type)
+        {
+        case VAR_USER:
+            szType = QT_TRANSLATE_NOOP("DBG", "User Variable");
+            break;
+        case VAR_SYSTEM:
+            szType = QT_TRANSLATE_NOOP("DBG", "System Variable");
+            break;
+        case VAR_READONLY:
+            szType = QT_TRANSLATE_NOOP("DBG", "Read Only Variable");
+            break;
+        default://other variables
+            szType = QT_TRANSLATE_NOOP("DBG", "System Variable");
+            break;
         }
+        GuiReferenceSetCellContent(realvarcount, 3, GuiTranslateText(szType));
+        realvarcount++;
     }
     GuiReferenceAddCommand(GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Delete")), "vardel $1");
     GuiReferenceReloadData();

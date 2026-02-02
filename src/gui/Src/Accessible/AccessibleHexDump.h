@@ -16,7 +16,7 @@ public:
     int selectedCellCount() const override;
     QList<QAccessibleInterface*> selectedCells() const override;
 private:
-    virtual QString getCellContent(int row, int col) const; // Get plain text of a cell
+    QString getCellContent(int row, int col) const override; // Get plain text of a cell
     HexDump* dump() const;
 };
 

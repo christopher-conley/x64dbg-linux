@@ -49,8 +49,6 @@ x64.OUTPUT_NAME = "x64bridge"
 type = "static"
 sources = [
     "src/dbg/btparser/btparser/lexer.cpp",
-    "src/dbg/btparser/btparser/parser.cpp",
-    "src/dbg/btparser/btparser/ast.h",
     "src/dbg/btparser/btparser/helpers.h",
     "src/dbg/btparser/btparser/keywords.h",
     "src/dbg/btparser/btparser/lexer.h",
@@ -61,6 +59,7 @@ sources = [
 include-directories = [
     "src/dbg/btparser",
 ]
+clang-any.compile-options = ["-Wno-self-assign-field"]
 
 [target.dbg]
 type = "shared"

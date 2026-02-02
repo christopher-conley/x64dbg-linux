@@ -404,8 +404,8 @@ void LogView::redirectLogToFileSlot(QString filename)
         logRedirection = nullptr;
         GuiAddLogMessage(tr("Log redirection is stopped.\n").toUtf8().constData());
     }
-    logRedirection = _wfopen(filename.toStdWString().c_str(), L"ab");
-    if(logRedirection == nullptr)
+    errno_t err = _wfopen_s(&logRedirection, filename.toStdWString().c_str(), L"ab");
+    if(err != 0 || logRedirection == nullptr)
         GuiAddLogMessage(tr("_wfopen() failed. Log will not be redirected to %1.\n").arg(QString::fromWCharArray(BridgeUserDirectory())).toUtf8().constData());
     else
     {

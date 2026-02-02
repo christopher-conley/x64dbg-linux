@@ -51,6 +51,6 @@ bool varset(const char* Name, duint Value, bool ReadOnly);
 bool varset(const char* Name, const char* Value, bool ReadOnly);
 int vardel(const char* Name, bool DelSystem);
 bool vargettype(const char* Name, VAR_TYPE* Type = nullptr, VAR_VALUE_TYPE* ValueType = nullptr);
-bool varenum(VAR* List, size_t* Size);
+std::vector<VAR> varenum();
 
 #endif // _VARIABLE_H

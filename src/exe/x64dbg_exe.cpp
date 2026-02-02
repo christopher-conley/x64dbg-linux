@@ -30,7 +30,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     if(!InitializeSignatureCheck())
         MessageBoxA(nullptr, "Failed to initialize signature check.", "Error", MB_SYSTEMMODAL | MB_ICONERROR);
 
-    CrashDumpInitialize();
+    //CrashDumpInitialize();
 
     BRIDGE_CONFIG config = {};
     const wchar_t* errormsg = BridgeInit(&config);

@@ -244,8 +244,8 @@ bool ExportCSV(dsint rows, dsint columns, std::vector<QString> headers, std::fun
         bool utf16;
         bool isTSV;
         isTSV = browse.path.endsWith(".tsv", Qt::CaseInsensitive);
-        csv = _wfopen(browse.path.toStdWString().c_str(), L"wb");
-        if(csv == NULL)
+        auto err = _wfopen_s(&csv, browse.path.toStdWString().c_str(), L"wb");
+        if(err != 0 || csv == nullptr)
         {
             goto FAILED_NOFCLOSE;
         }

@@ -116,13 +116,11 @@ endif()
 # Target: btparser
 set(btparser_SOURCES
 	cmake.toml
-	"src/dbg/btparser/btparser/ast.h"
 	"src/dbg/btparser/btparser/helpers.h"
 	"src/dbg/btparser/btparser/keywords.h"
 	"src/dbg/btparser/btparser/lexer.cpp"
 	"src/dbg/btparser/btparser/lexer.h"
 	"src/dbg/btparser/btparser/operators.h"
-	"src/dbg/btparser/btparser/parser.cpp"
 	"src/dbg/btparser/btparser/parser.h"
 	"src/dbg/btparser/btparser/testfiles.h"
 )
@@ -131,6 +129,12 @@ add_library(btparser STATIC)
 
 target_sources(btparser PRIVATE ${btparser_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${btparser_SOURCES})
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "Clang") # clang-any
+	target_compile_options(btparser PUBLIC
+		-Wno-self-assign-field
+	)
+endif()
 
 target_include_directories(btparser PUBLIC
 	"src/dbg/btparser"

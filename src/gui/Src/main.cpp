@@ -160,7 +160,7 @@ static void handleHighDpiScaling()
         setDpiUnaware();
 
         // These options don't seem to do anything, but the Qt documentation recommends it
-        putenv("QT_AUTO_SCREEN_SCALE_FACTOR=1");
+        _putenv("QT_AUTO_SCREEN_SCALE_FACTOR=1");
         QCoreApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
     }
 }

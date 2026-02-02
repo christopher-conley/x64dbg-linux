@@ -364,35 +364,15 @@ bool vargettype(const char* Name, VAR_TYPE* Type, VAR_VALUE_TYPE* ValueType)
     return true;
 }
 
-/**
-\brief Enumerates all variables.
-\param [in,out] List A pointer to place the variables in. If null, \p cbsize will be filled to the number of bytes required.
-\param [in,out] Size This function retrieves the number of bytes required to store all variables. Can be null if \p entries is not null.
-\return true if it succeeds, false if it fails.
-*/
-bool varenum(VAR* List, size_t* Size)
+std::vector<VAR> varenum()
 {
-    // A list or size must be requested
-    if(!List && !Size)
-        return false;
-
     SHARED_ACQUIRE(LockVariables);
 
-    if(Size)
+    std::vector<VAR> vars;
+    vars.reserve(variables.size());
+    for(const auto & itr : variables)
     {
-        // Size requested, so return it
-        *Size = variables.size() * sizeof(VAR);
-
-        if(!List)
-            return true;
+        vars.push_back(itr.second);
     }
-
-    // Fill out all list entries
-    for(auto & itr : variables)
-    {
-        *List = VAR(itr.second);
-        List++;
-    }
-
-    return true;
+    return vars;
 }

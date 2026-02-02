@@ -12,23 +12,12 @@
 
 bool IsVistaOrLater()
 {
-    static bool vistaOrLater = []()
-    {
-        OSVERSIONINFOEXW osvi = { 0 };
-        osvi.dwOSVersionInfoSize = sizeof(osvi);
-        return GetVersionExW((LPOSVERSIONINFOW)&osvi) && osvi.dwMajorVersion > 5;
-    }();
-    return vistaOrLater;
+    return BridgeGetNtBuildNumber() >= 6000;
 }
 
 bool Is19042OrLater()
 {
-    static bool is19042OrLater = []()
-    {
-        auto userSharedData = SharedUserData;
-        return userSharedData->NtBuildNumber >= 19042;
-    }();
-    return is19042OrLater;
+    return BridgeGetNtBuildNumber() >= 19042;
 }
 
 bool ExHandlerGetInfo(EX_HANDLER_TYPE Type, std::vector<duint> & Entries)

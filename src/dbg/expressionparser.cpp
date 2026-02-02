@@ -534,14 +534,14 @@ void ExpressionParser::shuntingYard()
 static unsigned long long umulhi(unsigned long long x, unsigned long long y)
 {
     unsigned __int64 res;
-    _umul128(x, y, &res);
+    (void)_umul128(x, y, &res);
     return res;
 }
 
 static long long mulhi(long long x, long long y)
 {
     __int64 res;
-    _mul128(x, y, &res);
+    (void)_mul128(x, y, &res);
     return res;
 }
 #else
