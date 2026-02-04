@@ -38,9 +38,16 @@ AccessibleAbstractTableView::AccessibleAbstractTableView(QWidget* w) : QAccessib
 
 AccessibleAbstractTableView::~AccessibleAbstractTableView()
 {
-    // Qt owns registered interfaces in its cache. Do not delete them manually.
-    columnTitleInterfaces.clear();
-    cellInterfaces.clear();
+    for(const auto & id : columnTitleInterfaces)
+    {
+        if(id != 0)
+            QAccessible::deleteAccessibleInterface(id);
+    }
+    for(const auto & id : cellInterfaces)
+    {
+        if(id != 0)
+            QAccessible::deleteAccessibleInterface(id);
+    }
 }
 
 QString AccessibleAbstractTableView::getCellContent(int row, int column) const
@@ -209,7 +216,8 @@ void* AccessibleAbstractTableView::interface_cast(QAccessible::InterfaceType typ
 {
     if(type == QAccessible::TableInterface)
         return static_cast<QAccessibleTableInterface*>(this);
-    return QAccessibleWidget::interface_cast(type);
+    else
+        return nullptr;
 }
 
 QAccessibleInterface* AccessibleAbstractTableView::caption() const
@@ -296,7 +304,11 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         {
             if(newRows < rows)
             {
-                // Do not delete interfaces manually; just drop cached IDs.
+                for(int i = newRows * cols; i < rows * cols; i++)
+                {
+                    if(cellInterfaces.at(i) != 0)
+                        QAccessible::deleteAccessibleInterface(cellInterfaces.at(i));
+                }
             }
             if(newRows != rows)
             {
@@ -322,9 +334,19 @@ void AccessibleAbstractTableView::modelChange(QAccessibleTableModelChangeEvent* 
         else
         {
             // column titles
+            for(int i = newCols; i < cols; i++)
+            {
+                if(columnTitleInterfaces.at(i) != 0)
+                    QAccessible::deleteAccessibleInterface(columnTitleInterfaces.at(i));
+            }
             columnTitleInterfaces.resize(newCols, 0);
             // rows
-            cellInterfaces.clear();
+            for(const auto & id : cellInterfaces)
+            {
+                if(id != 0)
+                    QAccessible::deleteAccessibleInterface(id);
+            }
+            cellInterfaces = std::vector<QAccessible::Id>();
             rows = newRows;
             cols = newCols;
             cellInterfaces.resize(rows * cols, 0);

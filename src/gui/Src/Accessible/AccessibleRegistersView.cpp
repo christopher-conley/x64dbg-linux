@@ -145,8 +145,11 @@ AccessibleRegistersView::AccessibleRegistersView(QWidget* w) : QAccessibleWidget
 
 AccessibleRegistersView::~AccessibleRegistersView()
 {
-    // Qt owns registered interfaces in its cache. Do not delete them manually.
-    interfaces.fill(0);
+    for(const auto & id : interfaces)
+    {
+        if(id != 0)
+            QAccessible::deleteAccessibleInterface(id);
+    }
 }
 
 int AccessibleRegistersView::childCount() const
