@@ -84,6 +84,12 @@ void ReferenceView::setupContextMenu()
     StdSearchListView::addAction(mToggleBookmark);
     connect(mToggleBookmark, SIGNAL(triggered()), this, SLOT(toggleBookmark()));
 
+    mCopyReferenceAddress = new QAction(DIcon("copy_item"), tr("Copy Address"), this);
+    mCopyReferenceAddress->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    addAction(mCopyReferenceAddress);
+    StdSearchListView::addAction(mCopyReferenceAddress);
+    connect(mCopyReferenceAddress, SIGNAL(triggered()), this, SLOT(copyReferenceAddress()));
+
     mSetBreakpointOnAllCommands = new QAction(DIcon("breakpoint_seton_all_commands"), tr("Set breakpoint on all commands"), this);
     connect(mSetBreakpointOnAllCommands, SIGNAL(triggered()), this, SLOT(setBreakpointOnAllCommands()));
 
@@ -134,6 +140,7 @@ void ReferenceView::refreshShortcutsSlot()
 {
     mToggleBreakpoint->setShortcut(ConfigShortcut("ActionToggleBreakpoint"));
     mToggleBookmark->setShortcut(ConfigShortcut("ActionToggleBookmark"));
+    mCopyReferenceAddress->setShortcut(ConfigShortcut("ActionCopyReferenceAddress"));
 }
 
 void ReferenceView::referenceSetProgressSlot(int progress)
@@ -402,6 +409,17 @@ void ReferenceView::toggleBookmark()
         SimpleErrorBox(this, tr("Error!"), tr("DbgSetBookmarkAt failed!"));
     GuiUpdateAllViews();
 }
+
+void ReferenceView::copyReferenceAddress()
+{
+    if(!mCurList->getRowCount())
+        return;
+    QString address = mCurList->getCellContent(mCurList->getInitialSelection(), 0);
+    if(address.isEmpty())
+        return;
+    Bridge::CopyToClipboard(address);
+}
+
 
 dsint ReferenceView::apiAddressFromString(const QString & s)
 {
