@@ -5,6 +5,9 @@
 
 CallStackView::CallStackView(StdTable* parent) : StdIconTable(parent)
 {
+    mHighlightMode = HighlightNone;
+    mHighlightKey.clear();
+
     int charwidth = getCharWidth();
 
     addColumnAt(32 * charwidth, tr("Thread ID"), false);
@@ -62,6 +65,21 @@ void CallStackView::setupContextMenu()
     mCommonActions->build(mMenuBuilder, CommonActions::ActionBreakpoint);
     mMenuBuilder->addSeparator();
 
+    mMenuBuilder->addAction(makeAction(tr("Highlight by Module"), SLOT(highlightByModuleSlot())), [this](QMenu*)
+    {
+        return isSelectionValid() && (getCellUserdata(getInitialSelection(), ColFrom) || getCellUserdata(getInitialSelection(), ColTo));
+    });
+    mMenuBuilder->addAction(makeAction(tr("Highlight by Symbol"), SLOT(highlightBySymbolSlot())), [this](QMenu*)
+    {
+        return isSelectionValid() && (getCellUserdata(getInitialSelection(), ColFrom) || getCellUserdata(getInitialSelection(), ColTo));
+    });
+    mMenuBuilder->addAction(makeAction(tr("Clear Highlight"), SLOT(clearHighlightSlot())), [this](QMenu*)
+    {
+        return mHighlightMode != HighlightNone;
+    });
+
+    mMenuBuilder->addSeparator();
+
     QAction* showSuspectedCallStack = makeAction(tr("Show Suspected Call Stack Frame"), SLOT(showSuspectedCallStackSlot()));
     mMenuBuilder->addAction(showSuspectedCallStack, [showSuspectedCallStack](QMenu*)
     {
@@ -96,6 +114,41 @@ void CallStackView::setupContextMenu()
     mMenuBuilder->loadFromConfig();
 }
 
+bool CallStackView::rowMatchesHighlight(duint row)
+{
+    if(mHighlightMode == HighlightNone || mHighlightKey.isEmpty())
+        return false;
+
+    if(!getCellContent(row, ColThread).isEmpty())
+        return false;
+
+    duint addr = getCellUserdata(row, ColFrom);
+    if(!addr)
+        addr = getCellUserdata(row, ColTo);
+    if(!addr)
+        return false;
+
+    if(mHighlightMode == HighlightModule)
+    {
+        char module[MAX_MODULE_SIZE] = "";
+        if(!DbgGetModuleAt(addr, module))
+            return false;
+        return mHighlightKey.compare(QString::fromUtf8(module), Qt::CaseInsensitive) == 0;
+    }
+
+    if(mHighlightMode == HighlightSymbol)
+    {
+        char label[MAX_LABEL_SIZE] = "";
+        if(DbgGetLabelAt(addr, SEG_DEFAULT, label))
+            return mHighlightKey.compare(QString::fromUtf8(label), Qt::CaseInsensitive) == 0;
+
+        QString comment = getCellContent(row, ColComment);
+        return !comment.isEmpty() && mHighlightKey.compare(comment, Qt::CaseInsensitive) == 0;
+    }
+
+    return false;
+}
+
 QString CallStackView::paintContent(QPainter* painter, duint row, duint col, int x, int y, int w, int h)
 {
     if(isSelected(row))
@@ -118,6 +171,31 @@ QString CallStackView::paintContent(QPainter* painter, duint row, duint col, int
     {
         auto mid = h / 2.0;
         painter->drawLine(QPointF(x, y + mid), QPointF(x + w, y + mid));
+    }
+
+    bool isHighlight = rowMatchesHighlight(row) && !isSelected(row);
+    if(isHighlight)
+    {
+        if(col == ColFrom || col == ColTo || col == ColAddress)
+        {
+            BPXTYPE bpxtype = DbgGetBpxTypeAt(getCellUserdata(row, col));
+            if(!(bpxtype & (bp_normal | bp_hardware)))
+            {
+                QString ret = getCellContent(row, col);
+                painter->fillRect(QRect(x, y, w, h), QBrush(ConfigColor("CallStackHighlightBackgroundColor")));
+                painter->setPen(QPen(ConfigColor("CallStackHighlightColor")));
+                painter->drawText(QRect(x + 4, y, w - 4, h), Qt::AlignVCenter | Qt::AlignLeft, ret);
+                return "";
+            }
+        }
+        else
+        {
+            QString ret = getCellContent(row, col);
+            painter->fillRect(QRect(x, y, w, h), QBrush(ConfigColor("CallStackHighlightBackgroundColor")));
+            painter->setPen(QPen(ConfigColor("CallStackHighlightColor")));
+            painter->drawText(QRect(x + 4, y, w - 4, h), Qt::AlignVCenter | Qt::AlignLeft, ret);
+            return "";
+        }
     }
     else if(col == ColFrom || col == ColTo || col == ColAddress)
     {
@@ -257,6 +335,64 @@ void CallStackView::followFromSlot()
         DbgCmdExecDirect(QString("disasm " + addrText));
         switchThread();
     }
+}
+
+void CallStackView::highlightByModuleSlot()
+{
+    if(!isSelectionValid())
+        return;
+
+    duint addr = getCellUserdata(getInitialSelection(), ColFrom);
+    if(!addr)
+        addr = getCellUserdata(getInitialSelection(), ColTo);
+    if(!addr)
+        return;
+
+    char module[MAX_MODULE_SIZE] = "";
+    if(!DbgGetModuleAt(addr, module))
+        return;
+
+    mHighlightMode = HighlightModule;
+    mHighlightKey = module;
+    reloadData();
+}
+
+void CallStackView::highlightBySymbolSlot()
+{
+    if(!isSelectionValid())
+        return;
+
+    duint addr = getCellUserdata(getInitialSelection(), ColFrom);
+    if(!addr)
+        addr = getCellUserdata(getInitialSelection(), ColTo);
+    if(!addr)
+        return;
+
+    char label[MAX_LABEL_SIZE] = "";
+    if(DbgGetLabelAt(addr, SEG_DEFAULT, label))
+    {
+        mHighlightKey = label;
+    }
+    else
+    {
+        QString comment = getCellContent(getInitialSelection(), ColComment);
+        if(comment.isEmpty())
+            return;
+        mHighlightKey = comment;
+    }
+
+    mHighlightMode = HighlightSymbol;
+    reloadData();
+}
+
+void CallStackView::clearHighlightSlot()
+{
+    if(mHighlightMode == HighlightNone)
+        return;
+
+    mHighlightMode = HighlightNone;
+    mHighlightKey.clear();
+    reloadData();
 }
 
 void CallStackView::renameThreadSlot()
