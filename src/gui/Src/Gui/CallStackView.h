@@ -24,6 +24,9 @@ protected slots:
     void followInThreadsSlot();
     void renameThreadSlot();
     void loadSymbolsForThreadSlot();
+    void highlightByModuleSlot();
+    void highlightBySymbolSlot();
+    void clearHighlightSlot();
 
 private:
     enum
@@ -37,9 +40,20 @@ private:
         ColComment
     };
 
+    enum HighlightMode
+    {
+        HighlightNone,
+        HighlightModule,
+        HighlightSymbol
+    };
+
+    HighlightMode mHighlightMode;
+    QString mHighlightKey;
+
     MenuBuilder* mMenuBuilder;
     CommonActions* mCommonActions;
     bool isSelectionValid();
     bool isThreadHeaderSelected();
+    bool rowMatchesHighlight(duint row);
     void switchThread();
 };

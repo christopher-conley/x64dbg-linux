@@ -217,6 +217,8 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
 
     defaultColors.insert("ThreadCurrentColor", QColor("#FFFFFF"));
     defaultColors.insert("ThreadCurrentBackgroundColor", QColor("#000000"));
+    defaultColors.insert("CallStackHighlightColor", QColor("#000000"));
+    defaultColors.insert("CallStackHighlightBackgroundColor", QColor("#FFF0A0"));
     defaultColors.insert("WatchTriggeredColor", QColor("#FF0000"));
     defaultColors.insert("WatchTriggeredBackgroundColor", QColor("#FFF8F0"));
     defaultColors.insert("MemoryMapBreakpointColor", QColor("#000000"));
