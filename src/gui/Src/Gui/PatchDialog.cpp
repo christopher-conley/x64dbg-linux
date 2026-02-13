@@ -501,7 +501,7 @@ void PatchDialog::on_btnImport_clicked()
     {
         bool badoriginal;
         bool alreadypatched;
-        unsigned char actualbyte; // byte snapshot on import 
+        unsigned char actualbyte; // byte snapshot on import
     } IMPORTSTATUS;
     QList<QPair<DBGPATCHINFO, IMPORTSTATUS>> patchList;
     DBGPATCHINFO curPatch;
@@ -559,7 +559,7 @@ void PatchDialog::on_btnImport_clicked()
             IMPORTSTATUS status;
             status.alreadypatched = (checkbyte == newbyte);
             status.badoriginal = (checkbyte != oldbyte);
-            status.actualbyte = checkbyte;  
+            status.actualbyte = checkbyte;
             if(status.alreadypatched)
                 bAlreadyDone = true;
             else if(status.badoriginal)
@@ -609,8 +609,8 @@ void PatchDialog::on_btnImport_clicked()
         if(bUndoPatched && patchList.at(i).second.alreadypatched)
         {
             unsigned char byteToWrite;
-            if (patchList.at(i).second.badoriginal)
-                byteToWrite = patchList.at(i).second.actualbyte;  
+            if(patchList.at(i).second.badoriginal)
+                byteToWrite = patchList.at(i).second.actualbyte;
             else
                 byteToWrite = curPatch.oldbyte;
 
