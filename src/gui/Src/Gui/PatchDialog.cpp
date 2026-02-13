@@ -501,7 +501,7 @@ void PatchDialog::on_btnImport_clicked()
     {
         bool badoriginal;
         bool alreadypatched;
-        unsigned char actualbyte; // byte snapshot on import
+        unsigned char actualbyte; // byte snapshot on import 
     } IMPORTSTATUS;
     QList<QPair<DBGPATCHINFO, IMPORTSTATUS>> patchList;
     DBGPATCHINFO curPatch;
