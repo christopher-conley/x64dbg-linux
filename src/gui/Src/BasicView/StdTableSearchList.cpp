@@ -11,7 +11,6 @@ void StdTableSearchList::filter(const QString & filter, FilterType type, duint s
 
     // collect matching row indices
     std::vector<duint> matchingRows;
-    matchingRows.reserve(rows);
 
     for(duint row = 0; row < rows; row++)
     {
