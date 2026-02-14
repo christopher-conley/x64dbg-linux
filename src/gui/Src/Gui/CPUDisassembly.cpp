@@ -398,6 +398,7 @@ void CPUDisassembly::setupRightClickContextMenu()
     QAction* traceCoverageEnableBit = makeAction(DIcon("bit"), tr("Bit"), SLOT(traceCoverageBitSlot()));
     QAction* traceCoverageEnableByte = makeAction(DIcon("byte"), tr("Byte"), SLOT(traceCoverageByteSlot()));
     QAction* traceCoverageEnableWord = makeAction(DIcon("word"), tr("Word"), SLOT(traceCoverageWordSlot()));
+    QAction* traceCoverageReset = makeAction(tr("Reset trace coverage"), SLOT(traceCoverageResetSlot()));
     QAction* traceCoverageToggleTraceRecording = makeShortcutAction(DIcon("control-record"), tr("Start trace recording"), SLOT(traceCoverageToggleTraceRecordingSlot()), "ActionToggleRunTrace");
     mMenuBuilder->addMenu(makeMenu(DIcon("trace"), tr("Trace coverage")), [ = ](QMenu * menu)
     {
@@ -408,7 +409,10 @@ void CPUDisassembly::setupRightClickContextMenu()
             menu->addAction(traceCoverageEnableWord);
         }
         else
+        {
+            menu->addAction(traceCoverageReset);
             menu->addAction(traceCoverageDisable);
+        }
         menu->addSeparator();
         if(TraceBrowser::isRecording())
         {
@@ -1974,6 +1978,25 @@ void CPUDisassembly::traceCoverageWordSlot()
         {
             GuiAddLogMessage(tr("Failed to enable trace coverage for page %1.\n").arg(ToPtrString(i)).toUtf8().constData());
             break;
+        }
+    }
+    DbgCmdExec("traceexecute cip");
+}
+
+void CPUDisassembly::traceCoverageResetSlot()
+{
+    if(!DbgIsDebugging())
+        return;
+    duint base = mMemPage->getBase();
+    duint size = mMemPage->getSize();
+    for(duint i = base; i < base + size; i += 4096)
+    {
+        auto t = DbgFunctions()->GetTraceRecordType(i);
+        if(t == TRACERECORDTYPE::TraceRecordNone)
+            continue;
+        if(!(DbgFunctions()->SetTraceRecordType(i, TRACERECORDTYPE::TraceRecordNone) && DbgFunctions()->SetTraceRecordType(i, t)))
+        {
+            GuiAddLogMessage(tr("Failed to reset trace coverage for page %1.\n").arg(ToPtrString(i)).toUtf8().constData());
         }
     }
     DbgCmdExec("traceexecute cip");

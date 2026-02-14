@@ -243,6 +243,7 @@ void SettingsDialog::LoadSettings()
     GetSettingBool("Disassembler", "NoBranchDisasmPreview", &settings.disasmNoBranchDisasmPreview);
     GetSettingBool("Disassembler", "NoSourceLineAutoComments", &settings.disasmNoSourceLineAutoComments);
     GetSettingBool("Disassembler", "AssembleOnDoubleClick", &settings.disasmAssembleOnDoubleClick);
+    GetSettingBool("Disassembler", "UseRunTrace", &settings.disasmUseRunTrace);
 
     if(BridgeSettingGetUint("Disassembler", "0xPrefixValues", &cur))
     {
@@ -274,6 +275,7 @@ void SettingsDialog::LoadSettings()
     ui->chkNoSourceLinesAutoComments->setChecked(settings.disasmNoSourceLineAutoComments);
     ui->chkDoubleClickAssemble->setChecked(settings.disasmAssembleOnDoubleClick);
     ui->spinMaximumModuleNameSize->setValue(settings.disasmMaxModuleSize);
+    ui->chkUseRunTrace->setChecked(settings.disasmUseRunTrace);
 
     //Gui tab
     GetSettingBool("Gui", "FpuRegistersLittleEndian", &settings.guiFpuRegistersLittleEndian);
@@ -447,6 +449,7 @@ void SettingsDialog::SaveSettings()
     BridgeSettingSetUint("Disassembler", "NoSourceLineAutoComments", settings.disasmNoSourceLineAutoComments);
     BridgeSettingSetUint("Disassembler", "AssembleOnDoubleClick", settings.disasmAssembleOnDoubleClick);
     BridgeSettingSetUint("Disassembler", "MaxModuleSize", settings.disasmMaxModuleSize);
+    BridgeSettingSetUint("Disassembler", "UseRunTrace", settings.disasmUseRunTrace);
 
     //Gui tab
     BridgeSettingSetUint("Gui", "FpuRegistersLittleEndian", settings.guiFpuRegistersLittleEndian);
@@ -972,6 +975,11 @@ void SettingsDialog::on_chkUppercase_stateChanged(int arg1)
 {
     bTokenizerConfigUpdated = true;
     settings.disasmUppercase = arg1 != Qt::Unchecked;
+}
+
+void SettingsDialog::on_chkUseRunTrace_toggled(bool checked)
+{
+    settings.disasmUseRunTrace = checked;
 }
 
 void SettingsDialog::on_chkOnlyCipAutoComments_stateChanged(int arg1)

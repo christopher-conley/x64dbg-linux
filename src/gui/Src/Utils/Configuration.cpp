@@ -266,6 +266,7 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     disassemblyBool.insert("NoBranchDisasmPreview", false);
     disassemblyBool.insert("NoCurrentModuleText", false);
     disassemblyBool.insert("ShowMnemonicBrief", false);
+    disassemblyBool.insert("UseRunTrace", false);
     defaultBools.insert("Disassembler", disassemblyBool);
 
     QMap<QString, bool> engineBool;

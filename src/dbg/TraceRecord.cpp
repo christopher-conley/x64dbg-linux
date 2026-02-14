@@ -460,7 +460,7 @@ TraceRecordManager::TraceRecordByteType TraceRecordManager::getByteType(duint ad
     duint base = address & ~((duint)4096 - 1);
     auto pageInfoIterator = TraceRecord.find(ModHashFromAddr(base));
     if(pageInfoIterator == TraceRecord.end())
-        return TraceRecordByteType::InstructionHeading;
+        return TraceRecordByteType::Unknown;
     else
     {
         TraceRecordPage pageInfo = pageInfoIterator->second;
@@ -469,11 +469,18 @@ TraceRecordManager::TraceRecordByteType TraceRecordManager::getByteType(duint ad
         {
         case TraceRecordType::TraceRecordBitExec:
         default:
-            return TraceRecordByteType::InstructionHeading;
+            // bit type don't store byte type
+            return TraceRecordByteType::Unknown;
         case TraceRecordType::TraceRecordByteWithExecTypeAndCounter:
-            return (TraceRecordByteType)((((char*)pageInfo.rawPtr)[offset] & 0xC0) >> 6);
+            if((((char*)pageInfo.rawPtr)[offset] & 0x3F) != 0)
+                return (TraceRecordByteType)((((char*)pageInfo.rawPtr)[offset] & 0xC0) >> 6);
+            else
+                return TraceRecordByteType::Unknown;
         case TraceRecordType::TraceRecordWordWithExecTypeAndCounter:
-            return (TraceRecordByteType)((((short*)pageInfo.rawPtr)[offset] & 0xC000) >> 14);
+            if((((short*)pageInfo.rawPtr)[offset] & 0x3FFF) != 0)
+                return (TraceRecordByteType)((((short*)pageInfo.rawPtr)[offset] & 0xC000) >> 14);
+            else
+                return TraceRecordByteType::Unknown;
         }
     }
 }

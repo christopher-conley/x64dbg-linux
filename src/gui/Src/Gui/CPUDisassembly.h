@@ -91,6 +91,7 @@ public slots:
     void traceCoverageBitSlot();
     void traceCoverageByteSlot();
     void traceCoverageWordSlot();
+    void traceCoverageResetSlot();
     void traceCoverageDisableSlot();
     void traceCoverageToggleTraceRecordingSlot();
     void displayWarningSlot(QString title, QString text);

@@ -769,6 +769,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="chkUseRunTrace">
+         <property name="text">
+          <string>Use trace coverage data to assist more accurate disassembling (experimental)</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="layoutValueNotation">
          <item>
           <widget class="QLabel" name="labelValueNotation">
