@@ -238,7 +238,7 @@ void SearchListView::searchTextEdited(const QString & text)
         if(rowCount <= 10000)
             return 0;   // seems to be OK for up to 10000 rows
         else
-            return 400; // 400 ms between keypresses should be ok for the average user typing speed.
+            return 250; // 250 ms between keypresses should be ok for the average user typing speed.
     }(mAbstractSearchList->list()->getRowCount()));
     mAbstractSearchList->unlock();
     mTypingTimer->start(); // This will fire filterEntries after interval ms.
