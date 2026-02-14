@@ -5,22 +5,33 @@ void StdTableSearchList::filter(const QString & filter, FilterType type, duint s
 {
     StdIconTable* mSearchIconList = qobject_cast<StdIconTable*>(mSearchList);
     StdIconTable* mIconList = qobject_cast<StdIconTable*>(mList);
-    mSearchList->setRowCount(0);
+
     auto rows = mList->getRowCount();
     auto columns = mList->getColumnCount();
-    for(duint i = 0, j = 0; i < rows; i++)
+
+    // collect matching row indices
+    std::vector<duint> matchingRows;
+    matchingRows.reserve(rows);
+
+    for(duint row = 0; row < rows; row++)
     {
-        if(rowMatchesFilter(filter, type, i, startColumn))
+        if(rowMatchesFilter(filter, type, row, startColumn))
+            matchingRows.push_back(row);
+    }
+
+    // resize once with exact size
+    mSearchList->setRowCount(matchingRows.size());
+
+    // populate searchList with matched results
+    for(duint searchListRow = 0; searchListRow < matchingRows.size(); searchListRow++)
+    {
+        duint listRow = matchingRows[searchListRow];
+        for(duint column = 0; column < columns; column++)
         {
-            mSearchList->setRowCount(j + 1);
-            for(duint k = 0; k < columns; k++)
-            {
-                mSearchList->setCellContent(j, k, mList->getCellContent(i, k));
-                mSearchList->setCellUserdata(j, k, mList->getCellUserdata(i, k));
-            }
-            if(mSearchIconList && mIconList)
-                mSearchIconList->setRowIcon(j, mIconList->getRowIcon(i));
-            j++;
+            mSearchList->setCellContent(searchListRow, column, mList->getCellContent(listRow, column));
+            mSearchList->setCellUserdata(searchListRow, column, mList->getCellUserdata(listRow, column));
         }
+        if(mSearchIconList && mIconList)
+            mSearchIconList->setRowIcon(searchListRow, mIconList->getRowIcon(listRow));
     }
 }
