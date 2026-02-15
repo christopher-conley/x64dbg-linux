@@ -27,8 +27,9 @@ void StdTableSearchList::filter(const QString & filter, FilterType type, duint s
         duint listRow = matchingRows[searchListRow];
         for(duint column = 0; column < columns; column++)
         {
-            mSearchList->setCellContent(searchListRow, column, mList->getCellContent(listRow, column));
-            mSearchList->setCellUserdata(searchListRow, column, mList->getCellUserdata(listRow, column));
+            mSearchList->setCellContent(searchListRow, column,
+                                        mList->getCellContent(listRow, column),
+                                        mList->getCellUserdata(listRow, column));
         }
         if(mSearchIconList && mIconList)
             mSearchIconList->setRowIcon(searchListRow, mIconList->getRowIcon(listRow));
