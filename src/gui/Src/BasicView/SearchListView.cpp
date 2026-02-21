@@ -235,13 +235,10 @@ void SearchListView::searchTextEdited(const QString & text)
     mAbstractSearchList->lock();
     mTypingTimer->setInterval([](dsint rowCount)
     {
-        // These numbers are kind of arbitrarily chosen, but seem to work
         if(rowCount <= 10000)
-            return 0;
-        else if(rowCount <= 600000)
-            return 100;
+            return 0;   // seems to be OK for up to 10000 rows
         else
-            return 350;
+            return 250; // 250 ms between keypresses should be ok for the average user typing speed.
     }(mAbstractSearchList->list()->getRowCount()));
     mAbstractSearchList->unlock();
     mTypingTimer->start(); // This will fire filterEntries after interval ms.
