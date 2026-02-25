@@ -17,6 +17,7 @@
 #include "watch.h"
 #include "plugin_loader.h"
 #include "_dbgfunctions.h"
+#include "_exports.h"
 #include <zydis_wrapper.h>
 #include "_scriptapi_gui.h"
 #include "filehelper.h"
@@ -936,6 +937,7 @@ extern "C" DLL_EXPORT const char* _dbg_dbginit(bool blocking)
     bIsStopped = false;
     dputs(QT_TRANSLATE_NOOP("DBG", "Loading plugins..."));
     pluginloadall(plugindir);
+    _dbg_sendmessage(DBG_SETTINGS_UPDATED, nullptr, nullptr);
     dputs(QT_TRANSLATE_NOOP("DBG", "Handling command line..."));
     dprintf("  %s\n", StringUtils::Utf16ToUtf8(GetCommandLineW()).c_str());
     //handle command line
