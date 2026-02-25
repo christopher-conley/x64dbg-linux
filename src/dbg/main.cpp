@@ -7,7 +7,7 @@
 #include "debugger.h"
 #include "threading.h"
 
-extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     switch(fdwReason)
     {
@@ -32,10 +32,8 @@ extern "C" DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason,
         }
     }
 
-    case DLL_THREAD_ATTACH:
-    {
-
-    }
+    default:
+        break;
     }
     return TRUE;
 }
