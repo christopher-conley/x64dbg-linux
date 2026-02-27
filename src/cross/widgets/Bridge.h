@@ -68,6 +68,15 @@ typedef enum
     ARG_SINGLE
 } ARGTYPE;
 
+typedef enum
+{
+    InstructionBody = 0,
+    InstructionHeading = 1,
+    InstructionTailing = 2,
+    InstructionOverlapped = 3, // The byte was executed with differing instruction base addresses
+    Unknown = 4// The following is not implemented yet.
+} TRACERECORDBYTETYPE;
+
 typedef struct
 {
     uint32_t rva;
@@ -86,6 +95,7 @@ typedef struct
 struct DBGFUNCTIONS
 {
     duint(*GetTraceRecordHitCount)(duint addr);
+    TRACERECORDBYTETYPE(*GetTraceRecordByteType)(duint address);
     duint(*ModBaseFromAddr)(duint addr);
     bool (*ModNameFromAddr)(duint base, char* name, bool extension);
     bool (*StringFormatInline)(char* dest, duint size, const char* format);
