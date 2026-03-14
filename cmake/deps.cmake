@@ -2,12 +2,19 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(GUI_DLL "${CMAKE_ARGV3}")
     set(DEPS_DIR "${CMAKE_ARGV4}")
     set(WINDEPLOYQT "${CMAKE_ARGV5}")
+    set(EXPECTED_DEPS_HASH "${CMAKE_ARGV6}")
     get_filename_component(GUI_DIR "${GUI_DLL}" DIRECTORY)
     get_filename_component(WINDEPLOYQT_DIR "${WINDEPLOYQT}" DIRECTORY)
+    set(DEPS_COPIED_FILE "${GUI_DIR}/.deps_copied")
+    set(DEPS_HASH_FILE "${GUI_DIR}/.deps_hash")
 
-    # Check if we already copied the dependencies
-    if(EXISTS "${GUI_DIR}/.deps_copied")
-        return()
+    # Check if we already copied the dependencies for the current Qt/deps state.
+    if(EXISTS "${DEPS_COPIED_FILE}" AND EXISTS "${DEPS_HASH_FILE}")
+        file(READ "${DEPS_HASH_FILE}" CURRENT_DEPS_HASH)
+        string(STRIP "${CURRENT_DEPS_HASH}" CURRENT_DEPS_HASH)
+        if("${CURRENT_DEPS_HASH}" STREQUAL "${EXPECTED_DEPS_HASH}")
+            return()
+        endif()
     endif()
 
     # Make windeployqt resilient against globally configured Qt environments.
@@ -41,6 +48,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
 
     # Split the output into lines
     string(REGEX REPLACE "\n" ";" DEPS_COPIED "${DEPS_COPIED}")
+    list(FILTER DEPS_COPIED EXCLUDE REGEX "^$")
     foreach(line ${DEPS_COPIED})
         message(STATUS "Copying ${line}")
     endforeach()
@@ -62,16 +70,15 @@ if(CMAKE_SCRIPT_MODE_FILE)
         endif()
     endfunction()
 
-    file(GLOB DEPS RELATIVE "${DEPS_DIR}" "${DEPS_DIR}/*.dll")
+    file(GLOB_RECURSE DEPS RELATIVE "${DEPS_DIR}" "${DEPS_DIR}/*.dll")
+    list(SORT DEPS)
     foreach(DEP ${DEPS})
         copy_dep("${DEP}")
     endforeach()
 
-    copy_dep("GleeBug/TitanEngine.dll")
-    copy_dep("StaticEngine/TitanEngine.dll")
-
     list(JOIN DEPS_COPIED "\n" DEPS_COPIED)
-    file(WRITE "${GUI_DIR}/.deps_copied" "${DEPS_COPIED}")
+    file(WRITE "${DEPS_COPIED_FILE}" "${DEPS_COPIED}")
+    file(WRITE "${DEPS_HASH_FILE}" "${EXPECTED_DEPS_HASH}\n")
 
     return()
 endif()
@@ -109,11 +116,25 @@ else()
     set(DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/x32)
 endif()
 
+get_target_property(_qt5_windeployqt_location Qt5::windeployqt IMPORTED_LOCATION)
+
+file(GLOB_RECURSE DEPS_INPUT_DLLS "${DEPS_DIR}/*.dll")
+list(SORT DEPS_INPUT_DLLS)
+
+file(SHA256 "${_qt5_windeployqt_location}" WINDEPLOYQT_HASH)
+set(DEPS_HASH_INPUT "WINDEPLOYQT=${WINDEPLOYQT_HASH}\n")
+foreach(DEP_FILE ${DEPS_INPUT_DLLS})
+    file(RELATIVE_PATH DEP_RELATIVE "${DEPS_DIR}" "${DEP_FILE}")
+    file(SHA256 "${DEP_FILE}" DEP_HASH)
+    string(APPEND DEPS_HASH_INPUT "${DEP_RELATIVE}=${DEP_HASH}\n")
+endforeach()
+string(SHA256 EXPECTED_DEPS_HASH "${DEPS_HASH_INPUT}")
+
 add_custom_target(deps
-    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/deps.cmake $<TARGET_FILE:gui> ${DEPS_DIR} $<TARGET_FILE:Qt5::windeployqt>
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/deps.cmake $<TARGET_FILE:gui> ${DEPS_DIR} $<TARGET_FILE:Qt5::windeployqt> ${EXPECTED_DEPS_HASH}
 )
 
 # Make a rebuild copy the dependencies again
 set_target_properties(deps PROPERTIES
-    ADDITIONAL_CLEAN_FILES $<TARGET_FILE_DIR:gui>/.deps_copied
+    ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:gui>/.deps_copied;$<TARGET_FILE_DIR:gui>/.deps_hash"
 )
