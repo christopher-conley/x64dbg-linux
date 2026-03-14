@@ -1,20 +1,43 @@
 if(CMAKE_SCRIPT_MODE_FILE)
-    set(GUI_DLL ${CMAKE_ARGV3})
-    set(DEPS_DIR ${CMAKE_ARGV4})
-    set(WINDEPLOYQT ${CMAKE_ARGV5})
-    get_filename_component(GUI_DIR ${GUI_DLL} DIRECTORY)
+    set(GUI_DLL "${CMAKE_ARGV3}")
+    set(DEPS_DIR "${CMAKE_ARGV4}")
+    set(WINDEPLOYQT "${CMAKE_ARGV5}")
+    get_filename_component(GUI_DIR "${GUI_DLL}" DIRECTORY)
+    get_filename_component(WINDEPLOYQT_DIR "${WINDEPLOYQT}" DIRECTORY)
 
     # Check if we already copied the dependencies
     if(EXISTS "${GUI_DIR}/.deps_copied")
         return()
     endif()
 
+    # Make windeployqt resilient against globally configured Qt environments.
+    string(CONCAT SANITIZED_PATH "${WINDEPLOYQT_DIR}" ";" "$ENV{PATH}")
+    set(ENV{PATH} "${SANITIZED_PATH}")
+    unset(ENV{QTDIR})
+    unset(ENV{QT_PLUGIN_PATH})
+    unset(ENV{QT_QPA_PLATFORM_PLUGIN_PATH})
+    unset(ENV{QML_IMPORT_PATH})
+    unset(ENV{QML2_IMPORT_PATH})
+
     message(STATUS "Copying dependencies from ${DEPS_DIR} to ${GUI_DIR}")
 
     execute_process(
-        COMMAND ${WINDEPLOYQT} --pdb --no-compiler-runtime --no-translations --no-opengl-sw --force ${GUI_DLL} --list relative
+        COMMAND "${WINDEPLOYQT}" --pdb --no-compiler-runtime --no-translations --no-opengl-sw --force "${GUI_DLL}" --list relative
+        WORKING_DIRECTORY "${GUI_DIR}"
+        RESULT_VARIABLE WINDEPLOYQT_RESULT
         OUTPUT_VARIABLE DEPS_COPIED
+        ERROR_VARIABLE WINDEPLOYQT_STDERR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_STRIP_TRAILING_WHITESPACE
     )
+
+    if(NOT "${WINDEPLOYQT_STDERR}" STREQUAL "")
+        message(STATUS "${WINDEPLOYQT_STDERR}")
+    endif()
+
+    if(NOT WINDEPLOYQT_RESULT EQUAL 0)
+        message(FATAL_ERROR "windeployqt failed with exit code ${WINDEPLOYQT_RESULT}")
+    endif()
 
     # Split the output into lines
     string(REGEX REPLACE "\n" ";" DEPS_COPIED "${DEPS_COPIED}")
@@ -23,28 +46,28 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endforeach()
 
     function(copy_dep relfile)
-        if(EXISTS ${relfile})
+        if(EXISTS "${GUI_DIR}/${relfile}")
             message(STATUS "Skipping ${relfile}")
             return()
         endif()
         set(DEPS_COPIED ${DEPS_COPIED} ${relfile} PARENT_SCOPE)
         message(STATUS "Copying ${relfile}")
-        get_filename_component(reldir ${relfile} DIRECTORY)
-        get_filename_component(filename ${relfile} NAME)
+        get_filename_component(reldir "${relfile}" DIRECTORY)
+        get_filename_component(filename "${relfile}" NAME)
         if(reldir)
-            file(COPY ${DEPS_DIR}/${reldir}/${filename} DESTINATION ${GUI_DIR}/${reldir})
+            file(COPY "${DEPS_DIR}/${reldir}/${filename}" DESTINATION "${GUI_DIR}/${reldir}")
         else()
-            file(COPY ${DEPS_DIR}/${filename} DESTINATION ${GUI_DIR})
+            file(COPY "${DEPS_DIR}/${filename}" DESTINATION "${GUI_DIR}")
         endif()
     endfunction()
 
-    file(GLOB DEPS RELATIVE ${DEPS_DIR} "${DEPS_DIR}/*.dll")
+    file(GLOB DEPS RELATIVE "${DEPS_DIR}" "${DEPS_DIR}/*.dll")
     foreach(DEP ${DEPS})
-        copy_dep(${DEP})
+        copy_dep("${DEP}")
     endforeach()
 
-    copy_dep(GleeBug/TitanEngine.dll)
-    copy_dep(StaticEngine/TitanEngine.dll)
+    copy_dep("GleeBug/TitanEngine.dll")
+    copy_dep("StaticEngine/TitanEngine.dll")
 
     list(JOIN DEPS_COPIED "\n" DEPS_COPIED)
     file(WRITE "${GUI_DIR}/.deps_copied" "${DEPS_COPIED}")
