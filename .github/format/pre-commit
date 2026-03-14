@@ -43,6 +43,6 @@ fi
 # Cancel commit if the changes were undone by the formatting
 GIT_FILES=$(git diff-index --name-only --cached HEAD)
 if [ -z "$GIT_FILES" ]; then
-    ".github/AStyleHelper.exe" "After formatting, no files were staged..."
+    ".github/format/AStyleHelper.exe" "After formatting, no files were staged..."
     exit 1
 fi
