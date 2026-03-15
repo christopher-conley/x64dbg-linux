@@ -1,15 +1,8 @@
-#ifndef PDBDIATYPES_H_
-#define PDBDIATYPES_H_
 #pragma once
 
 #include <string>
-#include <stdint.h>
-#include <set>
-#include <vector>
-#include <deque>
-#include <map>
+#include <cstdint>
 #include <windows.h>
-#include <functional>
 #include <string>
 
 enum class DiaSymbolType
@@ -51,9 +44,9 @@ enum class DiaCallingConvention
 
 struct DiaValidationData_t
 {
-    GUID guid;
-    uint32_t signature;
-    uint32_t age;
+    GUID guid = {};
+    uint32_t signature = 0;
+    uint32_t age = 0;
 };
 
 struct DiaSymbol_t
@@ -75,9 +68,7 @@ struct DiaSymbol_t
 
 struct DiaLineInfo_t
 {
-    DWORD sourceFileId;
-    DWORD lineNumber;
-    DWORD rva;
+    DWORD sourceFileId = 0;
+    DWORD lineNumber = 0;
+    DWORD rva = 0;
 };
-
-#endif // PDBDIATYPES_H_

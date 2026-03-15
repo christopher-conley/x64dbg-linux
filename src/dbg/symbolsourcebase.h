@@ -1,12 +1,11 @@
-#ifndef _SYMBOLSOURCEBASE_H_
-#define _SYMBOLSOURCEBASE_H_
+#pragma once
 
 #include "_global.h"
 
-#include <stdint.h>
 #include <vector>
-#include <functional>
 #include <map>
+#include <string>
+#include <functional>
 #include <algorithm>
 
 //http://en.cppreference.com/w/cpp/algorithm/lower_bound
@@ -80,8 +79,8 @@ struct LineInfo
 
 struct NameIndex
 {
-    const char* name;
-    size_t index;
+    const char* name = nullptr;
+    size_t index = -1;
 
     bool operator<(const NameIndex & b) const
     {
@@ -204,5 +203,3 @@ public:
 };
 
 static SymbolSourceBase EmptySymbolSource;
-
-#endif // _SYMBOLSOURCEBASE_H_
