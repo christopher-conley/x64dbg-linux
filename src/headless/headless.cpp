@@ -36,17 +36,9 @@ struct GuiState
 
 extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
 {
-    // Allocate console
-    if(AllocConsole())
-    {
-        FILE* ptrNewStdIn = nullptr;
-        FILE* ptrNewStdOut = nullptr;
-        FILE* ptrNewStdErr = nullptr;
-
-        freopen_s(&ptrNewStdIn, "CONIN$", "r", stdin);
-        freopen_s(&ptrNewStdOut, "CONOUT$", "w", stdout);
-        freopen_s(&ptrNewStdErr, "CONOUT$", "w", stderr);
-    }
+    // Disable buffering for stdout and stderr to ensure immediate output
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    setvbuf(stderr, nullptr, _IONBF, 0);
 
     // Init debugger
     const char* errormsg = DbgInitBlocking();
@@ -61,7 +53,14 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
         while(true)
         {
             std::string command;
-            std::getline(std::cin, command);
+            if(!std::getline(std::cin, command))
+            {
+                queue.enqueue([]()
+                {
+                    return false;
+                });
+                break;
+            }
             if(command == "exit")
             {
                 queue.enqueue([]()
