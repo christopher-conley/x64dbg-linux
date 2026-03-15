@@ -67,6 +67,11 @@ BRIDGE_IMPEXP HMODULE WINAPI BridgeLoadLibraryCheckedA(const char* szDll, bool a
 BRIDGE_IMPEXP const wchar_t* BridgeStart();
 
 /// <summary>
+/// Returns true when running with the headless host.
+/// </summary>
+BRIDGE_IMPEXP bool BridgeIsHeadless();
+
+/// <summary>
 /// Allocate buffer. Use BridgeFree to free the buffer.
 /// </summary>
 /// <param name="size">Size in bytes of the buffer to allocate.</param>
