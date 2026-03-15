@@ -2,6 +2,7 @@
 #include "../dbg/_plugins.h"
 #include "../dbg/concurrentqueue/blockingconcurrentqueue.h"
 
+#include <atomic>
 #include <functional>
 #include <string>
 #include <iostream>
@@ -19,6 +20,59 @@ static int curScriptId = 0;
 static bool dbgStopped = false;
 static DWORD dwGuiThreadId = 0;
 static moodycamel::BlockingConcurrentQueue<std::function<bool()>> queue;
+static std::atomic<bool> shutdownRequested{ false };
+static std::atomic<bool> consoleCloseRequested{ false };
+static std::atomic<DWORD> shutdownCtrlType{ 0 };
+static std::atomic<HANDLE> commandThreadHandle{ nullptr };
+
+static void requestShutdown()
+{
+    if(shutdownRequested.exchange(true))
+        return;
+    queue.enqueue([]()
+    {
+        return false;
+    });
+}
+
+static const char* shutdownCtrlTypeToString(DWORD ctrlType)
+{
+    switch(ctrlType)
+    {
+    case CTRL_C_EVENT:
+        return "Ctrl+C";
+    case CTRL_BREAK_EVENT:
+        return "Ctrl+Break";
+    case CTRL_CLOSE_EVENT:
+        return "console close";
+    case CTRL_LOGOFF_EVENT:
+        return "logoff";
+    case CTRL_SHUTDOWN_EVENT:
+        return "system shutdown";
+    default:
+        return nullptr;
+    }
+}
+
+static BOOL WINAPI consoleCtrlHandler(DWORD ctrlType)
+{
+    switch(ctrlType)
+    {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        shutdownCtrlType = ctrlType;
+        consoleCloseRequested = true;
+        requestShutdown();
+        if(auto handle = commandThreadHandle.load())
+            CancelSynchronousIo(handle);
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
 
 struct GuiState
 {
@@ -47,26 +101,26 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
         puts(errormsg);
         return 1;
     }
+    shutdownRequested = false;
+    consoleCloseRequested = false;
+    shutdownCtrlType = 0;
+    commandThreadHandle = nullptr;
+    SetConsoleCtrlHandler(consoleCtrlHandler, TRUE);
+
     puts("[headless] entering command loop...");
     std::thread commandThread([]()
     {
-        while(true)
+        while(!shutdownRequested.load())
         {
             std::string command;
             if(!std::getline(std::cin, command))
             {
-                queue.enqueue([]()
-                {
-                    return false;
-                });
+                requestShutdown();
                 break;
             }
             if(command == "exit")
             {
-                queue.enqueue([]()
-                {
-                    return false;
-                });
+                requestShutdown();
                 break;
             }
             else if(command == "langs")
@@ -112,18 +166,29 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
             }
         }
     });
+    commandThreadHandle = (HANDLE)commandThread.native_handle();
     while(true)
     {
         std::function<bool()> job;
         queue.wait_dequeue(job);
         if(!job())
         {
+            if(const auto reason = shutdownCtrlTypeToString(shutdownCtrlType.load()))
+                printf("[headless] shutdown requested by %s\n", reason);
             DbgExit();
             dbgStopped = true;
+            if(consoleCloseRequested.load())
+            {
+                if(auto handle = commandThreadHandle.load())
+                    CancelSynchronousIo(handle);
+            }
             break;
         }
     }
-    commandThread.join();
+    if(commandThread.joinable())
+        commandThread.join();
+    commandThreadHandle = nullptr;
+    SetConsoleCtrlHandler(consoleCtrlHandler, FALSE);
     return 0;
 }
 
