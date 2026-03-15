@@ -1,9 +1,8 @@
-#ifndef _MODULE_H
-#define _MODULE_H
+#pragma once
 
-#include "_global.h"
 #include "jansson/jansson_x64dbg.h" // addrinfo.h and serializablemap.h use functions defined here so can't be included
 #include <functional>
+#include <memory>
 
 #include "symbolsourcebase.h"
 
@@ -22,16 +21,16 @@
 
 struct MODSECTIONINFO
 {
-    duint addr; // Virtual address
-    duint size; // Virtual size
-    char name[MAX_SECTION_SIZE * 5]; // Escaped section name
+    duint addr = 0; // Virtual address
+    duint size = 0; // Virtual size
+    char name[MAX_SECTION_SIZE * 5] = {}; // Escaped section name
 };
 
 struct MODRELOCATIONINFO
 {
-    DWORD rva; // Virtual address
-    BYTE type; // Relocation type (IMAGE_REL_BASED_*)
-    WORD size;
+    DWORD rva = 0; // Virtual address
+    BYTE type = 0; // Relocation type (IMAGE_REL_BASED_*)
+    WORD size = 0;
 
     bool Contains(duint Address) const
     {
@@ -41,14 +40,9 @@ struct MODRELOCATIONINFO
 
 struct PdbValidationData
 {
-    GUID guid;
+    GUID guid = {};
     DWORD signature = 0;
     DWORD age = 0;
-
-    PdbValidationData()
-    {
-        memset(&guid, 0, sizeof(guid));
-    }
 };
 
 struct MODEXPORT : SymbolInfoGui
@@ -60,7 +54,7 @@ struct MODEXPORT : SymbolInfoGui
     String name;
     String undecoratedName;
 
-    virtual void convertToGuiSymbol(duint base, SYMBOLINFO* info) const override;
+    void convertToGuiSymbol(duint base, SYMBOLINFO* info) const override;
 };
 
 struct MODIMPORT : SymbolInfoGui
@@ -71,7 +65,7 @@ struct MODIMPORT : SymbolInfoGui
     String name;
     String undecoratedName;
 
-    virtual void convertToGuiSymbol(duint base, SYMBOLINFO* info) const override;
+    void convertToGuiSymbol(duint base, SYMBOLINFO* info) const override;
 };
 
 struct MODINFO
@@ -82,9 +76,9 @@ struct MODINFO
     duint entry = 0; // Entry point
     duint headerImageBase = 0; // ImageBase field in OptionalHeader
 
-    char name[MAX_MODULE_SIZE]; // Module name (without extension)
-    char extension[MAX_MODULE_SIZE]; // File extension (including the dot)
-    char path[MAX_PATH]; // File path (in UTF8)
+    char name[MAX_MODULE_SIZE] = {}; // Module name (without extension)
+    char extension[MAX_MODULE_SIZE] = {}; // File extension (including the dot)
+    char path[MAX_PATH] = {}; // File path (in UTF8)
 
     PIMAGE_NT_HEADERS headers = nullptr; // Image headers. Always use HEADER_FIELD() to access OptionalHeader values
 
@@ -120,24 +114,20 @@ struct MODINFO
     HANDLE fileMap = nullptr;
     ULONG_PTR fileMapVA = 0;
 
-    MODULEPARTY party;  // Party. Currently used value: 0: User, 1: System
+    MODULEPARTY party = mod_user;  // Party. Currently used value: 0: User, 1: System
     bool isVirtual = false;
-    Memory<unsigned char*> mappedData;
-
-    MODINFO()
-    {
-        memset(name, 0, sizeof(name));
-        memset(extension, 0, sizeof(extension));
-        memset(path, 0, sizeof(path));
-    }
+    bool invalidateSymbolSourceOnDestruction = true;
+    std::vector<uint8_t> mappedData;
 
     ~MODINFO()
     {
         unmapFile();
         unloadSymbols();
-        GuiInvalidateSymbolSource(base);
+        if(invalidateSymbolSourceOnDestruction)
+            GuiInvalidateSymbolSource(base);
     }
 
+    static std::unique_ptr<MODINFO> load(duint Base, duint Size, const char* FullPath, bool loadSymbols = true, HANDLE hFile = nullptr, bool allowRemoteMemoryFallback = true);
     bool loadSymbols(const String & pdbPath, bool forceLoad);
     void unloadSymbols();
     void unmapFile();
@@ -149,7 +139,7 @@ struct MODINFO
 ULONG64 ModRvaToOffset(ULONG64 base, PIMAGE_NT_HEADERS ntHeaders, ULONG64 rva);
 bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols = true, HANDLE hFile = nullptr);
 bool ModUnload(duint Base);
-void ModClear(bool updateGui = true);
+void ModClear();
 MODINFO* ModInfoFromAddr(duint Address);
 bool ModNameFromAddr(duint Address, char* Name, bool Extension);
 duint ModBaseFromAddr(duint Address);
@@ -182,5 +172,3 @@ bool ModRelocationsFromAddr(duint Address, std::vector<MODRELOCATIONINFO> & Relo
 bool ModRelocationAtAddr(duint Address, MODRELOCATIONINFO* Relocation);
 bool ModRelocationsInRange(duint Address, duint Size, std::vector<MODRELOCATIONINFO> & Relocations);
 duint ModFunctionEntryGuessFromAddr(duint Address);
-
-#endif // _MODULE_H

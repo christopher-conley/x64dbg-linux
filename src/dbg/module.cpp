@@ -33,7 +33,7 @@ static NTSTATUS ImageNtHeaders(duint base, duint size, PIMAGE_NT_HEADERS* outHea
         if(size < sizeof(IMAGE_DOS_HEADER))
             return STATUS_INVALID_IMAGE_FORMAT;
 
-        const PIMAGE_DOS_HEADER dosHeaders = (PIMAGE_DOS_HEADER)base;
+        auto dosHeaders = (const IMAGE_DOS_HEADER*)base;
         if(dosHeaders->e_magic != IMAGE_DOS_SIGNATURE)
             return STATUS_INVALID_IMAGE_FORMAT;
 
@@ -219,7 +219,7 @@ static void ReadExportDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
         if(!x.name.empty())
         {
             auto demangled = LLVMDemangle(x.name.c_str());
-            if(demangled && x.name.compare(demangled) != 0)
+            if(demangled && x.name != demangled)
                 x.undecoratedName = demangled;
             LLVMDemangleFree(demangled);
         }
@@ -314,7 +314,7 @@ static void ReadImportDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
         if(!i.name.empty())
         {
             auto demangled = LLVMDemangle(i.name.c_str());
-            if(demangled && i.name.compare(demangled) != 0)
+            if(demangled && i.name != demangled)
                 i.undecoratedName = demangled;
             LLVMDemangleFree(demangled);
         }
@@ -747,7 +747,7 @@ static MODULEPARTY GetDefaultParty(const MODINFO & Info)
 // These are used to store party in DB
 struct MODULEPARTYINFO : AddrInfo
 {
-    MODULEPARTY party;
+    MODULEPARTY party = mod_user;
 };
 
 struct ModuleSerializer : AddrInfoSerializer<MODULEPARTYINFO>
@@ -817,7 +817,6 @@ void GetModuleInfo(MODINFO & Info, ULONG_PTR FileMapVA)
     for(WORD i = 0; i < sectionCount; i++)
     {
         MODSECTIONINFO curSection;
-        memset(&curSection, 0, sizeof(MODSECTIONINFO));
 
         curSection.addr = ntSection->VirtualAddress + Info.base;
         curSection.size = ntSection->Misc.VirtualSize;
@@ -859,14 +858,14 @@ void GetModuleInfo(MODINFO & Info, ULONG_PTR FileMapVA)
 #undef GetUnsafeModuleInfo
 }
 
-bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HANDLE hFile)
+std::unique_ptr<MODINFO> MODINFO::load(duint Base, duint Size, const char* FullPath, bool loadSymbols, HANDLE hFile, bool allowRemoteMemoryFallback)
 {
-    // Handle a new module being loaded
-    if(!Base || !Size || !FullPath)
-        return false;
+    if(!Size || !FullPath)
+        return nullptr;
 
     auto infoPtr = std::make_unique<MODINFO>();
     auto & info = *infoPtr;
+    info.invalidateSymbolSourceOnDestruction = false;
 
     // Copy the module path in the struct
     strcpy_s(info.path, FullPath);
@@ -874,8 +873,7 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
     // Break the module path into a directory and file name
     char file[MAX_MODULE_SIZE];
     {
-        char dir[MAX_PATH];
-        memset(dir, 0, sizeof(dir));
+        char dir[MAX_PATH] = {};
 
         // Dir <- lowercase(file path)
         strcpy_s(dir, FullPath);
@@ -966,12 +964,16 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
             CloseHandle(info.fileHandle);
             info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
             fileLoaded = true;
-            dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
+            if(Base)
+                dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
         }
 
         // 3. If both failed, try reading from process memory as last resort
         if(!fileLoaded)
         {
+            if(!allowRemoteMemoryFallback || !Base)
+                return nullptr;
+
             // The Size parameter is unreliable here (all pass 1 as a placeholder).
             // This is consistent with steps 1 and 2 which also determine size from their source.
             duint actualSize = 0;
@@ -1007,14 +1009,16 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
 
             if(actualSize > 0)
             {
-                info.mappedData.realloc(actualSize);
-                if(MemRead(Base, info.mappedData(), info.mappedData.size()))
+                info.mappedData.resize(actualSize);
+                if(MemRead(Base, info.mappedData.data(), info.mappedData.size()))
                 {
                     info.isVirtual = true; // Process memory is SEC_IMAGE mapped
                     info.loadedSize = actualSize;
-                    GetModuleInfo(info, (ULONG_PTR)info.mappedData());
-                    info.size = HEADER_FIELD(info.headers, SizeOfImage);
-                    dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from process memory (file inaccessible)\n"), info.name, info.extension);
+                    GetModuleInfo(info, (ULONG_PTR)info.mappedData.data());
+                    if(const auto imageSize = HEADER_FIELD(info.headers, SizeOfImage))
+                        info.size = imageSize;
+                    if(Base)
+                        dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from process memory (file inaccessible)\n"), info.name, info.extension);
                 }
                 else
                 {
@@ -1035,20 +1039,20 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
         else
         {
             GetModuleInfo(info, info.fileMapVA);
-            Size = HEADER_FIELD(info.headers, SizeOfImage);
-            info.size = Size;
+            if(const auto imageSize = HEADER_FIELD(info.headers, SizeOfImage))
+                info.size = imageSize;
         }
     }
     else
     {
         // This was a virtual module -> read it remotely
-        info.mappedData.realloc(Size);
-        MemRead(Base, info.mappedData(), info.mappedData.size());
+        info.mappedData.resize(Size);
+        MemRead(Base, info.mappedData.data(), info.mappedData.size());
 
         // Get information from the local buffer
         // TODO: this does not properly work for file offset -> rva conversions (since virtual modules are SEC_IMAGE)
         info.loadedSize = Size;
-        GetModuleInfo(info, (ULONG_PTR)info.mappedData());
+        GetModuleInfo(info, (ULONG_PTR)info.mappedData.data());
     }
 
     info.symbols = &EmptySymbolSource; // empty symbol source per default
@@ -1062,16 +1066,30 @@ bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HAN
         }
     }
 
+    return infoPtr;
+}
+
+bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols, HANDLE hFile)
+{
+    if(!Base || !Size || !FullPath)
+        return false;
+
+    auto infoPtr = MODINFO::load(Base, Size, FullPath, loadSymbols, hFile);
+    if(!infoPtr)
+        return false;
+    infoPtr->invalidateSymbolSourceOnDestruction = true;
+    auto info = infoPtr.get();
+
     // Add module to list
     EXCLUSIVE_ACQUIRE(LockModules);
-    modinfo.emplace(Range(Base, Base + Size - 1), std::move(infoPtr));
+    modinfo.emplace(Range(Base, Base + info->size - 1), std::move(infoPtr));
     EXCLUSIVE_RELEASE();
 
     // Put labels for virtual module exports
-    if(info.isVirtual)
+    if(info->isVirtual)
     {
-        if(info.entry >= Base && info.entry < Base + Size)
-            LabelSet(info.entry, "EntryPoint", false, true);
+        if(info->entry >= Base && info->entry < Base + info->size)
+            LabelSet(info->entry, "EntryPoint", false, true);
 
         apienumexports(Base, [](duint base, const char* mod, const char* name, duint addr)
         {
@@ -1102,7 +1120,7 @@ bool ModUnload(duint Base)
     return true;
 }
 
-void ModClear(bool updateGui)
+void ModClear()
 {
     {
         // Clean up all the modules
@@ -1117,8 +1135,7 @@ void ModClear(bool updateGui)
     }
 
     // Tell the symbol updater
-    if(updateGui)
-        GuiSymbolUpdateModuleList(0, nullptr);
+    GuiSymbolUpdateModuleList(0, nullptr);
 }
 
 MODINFO* ModInfoFromAddr(duint Address)
@@ -1626,21 +1643,15 @@ static bool resolveApiSetForward(const String & originatingDll, String & forward
     wcsncat_s(szApiSetDllPath, StringUtils::Utf8ToUtf16(forwardDll).c_str(), _TRUNCATE);
     wcsncat_s(szApiSetDllPath, L".dll", _TRUNCATE);
 
-    auto ticks = GetTickCount();
-    // Load the physical module from disk (TitanEngine path, limited to 4GB)
-    MODINFO info = {};
-    DWORD titanLoadedSize = 0;
-    if(!StaticFileLoadW(szApiSetDllPath, UE_ACCESS_READ, false, &info.fileHandle, &titanLoadedSize, &info.fileMap, &info.fileMapVA))
+    auto info = MODINFO::load(0, 1, StringUtils::Utf16ToUtf8(szApiSetDllPath).c_str(), false, nullptr, false);
+    if(!info)
         return false;
-    info.loadedSize = titanLoadedSize;
-
-    GetModuleInfo(info, info.fileMapVA);
 
     NameIndex found;
-    if(!NameIndex::findByName(info.exportsByName, forwardExport, found, true))
+    if(!NameIndex::findByName(info->exportsByName, forwardExport, found, true))
         return false;
 
-    const auto & foundExport = info.exports[found.index];
+    const auto & foundExport = info->exports[found.index];
     if(!foundExport.forwarded)
     {
         dputs("assertion failure, api set not forwarded");

@@ -199,39 +199,32 @@ bool SyscallInit()
         char szModulePath[MAX_PATH];
         if(!GetModuleFileNameA(moduleHandle, szModulePath, _countof(szModulePath)))
             return false;
-        if(!ModLoad((duint)moduleHandle, 1, szModulePath, false))
+        auto info = MODINFO::load(0, 1, szModulePath, false, nullptr, false);
+        if(!info)
             return false;
-        auto info = ModInfoFromAddr((duint)moduleHandle);
-        if(info)
+        for(const MODEXPORT & exportEntry : info->exports)
         {
-            for(const MODEXPORT & exportEntry : info->exports)
+            if(strncmp(exportEntry.name.c_str(), "Nt", 2) != 0)
+                continue;
+            auto exportData = (const unsigned char*)ModRvaToOffset(info->fileMapVA, info->headers, exportEntry.rva);
+            if(!exportData)
+                continue;
+            // https://github.com/mrexodia/TitanHide/blob/1c6ba9796e320f399f998b23fba2729122597e87/TitanHide/ntdll.cpp#L75
+            DWORD index = -1;
+            for(int i = 0; i < 32; i++)
             {
-                if(strncmp(exportEntry.name.c_str(), "Nt", 2) != 0)
-                    continue;
-                auto exportData = (const unsigned char*)ModRvaToOffset(info->fileMapVA, info->headers, exportEntry.rva);
-                if(!exportData)
-                    continue;
-                // https://github.com/mrexodia/TitanHide/blob/1c6ba9796e320f399f998b23fba2729122597e87/TitanHide/ntdll.cpp#L75
-                DWORD index = -1;
-                for(int i = 0; i < 32; i++)
+                if(exportData[i] == 0xC2 || exportData[i] == 0xC3)   //RET
                 {
-                    if(exportData[i] == 0xC2 || exportData[i] == 0xC3)   //RET
-                    {
-                        break;
-                    }
-                    if(exportData[i] == 0xB8)   //mov eax,X
-                    {
-                        index = *(DWORD*)(exportData + i + 1);
-                        break;
-                    }
+                    break;
                 }
-                if(index != -1)
-                    SyscallIndices.emplace(index, exportEntry.name);
+                if(exportData[i] == 0xB8)   //mov eax,X
+                {
+                    index = *(DWORD*)(exportData + i + 1);
+                    break;
+                }
             }
-        }
-        else
-        {
-            return false;
+            if(index != -1)
+                SyscallIndices.emplace(index, exportEntry.name);
         }
         return true;
     };
@@ -271,9 +264,6 @@ bool SyscallInit()
             SyscallIndices.emplace(truncated, itr.second);
         }
     }
-
-    // Clear the GUI
-    ModClear(true);
 
     return result;
 }
