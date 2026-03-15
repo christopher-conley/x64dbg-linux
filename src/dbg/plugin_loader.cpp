@@ -7,10 +7,12 @@
 #include "plugin_loader.h"
 #include "console.h"
 #include "debugger.h"
+#include "module.h"
 #include "threading.h"
 #include "expressionfunctions.h"
 #include "formatfunctions.h"
 #include <algorithm>
+#include <cctype>
 #include <shlwapi.h>
 #include <vector>
 
@@ -87,6 +89,38 @@ static std::string pluginNormalizeName(std::string pluginName)
     return pluginName;
 }
 
+static void cleanupLoadingPlugin(int pluginHandle, bool callStop)
+{
+    if(callStop && gLoadingPlugin.plugstop)
+        gLoadingPlugin.plugstop();
+    plugincmdunregisterall(pluginHandle);
+    pluginexprfuncunregisterall(pluginHandle);
+    pluginformatfuncunregisterall(pluginHandle);
+    for(int i = CB_INITDEBUG; i < CB_LAST; i++)
+        pluginunregistercallback(pluginHandle, CBTYPE(i));
+    if(gLoadingPlugin.hPlugin)
+        FreeLibrary(gLoadingPlugin.hPlugin);
+    gLoadingPlugin = {};
+}
+
+static bool pluginImportsQtGui(const std::wstring & pluginPath)
+{
+    auto pluginPathUtf8 = StringUtils::Utf16ToUtf8(pluginPath);
+    auto info = MODINFO::load(0, 1, pluginPathUtf8.c_str(), false, nullptr, false);
+    if(!info)
+        return false;
+
+    return std::any_of(info->importModules.begin(), info->importModules.end(), [](const String & moduleName)
+    {
+        return _stricmp(moduleName.c_str(), "qt5widgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt6widgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt5quickwidgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt6quickwidgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt5quick.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt6quick.dll") == 0;
+    });
+}
+
 struct ChangeDirectory
 {
     ChangeDirectory(const ChangeDirectory &) = delete;
@@ -104,7 +138,7 @@ struct ChangeDirectory
     }
 
 private:
-    wchar_t mPreviousDirectory[deflen];
+    wchar_t mPreviousDirectory[deflen] = {};
 };
 
 static void* addDllDirectory(const wchar_t* newDirectory)
@@ -195,6 +229,12 @@ bool pluginload(const char* pluginName, bool loadall)
         return false;
     }
 
+    if(BridgeIsHeadless() && pluginImportsQtGui(pluginPath))
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] Skipping GUI plugin in headless mode (Qt GUI imports detected): %s\n"), normalizedName.c_str());
+        return false;
+    }
+
     // Set the working and DLL load directories
     ChangeDirectory cd(pluginDirectory.c_str());
     DllDirectory dd(loadall && !subdirPlugin ? nullptr : pluginDirectory.c_str());
@@ -216,9 +256,7 @@ bool pluginload(const char* pluginName, bool loadall)
     if(!gLoadingPlugin.pluginit)
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] Export \"pluginit\" not found in plugin: %s\n"), normalizedName.c_str());
-        for(int i = CB_INITDEBUG; i < CB_LAST; i++)
-            pluginunregistercallback(pluginHandle, CBTYPE(i));
-        FreeLibrary(gLoadingPlugin.hPlugin);
+        cleanupLoadingPlugin(pluginHandle, false);
         return false;
     }
     gLoadingPlugin.plugstop = (PLUGSTOP)GetProcAddress(gLoadingPlugin.hPlugin, "plugstop");
@@ -232,17 +270,14 @@ bool pluginload(const char* pluginName, bool loadall)
     if(!gLoadingPlugin.pluginit(&gLoadingPlugin.initStruct))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] pluginit failed for plugin: %s\n"), normalizedName.c_str());
-        for(int i = CB_INITDEBUG; i < CB_LAST; i++)
-            pluginunregistercallback(pluginHandle, CBTYPE(i));
-        FreeLibrary(gLoadingPlugin.hPlugin);
+        cleanupLoadingPlugin(pluginHandle, false);
         return false;
     }
-    if(gLoadingPlugin.initStruct.sdkVersion < PLUG_SDKVERSION) //the plugin SDK is not compatible
+
+    if(gLoadingPlugin.initStruct.sdkVersion != PLUG_SDKVERSION)
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] %s is incompatible with this SDK version\n"), gLoadingPlugin.initStruct.pluginName);
-        for(int i = CB_INITDEBUG; i < CB_LAST; i++)
-            pluginunregistercallback(pluginHandle, CBTYPE(i));
-        FreeLibrary(gLoadingPlugin.hPlugin);
+        cleanupLoadingPlugin(pluginHandle, true);
         return false;
     }
 
