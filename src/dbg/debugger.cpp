@@ -870,7 +870,7 @@ static void cbGenericBreakpoint(BP_TYPE bptype, const void* ExceptionAddress = n
         breakpointExceptionAddress = duint(ExceptionAddress);
         break;
     case BPMEMORY:
-        bpPtr = BpInfoFromAddr(BPMEMORY, MemFindBaseAddr(duint(ExceptionAddress), nullptr, true));
+        bpPtr = BpInfoFromAddr(BPMEMORY, duint(ExceptionAddress));
         breakpointExceptionAddress = duint(ExceptionAddress);
         break;
     case BPDLL:
@@ -1219,9 +1219,7 @@ bool cbSetModuleBreakpoints(const BREAKPOINT* bp)
 
     case BPMEMORY:
     {
-        duint size = 0;
-        MemFindBaseAddr(bp->addr, &size);
-        if(!SetMemoryBPXEx(bp->addr, size, (TitanMemoryBreakpointType)bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
+        if(!SetMemoryBPXEx(bp->addr, bp->memsize, (TitanMemoryBreakpointType)bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
             dprintf(QT_TRANSLATE_NOOP("DBG", "Could not set memory breakpoint %p! (SetMemoryBPXEx)\n"), bp->addr);
     }
     break;
