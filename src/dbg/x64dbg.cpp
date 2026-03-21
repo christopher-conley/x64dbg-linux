@@ -783,6 +783,8 @@ static const char* applyCommandlineArguments(const CommandlineArguments & args)
 
     for(const auto & plugin : args.plugins)
     {
+        if(pluginisloaded(plugin.c_str()))
+            continue;
         if(!pluginload(plugin.c_str()))
             return _strdup(StringUtils::sprintf("Error: Failed to load plugin \"%s\".\n", plugin.c_str()).c_str());
     }
@@ -817,13 +819,13 @@ static const char* applyCommandlineArguments(const CommandlineArguments & args)
         if(!FileExists(commandFile.c_str()))
             return _strdup(StringUtils::sprintf("Error: Command file \"%s\" couldn't be opened.\n", commandFile.c_str()).c_str());
         if(args.testing)
-        {
             DbgCmdExec(StringUtils::sprintf("testscript \"%s\"", commandFile.c_str()).c_str());
-            DbgCmdExec("testfinalize");
-        }
         else
             DbgCmdExec(StringUtils::sprintf("scriptexec \"%s\"", commandFile.c_str()).c_str());
     }
+
+    if(args.testing)
+        DbgCmdExec("testfinalize");
 
     return nullptr;
 }

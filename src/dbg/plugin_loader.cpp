@@ -280,6 +280,21 @@ private:
     void* mCookie = nullptr;
 };
 
+bool pluginisloaded(const char* pluginName)
+{
+    if(pluginName == nullptr || *pluginName == '\0')
+        return false;
+
+    const auto normalizedName = pluginNormalizeName(pluginName);
+    SHARED_ACQUIRE(LockPluginList);
+    for(const auto & plugin : gPluginList)
+    {
+        if(_stricmp(plugin.plugname, normalizedName.c_str()) == 0)
+            return true;
+    }
+    return false;
+}
+
 /**
 \brief Loads a plugin from the plugin directory.
 \param pluginName Name of the plugin.
