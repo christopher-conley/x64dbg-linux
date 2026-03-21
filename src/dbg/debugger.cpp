@@ -1901,7 +1901,7 @@ static void cbLoadDll(LOAD_DLL_DEBUG_INFO* LoadDll)
         bIsDebuggingThis = true;
         pDebuggedBase = (duint)base;
         DbCheckHash(ModContentHashFromAddr(pDebuggedBase)); //Check hash mismatch
-        if(settingboolget("Events", "EntryBreakpoint", true))
+        if(pDebuggedEntry != 0 && settingboolget("Events", "EntryBreakpoint", true))
         {
             bAlreadySetEntry = true;
             sprintf_s(command, "bp %p,\"%s\",ss", (void*)(pDebuggedBase + pDebuggedEntry), GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "entry breakpoint")));
