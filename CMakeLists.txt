@@ -88,6 +88,7 @@ set(bridge_SOURCES
 	"src/bridge/bridgemain.cpp"
 	"src/bridge/bridgemain.h"
 	"src/bridge/bridgemain_checker.c"
+	"src/bridge/startupargs.h"
 )
 
 add_library(bridge SHARED)
@@ -380,6 +381,8 @@ set(dbg_SOURCES
 	"src/dbg/taskthread.h"
 	"src/dbg/tcpconnections.cpp"
 	"src/dbg/tcpconnections.h"
+	"src/dbg/testing.cpp"
+	"src/dbg/testing.h"
 	"src/dbg/thread.cpp"
 	"src/dbg/thread.h"
 	"src/dbg/threading.cpp"

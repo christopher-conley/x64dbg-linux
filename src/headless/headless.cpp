@@ -1,11 +1,14 @@
 #include "../bridge/bridgemain.h"
+#include "../bridge/startupargs.h"
 #include "../dbg/_plugins.h"
 #include "../dbg/concurrentqueue/blockingconcurrentqueue.h"
 
 #include <atomic>
+#include <cstdio>
 #include <functional>
-#include <string>
 #include <iostream>
+#include <mutex>
+#include <string>
 #include <vector>
 
 #include "stringutils.h"
@@ -24,6 +27,48 @@ static std::atomic<bool> shutdownRequested{ false };
 static std::atomic<bool> consoleCloseRequested{ false };
 static std::atomic<DWORD> shutdownCtrlType{ 0 };
 static std::atomic<HANDLE> commandThreadHandle{ nullptr };
+static std::mutex redirectLogMutex;
+static FILE* redirectLogFile = nullptr;
+
+static void stopRedirectLog()
+{
+    std::lock_guard<std::mutex> lock(redirectLogMutex);
+    if(redirectLogFile)
+    {
+        fclose(redirectLogFile);
+        redirectLogFile = nullptr;
+    }
+}
+
+static void startRedirectLog(const char* filename)
+{
+    stopRedirectLog();
+    if(filename == nullptr || *filename == '\0')
+        return;
+
+    FILE* file = nullptr;
+    if(_wfopen_s(&file, Utf8ToUtf16(filename).c_str(), L"ab") != 0 || file == nullptr)
+    {
+        printf("[headless] failed to redirect log to %s\n", filename);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(redirectLogMutex);
+    redirectLogFile = file;
+}
+
+static void appendRedirectedLog(const char* text)
+{
+    if(text == nullptr || *text == '\0')
+        return;
+
+    std::lock_guard<std::mutex> lock(redirectLogMutex);
+    if(redirectLogFile == nullptr)
+        return;
+
+    fwrite(text, 1, strlen(text), redirectLogFile);
+    fflush(redirectLogFile);
+}
 
 static void requestShutdown()
 {
@@ -94,6 +139,11 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
     setvbuf(stdout, nullptr, _IONBF, 0);
     setvbuf(stderr, nullptr, _IONBF, 0);
 
+    shutdownRequested = false;
+    consoleCloseRequested = false;
+    shutdownCtrlType = 0;
+    commandThreadHandle = nullptr;
+
     // Init debugger
     const char* errormsg = DbgInitBlocking();
     if(errormsg)
@@ -101,10 +151,6 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
         puts(errormsg);
         return 1;
     }
-    shutdownRequested = false;
-    consoleCloseRequested = false;
-    shutdownCtrlType = 0;
-    commandThreadHandle = nullptr;
     SetConsoleCtrlHandler(consoleCtrlHandler, TRUE);
 
     puts("[headless] entering command loop...");
@@ -115,7 +161,8 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
             std::string command;
             if(!std::getline(std::cin, command))
             {
-                requestShutdown();
+                if(!DbgIsTesting())
+                    requestShutdown();
                 break;
             }
             if(command == "exit")
@@ -188,6 +235,7 @@ extern "C" __declspec(dllexport) int _gui_guiinit(int argc, char* argv[])
     if(commandThread.joinable())
         commandThread.join();
     commandThreadHandle = nullptr;
+    stopRedirectLog();
     SetConsoleCtrlHandler(consoleCtrlHandler, FALSE);
     return 0;
 }
@@ -238,13 +286,33 @@ extern "C" __declspec(dllexport) void* _gui_sendmessage(GUIMSG type, void* param
     case GUI_GET_WINDOW_HANDLE:
         return GetConsoleWindow();
 
+    case GUI_CLOSE_APPLICATION:
+        requestShutdown();
+        if(auto handle = commandThreadHandle.load())
+            CancelSynchronousIo(handle);
+        break;
+
     case GUI_SYMBOL_LOG_ADD:
         printf("[SYMBOL] %s", (const char*)param1);
+        if(param1)
+        {
+            std::string line = std::string("[SYMBOL] ") + (const char*)param1;
+            appendRedirectedLog(line.c_str());
+        }
         break;
 
     case GUI_ADD_MSG_TO_LOG_HTML:
     case GUI_ADD_MSG_TO_LOG:
         printf("%s", (const char*)param1);
+        appendRedirectedLog((const char*)param1);
+        break;
+
+    case GUI_REDIRECT_LOG:
+        startRedirectLog((const char*)param1);
+        break;
+
+    case GUI_STOP_REDIRECT_LOG:
+        stopRedirectLog();
         break;
 
     case GUI_SET_DEBUG_STATE:
@@ -428,21 +496,32 @@ int main(int argc, char* argv[])
 
     // Construct user directory from executable name
     auto hMainModule = GetModuleHandleW(nullptr);
-    wchar_t szUserDirectory[MAX_PATH] = L"";
-    GetModuleFileNameW(hMainModule, szUserDirectory, _countof(szUserDirectory));
-    auto period = wcsrchr(szUserDirectory, L'.');
-    if(period == nullptr)
+    const auto startupOptions = ParseHostStartupOptions();
+
+    std::wstring userDirectory;
+    if(!startupOptions.userDirectory.empty())
     {
-        puts("Error getting module directory!");
-        return EXIT_FAILURE;
+        userDirectory = startupOptions.userDirectory;
     }
-    *period = L'\0';
-    CreateDirectoryW(szUserDirectory, nullptr);
+    else
+    {
+        wchar_t szUserDirectory[MAX_PATH] = L"";
+        GetModuleFileNameW(hMainModule, szUserDirectory, _countof(szUserDirectory));
+        auto period = wcsrchr(szUserDirectory, L'.');
+        if(period == nullptr)
+        {
+            puts("Error getting module directory!");
+            return EXIT_FAILURE;
+        }
+        *period = L'\0';
+        CreateDirectoryW(szUserDirectory, nullptr);
+        userDirectory = szUserDirectory;
+    }
 
     // Initialize the bridge
     BRIDGE_CONFIG config = {};
     config.hGuiModule = hMainModule;
-    config.szUserDirectory = szUserDirectory;
+    config.szUserDirectory = userDirectory.c_str();
     const wchar_t* errormsg = BridgeInit(&config);
     if(errormsg != nullptr)
     {

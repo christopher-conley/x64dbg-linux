@@ -10,6 +10,8 @@
 #include "debugger.h"
 #include "threading.h"
 #include "murmurhash.h"
+#include "stringutils.h"
+#include "testing.h"
 
 ///debugger plugin exports (wrappers)
 PLUG_IMPEXP void _plugin_registercallback(int pluginHandle, CBTYPE cbType, CBPLUGIN cbPlugin)
@@ -196,4 +198,15 @@ PLUG_IMPEXP bool _plugin_registerformatfunction(int pluginHandle, const char* ty
 PLUG_IMPEXP bool _plugin_unregisterformatfunction(int pluginHandle, const char* type)
 {
     return pluginformatfuncunregister(pluginHandle, type);
+}
+
+PLUG_IMPEXP bool _plugin_testassert(bool condition, const char* format, ...)
+{
+    if(!TestIsEnabled())
+        return condition;
+    va_list args;
+    va_start(args, format);
+    auto message = StringUtils::vsprintf(format, args);
+    va_end(args);
+    return TestAssertPlugin(condition, message.c_str());
 }

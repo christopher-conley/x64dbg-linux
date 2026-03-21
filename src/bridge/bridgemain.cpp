@@ -1177,6 +1177,11 @@ BRIDGE_IMPEXP void DbgSettingsUpdated()
     _dbg_sendmessage(DBG_SETTINGS_UPDATED, 0, 0);
 }
 
+BRIDGE_IMPEXP bool DbgIsTesting()
+{
+    return _dbg_sendmessage(DBG_IS_TESTING, 0, 0) != 0;
+}
+
 BRIDGE_IMPEXP void DbgDisasmFastAt(duint addr, BASIC_INSTRUCTION_INFO* basicinfo)
 {
     _dbg_sendmessage(DBG_DISASM_FAST_AT, (void*)addr, basicinfo);
