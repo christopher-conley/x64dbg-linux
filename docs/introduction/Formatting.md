@@ -51,4 +51,4 @@ When using the `log` command you should put quotes around the format string (`lo
 
 ## Plugins
 
-Plugins can use [`_plugin_registerformatfunction`](../developers/plugins/API/registerformatfunction.rst) to register custom string formatting functions. The syntax is `{type;arg1;arg2;argN@expression}` where `type` is the name of the registered function, `argN` is any string (these are passed to the formatting function as arguments) and `expression` is any valid expression.
+Plugins can use [_plugin_registerformatfunction](../developers/plugins/API/registerformatfunction.rst) to register custom string formatting functions. The syntax is `{type;arg1;arg2;argN@expression}` where `type` is the name of the registered function, `argN` is any string (these are passed to the formatting function as arguments) and `expression` is any valid expression.

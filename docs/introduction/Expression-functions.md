@@ -142,6 +142,6 @@ This is a set of functions to get information about the last exception. They can
 
 Plugins can register their own expression functions. You can find an example in the [StackContains](https://github.com/mrexodia/StackContains/blob/315c55381676201ace4cf88bfcb684e62489b129/StackContains/plugin.cpp#L5-L39) plugin. Relevant functions:
 
-- [`_plugin_registerexprfunction`](../developers/plugins/API/registerexprfunction.rst)
-- [`_plugin_registerexprfunctionex`](../developers/plugins/API/registerexprfunctionex.rst)
-- [`_plugin_unregisterexprfunction`](../developers/plugins/API/unregisterexprfunction.rst)
+- [_plugin_registerexprfunction](../developers/plugins/API/registerexprfunction.rst)
+- [_plugin_registerexprfunctionex](../developers/plugins/API/registerexprfunctionex.rst)
+- [_plugin_unregisterexprfunction](../developers/plugins/API/unregisterexprfunction.rst)
