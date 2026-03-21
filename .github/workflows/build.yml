@@ -33,7 +33,7 @@ jobs:
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DCMAKE_UNITY_BUILD_BATCH_SIZE=6 -DX64DBG_RELEASE=${{ startsWith(github.ref, 'refs/tags/') && 'ON' || 'OFF' }}
           cmake --build build
 
-      - name: Upload Artifacts
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v5
         with:
           name: build-${{ matrix.arch }}
@@ -64,6 +64,40 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 1
+
+  test:
+    needs: cmake
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v6
+        with:
+          name: build-${{ matrix.arch }}
+          path: bin
+
+      - name: Run Tests
+        shell: pwsh
+        run: |
+          py src/tests/run.py --arch ${{ matrix.arch }} --artifacts-dir "test-artifacts/${{ matrix.arch }}"
+
+      - name: Upload Test Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-artifacts-${{ matrix.arch }}
+          path: test-artifacts/${{ matrix.arch }}
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 7
 
   package:
     needs: [cmake, docs]

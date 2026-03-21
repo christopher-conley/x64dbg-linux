@@ -77,6 +77,16 @@ endif()
 add_subdirectory("src/gui/Src/ThirdPartyLibs/md4c")
 set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
+# Subdirectory: src/tests
+set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+if(CMAKE_FOLDER)
+	set(CMAKE_FOLDER "${CMAKE_FOLDER}/src/tests")
+else()
+	set(CMAKE_FOLDER "src/tests")
+endif()
+add_subdirectory("src/tests")
+set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
+
 # Target: bridge
 set(bridge_SOURCES
 	cmake.toml
@@ -88,6 +98,7 @@ set(bridge_SOURCES
 	"src/bridge/bridgemain.cpp"
 	"src/bridge/bridgemain.h"
 	"src/bridge/bridgemain_checker.c"
+	"src/bridge/startupargs.h"
 )
 
 add_library(bridge SHARED)
@@ -380,6 +391,8 @@ set(dbg_SOURCES
 	"src/dbg/taskthread.h"
 	"src/dbg/tcpconnections.cpp"
 	"src/dbg/tcpconnections.h"
+	"src/dbg/testing.cpp"
+	"src/dbg/testing.h"
 	"src/dbg/thread.cpp"
 	"src/dbg/thread.h"
 	"src/dbg/threading.cpp"

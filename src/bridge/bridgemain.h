@@ -67,6 +67,11 @@ BRIDGE_IMPEXP HMODULE WINAPI BridgeLoadLibraryCheckedA(const char* szDll, bool a
 BRIDGE_IMPEXP const wchar_t* BridgeStart();
 
 /// <summary>
+/// Returns true when running with the headless host.
+/// </summary>
+BRIDGE_IMPEXP bool BridgeIsHeadless();
+
+/// <summary>
 /// Allocate buffer. Use BridgeFree to free the buffer.
 /// </summary>
 /// <param name="size">Size in bytes of the buffer to allocate.</param>
@@ -359,6 +364,7 @@ typedef enum
     DBG_XREF_ADD_MULTI,             // param1=const XREF_EDGE* edges,    param2=duint count
     DBG_TYPE_VISIT,                 // param1=TYPEVISITDATA* data,       param2=unused
     DBG_UPDATE_GUI,                 // param1=disasm_addr,               param2=bool stack
+    DBG_IS_TESTING,                 // param1=unused,                    param2=unused
 } DBGMSG;
 
 typedef enum
@@ -1175,6 +1181,7 @@ BRIDGE_IMPEXP void DbgDisasmAt(duint addr, DISASM_INSTR* instr);
 BRIDGE_IMPEXP bool DbgStackCommentGet(duint addr, STACK_COMMENT* comment);
 BRIDGE_IMPEXP void DbgGetThreadList(THREADLIST* list);
 BRIDGE_IMPEXP void DbgSettingsUpdated();
+BRIDGE_IMPEXP bool DbgIsTesting();
 BRIDGE_IMPEXP void DbgDisasmFastAt(duint addr, BASIC_INSTRUCTION_INFO* basicinfo);
 BRIDGE_IMPEXP void DbgMenuEntryClicked(int hEntry);
 BRIDGE_IMPEXP bool DbgFunctionGet(duint addr, duint* start, duint* end);

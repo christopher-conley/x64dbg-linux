@@ -53,6 +53,38 @@ protected:
         flagArgs.push_back(Arg{flagname, help, required, fn});
     }
 
+    void addStrings(const std::string & flagname, std::vector<std::string> & values, const std::string & help, bool required = false)
+    {
+        auto fn = [this, flagname, &values]
+        {
+            if(arg.substr(0, flagname.length()) == flagname)
+            {
+                std::string value;
+                if(arg.length() == flagname.length())
+                {
+                    // -flagname <value>
+                    if(i + 1 >= argc)
+                    {
+                        throw std::runtime_error("missing value for '" + flagname + "' argument");
+                    }
+                    value = argv[++i];
+                }
+                else if(arg[flagname.length()] == '=')
+                {
+                    // -flagname=<value>
+                    value = arg.substr(flagname.length() + 1);
+                }
+                if(value.empty())
+                {
+                    throw std::runtime_error("empty value for '" + flagname + "' argument");
+                }
+                values.push_back(std::move(value));
+                markExtracted(flagname);
+            }
+        };
+        flagArgs.push_back(Arg{flagname, help, required, fn});
+    }
+
     void addBool(const std::string & flagname, bool & value, const std::string & help, bool required = false)
     {
         auto fn = [this, flagname, &value]

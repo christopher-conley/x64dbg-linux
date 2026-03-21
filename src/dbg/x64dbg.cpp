@@ -16,6 +16,7 @@
 #include "threading.h"
 #include "watch.h"
 #include "plugin_loader.h"
+#include "testing.h"
 #include "_dbgfunctions.h"
 #include "_exports.h"
 #include <zydis_wrapper.h>
@@ -436,6 +437,10 @@ static void registercommands()
     dbgcmdnew("scriptcmd", cbScriptCmd, false); // execute a script command
     dbgcmdnew("scriptrun", cbScriptRun, false); // run the currently-loaded script
     dbgcmdnew("scriptexec", cbScriptExec, false); // run a script file
+    dbgcmdnew("testassert", cbInstrTestAssert, false); // test assertion
+    dbgcmdnew("testfinalize", cbInstrTestFinalize, false); // test finalization
+    dbgcmdnew("testscript", cbInstrTestScript, false); // internal startup test script wrapper
+    dbgcmdnew("settingset", cbInstrSettingSet, false); // set or unset a setting
 
     //gui
     dbgcmdnew("showthreadid", cbShowThreadId, false); // show given thread in threads
@@ -706,6 +711,9 @@ public:
     String event;
     String command;
     String commandFile;
+    String userDir;
+    std::vector<std::string> plugins;
+    bool testing = false;
     bool help = false;
 
     CommandlineArguments() : ArgumentParser(ArchValue("x32dbg", "x64dbg"))
@@ -717,9 +725,12 @@ public:
         addString("-pid", pid, "Process ID to attach to.");
         addString("-tid", tid, "Thread Identifier (TID) of the thread to resume after attaching (PLMDebug).");
         addString("-event", event, "Handle to an Event Object to signal on attach (JIT).");
+        addString("-userdir", userDir, "Explicit user directory. This is handled before debugger start-up and is accepted here for completeness.");
 
         addString("-c", command, "Command to execute Specifies the initial debugger command to run at start-up.");
         addString("-cf", commandFile, "Specifies the path and name of a script file. This script file is executed as soon as the debugger is started.");
+        addStrings("-plugin", plugins, "Preload a plugin by direct path. Can be specified multiple times.");
+        addBool("-testing", testing, "Enable one-shot testing mode.");
 
         addString("-p", pid, "Alias for -pid.");
         addString("-a", pid, "Alias for -pid.");
@@ -729,11 +740,10 @@ public:
     }
 };
 
-const char* parseArguments()
+static const char* parseCommandlineArguments(CommandlineArguments & args)
 {
     int argc = 0;
     auto argvW = std::unique_ptr<wchar_t* [], decltype(&::LocalFree)>(CommandLineToArgvW(GetCommandLineW(), &argc), ::LocalFree);
-    //MessageBoxW(0, GetCommandLineW(), StringUtils::sprintf(L"%d", argc).c_str(), MB_SYSTEMMODAL);
     auto argvS = std::make_unique<String[]>(argc);
     auto argvA = std::make_unique<const char* []>(argc);
     for(int i = 0; i < argc; ++i)
@@ -742,7 +752,6 @@ const char* parseArguments()
         argvA[i] = argvS[i].c_str();
     }
 
-    CommandlineArguments args;
     try
     {
         args.parse(argc, argvA.get());
@@ -752,31 +761,37 @@ const char* parseArguments()
         return _strdup(StringUtils::sprintf("Error: %s\n\nHelp:\n%s\n", e.what(), args.helpStr().c_str()).c_str());
     }
     if(args.help)
-    {
         return _strdup(args.helpStr().c_str());
-    }
+    return nullptr;
+}
 
+static String resolveWorkingDirectory(const CommandlineArguments & args)
+{
     // Default to current working directory if not specified otherwise
     auto workingDir = args.workingDir;
     if(workingDir.empty())
-    {
         workingDir = StringUtils::Utf16ToUtf8(BridgeWorkingDirectory());
-    }
     else
-    {
         while(!workingDir.empty() && workingDir.back() == '\\')
             workingDir.pop_back();
+    return workingDir;
+}
+
+static const char* applyCommandlineArguments(const CommandlineArguments & args)
+{
+    auto workingDir = resolveWorkingDirectory(args);
+
+    for(const auto & plugin : args.plugins)
+    {
+        if(!pluginload(plugin.c_str()))
+            return _strdup(StringUtils::sprintf("Error: Failed to load plugin \"%s\".\n", plugin.c_str()).c_str());
     }
 
-    // Start the debuggee if specified
-    bool hasDebuggee = true;
     if(!args.filename.empty())
     {
         std::string cmdline;
         for(const auto & arg : args.arguments)
-        {
             cmdline += StringUtils::sprintf("\"%s\" ", escape(arg).c_str());
-        }
         DbgCmdExec(StringUtils::sprintf(R"(scriptcmd init "%s", "%s", "%s")", escape(args.filename).c_str(), escape(cmdline).c_str(), escape(workingDir).c_str()).c_str());
     }
     else if(!args.pid.empty())
@@ -785,32 +800,29 @@ const char* parseArguments()
         auto tid = args.tid.empty() ? "0" : args.tid;
         DbgCmdExec(StringUtils::sprintf("scriptcmd attach .%s, .%s, .%s", args.pid.c_str(), event.c_str(), tid.c_str()).c_str());
     }
-    else
-    {
-        hasDebuggee = false;
-    }
 
     if(!args.command.empty())
     {
         StringList commands;
         cmdsplit(args.command.c_str(), commands);
         for(const auto & command : commands)
-        {
             DbgCmdExec(("scriptcmd " + command).c_str());
-        }
     }
 
     if(!args.commandFile.empty())
     {
-        if(!PathIsRootW(StringUtils::Utf8ToUtf16(args.commandFile).c_str()))
+        auto commandFile = args.commandFile;
+        if(!PathIsRootW(StringUtils::Utf8ToUtf16(commandFile).c_str()))
+            commandFile = workingDir + "\\" + commandFile;
+        if(!FileExists(commandFile.c_str()))
+            return _strdup(StringUtils::sprintf("Error: Command file \"%s\" couldn't be opened.\n", commandFile.c_str()).c_str());
+        if(args.testing)
         {
-            args.commandFile = workingDir + "\\" + args.commandFile;
+            DbgCmdExec(StringUtils::sprintf("testscript \"%s\"", commandFile.c_str()).c_str());
+            DbgCmdExec("testfinalize");
         }
-        if(!FileExists(args.commandFile.c_str()))
-        {
-            return _strdup(StringUtils::sprintf("Error: Command file \"%s\" couldn't be opened.\n", args.commandFile.c_str()).c_str());
-        }
-        DbgCmdExec(StringUtils::sprintf("scriptexec \"%s\"", args.commandFile.c_str()).c_str());
+        else
+            DbgCmdExec(StringUtils::sprintf("scriptexec \"%s\"", commandFile.c_str()).c_str());
     }
 
     return nullptr;
@@ -907,6 +919,12 @@ extern "C" DLL_EXPORT const char* _dbg_dbginit(bool blocking)
     varinit();
     dputs(QT_TRANSLATE_NOOP("DBG", "Registering debugger commands..."));
     registercommands();
+
+    CommandlineArguments args;
+    if(const char* argError = parseCommandlineArguments(args))
+        return argError;
+    TestInitialize(args.testing);
+
     dputs(QT_TRANSLATE_NOOP("DBG", "Registering GUI command handler..."));
     ExpressionFunctions::Init();
     dputs(QT_TRANSLATE_NOOP("DBG", "Registering expression functions..."));
@@ -932,16 +950,21 @@ extern "C" DLL_EXPORT const char* _dbg_dbginit(bool blocking)
     strcpy_s(plugindir, szProgramDir);
     strcat_s(plugindir, "\\plugins");
     CreateDirectoryW(StringUtils::Utf8ToUtf16(plugindir).c_str(), nullptr);
+    pluginsetdirectory(plugindir);
     CreateDirectoryW(StringUtils::Utf8ToUtf16(StringUtils::sprintf("%s\\memdumps", szUserDir)).c_str(), nullptr);
     dputs(QT_TRANSLATE_NOOP("DBG", "Initialization successful!"));
     bIsStopped = false;
-    dputs(QT_TRANSLATE_NOOP("DBG", "Loading plugins..."));
-    pluginloadall(plugindir);
+    if(args.testing)
+        dputs(QT_TRANSLATE_NOOP("DBG", "Testing mode enabled, skipping default plugin autoload..."));
+    else
+    {
+        dputs(QT_TRANSLATE_NOOP("DBG", "Loading plugins..."));
+        pluginloadall();
+    }
     _dbg_sendmessage(DBG_SETTINGS_UPDATED, nullptr, nullptr);
     dputs(QT_TRANSLATE_NOOP("DBG", "Handling command line..."));
     dprintf("  %s\n", StringUtils::Utf16ToUtf8(GetCommandLineW()).c_str());
-    //handle command line
-    return parseArguments();
+    return applyCommandlineArguments(args);
 }
 
 /**
@@ -959,6 +982,7 @@ extern "C" DLL_EXPORT void _dbg_dbgexitsignal()
     ScriptAbortAwait();
     dputs(QT_TRANSLATE_NOOP("DBG", "Unloading plugins..."));
     pluginunloadall();
+    TestShutdown();
     dputs(QT_TRANSLATE_NOOP("DBG", "Cleaning up allocated data..."));
     cmdfree();
     varfree();

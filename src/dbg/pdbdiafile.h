@@ -5,10 +5,9 @@
 #include <vector>
 #include <map>
 #include <string>
-#include <set>
 #include <unordered_set>
-#include <unordered_map>
 #include <atomic>
+#include <functional>
 
 struct IStream;
 struct IDiaDataSource;

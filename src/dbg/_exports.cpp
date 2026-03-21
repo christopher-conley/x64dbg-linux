@@ -37,6 +37,7 @@
 #include "dbghelp_safe.h"
 #include "symbolinfo.h"
 #include "typevisitor.h"
+#include "testing.h"
 
 static bool bOnlyCipAutoComments = false;
 static bool bNoSourceLineAutoComments = false;
@@ -914,6 +915,7 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
         case DBG_RELEASE_ENCODE_TYPE_BUFFER:
         case DBG_GET_TIME_WASTED_COUNTER:
         case DBG_GET_DEBUG_ENGINE:
+        case DBG_IS_TESTING:
             break;
         //the rest is unsafe -> throw an exception when people try to call them
         default:
@@ -1187,6 +1189,12 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
 
         if(BridgeSettingGetUint("Engine", "DefaultTypePtrDepth", &setting) && (dsint)setting >= 0)
             gDefaultMaxPtrDepth = int(setting);
+    }
+    break;
+
+    case DBG_IS_TESTING:
+    {
+        return TestIsEnabled() ? 1 : 0;
     }
     break;
 

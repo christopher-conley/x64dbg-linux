@@ -1,6 +1,7 @@
 #pragma once
 
 #include "jansson.h"
+#include <string>
 
 typedef json_t* JSON;
 

@@ -7,6 +7,7 @@
 #include "plugin_loader.h"
 #include "console.h"
 #include "debugger.h"
+#include "module.h"
 #include "threading.h"
 #include "expressionfunctions.h"
 #include "formatfunctions.h"
@@ -87,6 +88,139 @@ static std::string pluginNormalizeName(std::string pluginName)
     return pluginName;
 }
 
+static std::wstring trimTrailingSlashes(std::wstring path)
+{
+    while(path.size() > 1 && (path.back() == L'\\' || path.back() == L'/'))
+        path.pop_back();
+    return path;
+}
+
+static std::wstring pathBaseName(std::wstring path)
+{
+    path = trimTrailingSlashes(std::move(path));
+    auto pos = path.find_last_of(L"\\/");
+    if(pos == std::wstring::npos)
+        return path;
+    return path.substr(pos + 1);
+}
+
+static bool looksLikePluginPath(const std::string & pluginName)
+{
+    return pluginName.find('\\') != std::string::npos
+           || pluginName.find('/') != std::string::npos
+           || (pluginName.size() > 1 && pluginName[1] == ':');
+}
+
+static std::wstring absolutePath(const std::wstring & path)
+{
+    DWORD size = GetFullPathNameW(path.c_str(), 0, nullptr, nullptr);
+    if(size == 0)
+        return path;
+
+    std::wstring result(size, L'\0');
+    auto written = GetFullPathNameW(path.c_str(), size, &result[0], nullptr);
+    if(written == 0 || written >= size)
+        return path;
+
+    result.resize(written);
+    return result;
+}
+
+struct PLUGIN_LOCATION
+{
+    std::wstring pluginDirectory;
+    std::wstring pluginPath;
+    std::string normalizedName;
+    bool subdirPlugin = false;
+};
+
+static PLUGIN_LOCATION resolvePluginLocation(const char* pluginName)
+{
+    PLUGIN_LOCATION location;
+    location.normalizedName = pluginNormalizeName(pluginName);
+
+    if(looksLikePluginPath(pluginName))
+    {
+        auto candidate = absolutePath(StringUtils::Utf8ToUtf16(pluginName));
+        auto attributes = GetFileAttributesW(candidate.c_str());
+        if(attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+        {
+            candidate = trimTrailingSlashes(std::move(candidate));
+            auto baseName = pathBaseName(candidate);
+            location.pluginDirectory = candidate;
+            location.pluginPath = candidate + L"\\" + baseName + gPluginExtension;
+            location.subdirPlugin = true;
+        }
+        else
+        {
+            location.pluginPath = candidate;
+            auto pathPos = candidate.find_last_of(L"\\/");
+            if(pathPos == std::wstring::npos)
+                location.pluginDirectory = L".";
+            else
+                location.pluginDirectory = candidate.substr(0, pathPos);
+
+            auto extension = StringUtils::Utf16ToUtf8(gPluginExtension);
+            auto pluginPathUtf8 = StringUtils::Utf16ToUtf8(location.pluginPath);
+            if(pluginPathUtf8.size() < extension.size() || _stricmp(pluginPathUtf8.c_str() + pluginPathUtf8.size() - extension.size(), extension.c_str()) != 0)
+            {
+                auto pluginPathWithExtension = location.pluginPath + gPluginExtension;
+                if(PathFileExistsW(pluginPathWithExtension.c_str()))
+                    location.pluginPath = pluginPathWithExtension;
+            }
+        }
+        return location;
+    }
+
+    location.pluginDirectory = gPluginDirectory;
+    location.pluginPath = gPluginDirectory + L"\\" + StringUtils::Utf8ToUtf16(location.normalizedName);
+    auto pluginSubPath = location.pluginPath + L"\\" + StringUtils::Utf8ToUtf16(location.normalizedName) + gPluginExtension;
+    location.subdirPlugin = !!PathFileExistsW(pluginSubPath.c_str());
+    if(location.subdirPlugin)
+    {
+        location.pluginDirectory = location.pluginPath;
+        location.pluginPath = pluginSubPath;
+    }
+    else
+    {
+        location.pluginPath += gPluginExtension;
+    }
+
+    return location;
+}
+
+static void cleanupLoadingPlugin(int pluginHandle, bool callStop)
+{
+    if(callStop && gLoadingPlugin.plugstop)
+        gLoadingPlugin.plugstop();
+    plugincmdunregisterall(pluginHandle);
+    pluginexprfuncunregisterall(pluginHandle);
+    pluginformatfuncunregisterall(pluginHandle);
+    for(int i = CB_INITDEBUG; i < CB_LAST; i++)
+        pluginunregistercallback(pluginHandle, CBTYPE(i));
+    if(gLoadingPlugin.hPlugin)
+        FreeLibrary(gLoadingPlugin.hPlugin);
+    gLoadingPlugin = {};
+}
+
+static bool pluginImportsQtGui(const std::wstring & pluginPath)
+{
+    auto pluginPathUtf8 = StringUtils::Utf16ToUtf8(pluginPath);
+    auto info = MODINFO::load(0, 1, pluginPathUtf8.c_str(), false, nullptr, false);
+    if(!info)
+        return false;
+
+    return std::any_of(info->importModules.begin(), info->importModules.end(), [](const String & moduleName)
+    {
+        return _stricmp(moduleName.c_str(), "qt5widgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt6widgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt5quickwidgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt6quickwidgets.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt5quick.dll") == 0
+               || _stricmp(moduleName.c_str(), "qt6quick.dll") == 0;
+    });
+}
+
 struct ChangeDirectory
 {
     ChangeDirectory(const ChangeDirectory &) = delete;
@@ -104,7 +238,7 @@ struct ChangeDirectory
     }
 
 private:
-    wchar_t mPreviousDirectory[deflen];
+    wchar_t mPreviousDirectory[deflen] = {};
 };
 
 static void* addDllDirectory(const wchar_t* newDirectory)
@@ -158,32 +292,20 @@ bool pluginload(const char* pluginName, bool loadall)
     if(pluginName == nullptr || *pluginName == '\0')
         return false;
 
-    // Normalize the plugin name, for flexibility the pluginload command
-    auto normalizedName = pluginNormalizeName(pluginName);
-    auto pluginDirectory = gPluginDirectory;
-
-    // Obtain the actual plugin path.
-    auto pluginPath = gPluginDirectory + L"\\" + StringUtils::Utf8ToUtf16(normalizedName);
-    auto pluginSubPath = pluginPath + L"\\" + StringUtils::Utf8ToUtf16(normalizedName) + gPluginExtension;
-    auto subdirPlugin = !!PathFileExistsW(pluginSubPath.c_str());
-    if(subdirPlugin)
-    {
-        // Plugin resides in a subdirectory
-        pluginDirectory = pluginPath;
-        pluginPath = pluginSubPath;
-    }
-    else
-    {
-        pluginPath += gPluginExtension;
-    }
+    // Normalize and resolve the plugin location.
+    auto location = resolvePluginLocation(pluginName);
+    auto normalizedName = location.normalizedName;
+    auto pluginDirectory = location.pluginDirectory;
+    auto pluginPath = location.pluginPath;
+    auto subdirPlugin = location.subdirPlugin;
 
     // Check to see if this plugin is already loaded
     EXCLUSIVE_ACQUIRE(LockPluginList);
-    for(auto it = gPluginList.begin(); it != gPluginList.end(); ++it)
+    for(auto & plugin : gPluginList)
     {
-        if(_stricmp(it->plugname, normalizedName.c_str()) == 0)
+        if(_stricmp(plugin.plugname, normalizedName.c_str()) == 0)
         {
-            dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] %s already loaded\n"), it->plugname);
+            dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] %s already loaded\n"), plugin.plugname);
             return false;
         }
     }
@@ -192,6 +314,12 @@ bool pluginload(const char* pluginName, bool loadall)
     if(!PathFileExistsW(pluginPath.c_str()))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] Cannot find plugin: %s\n"), StringUtils::Utf16ToUtf8(pluginPath).c_str());
+        return false;
+    }
+
+    if(BridgeIsHeadless() && pluginImportsQtGui(pluginPath))
+    {
+        dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] Skipping GUI plugin in headless mode (Qt GUI imports detected): %s\n"), normalizedName.c_str());
         return false;
     }
 
@@ -216,9 +344,7 @@ bool pluginload(const char* pluginName, bool loadall)
     if(!gLoadingPlugin.pluginit)
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] Export \"pluginit\" not found in plugin: %s\n"), normalizedName.c_str());
-        for(int i = CB_INITDEBUG; i < CB_LAST; i++)
-            pluginunregistercallback(pluginHandle, CBTYPE(i));
-        FreeLibrary(gLoadingPlugin.hPlugin);
+        cleanupLoadingPlugin(pluginHandle, false);
         return false;
     }
     gLoadingPlugin.plugstop = (PLUGSTOP)GetProcAddress(gLoadingPlugin.hPlugin, "plugstop");
@@ -232,17 +358,14 @@ bool pluginload(const char* pluginName, bool loadall)
     if(!gLoadingPlugin.pluginit(&gLoadingPlugin.initStruct))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] pluginit failed for plugin: %s\n"), normalizedName.c_str());
-        for(int i = CB_INITDEBUG; i < CB_LAST; i++)
-            pluginunregistercallback(pluginHandle, CBTYPE(i));
-        FreeLibrary(gLoadingPlugin.hPlugin);
+        cleanupLoadingPlugin(pluginHandle, false);
         return false;
     }
-    if(gLoadingPlugin.initStruct.sdkVersion < PLUG_SDKVERSION) //the plugin SDK is not compatible
+
+    if(gLoadingPlugin.initStruct.sdkVersion != PLUG_SDKVERSION)
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN] %s is incompatible with this SDK version\n"), gLoadingPlugin.initStruct.pluginName);
-        for(int i = CB_INITDEBUG; i < CB_LAST; i++)
-            pluginunregistercallback(pluginHandle, CBTYPE(i));
-        FreeLibrary(gLoadingPlugin.hPlugin);
+        cleanupLoadingPlugin(pluginHandle, true);
         return false;
     }
 
@@ -511,11 +634,16 @@ static std::vector<std::wstring> enumerateAvailablePlugins(const std::wstring & 
     return result;
 }
 
+void pluginsetdirectory(const char* pluginDir)
+{
+    gPluginDirectory = pluginDir ? StringUtils::Utf8ToUtf16(pluginDir) : std::wstring();
+}
+
 /**
 \brief Loads plugins from a specified directory.
 \param pluginDir The directory to load plugins from.
 */
-void pluginloadall(const char* pluginDir)
+void pluginloadall()
 {
     //reserve menu space
     gPluginMenuList.reserve(1024);
@@ -523,10 +651,9 @@ void pluginloadall(const char* pluginDir)
 
     //load new plugins
     wchar_t currentDir[deflen] = L"";
-    gPluginDirectory = StringUtils::Utf8ToUtf16(pluginDir);
 
     // Enumerate all plugins from plugins directory.
-    const auto availablePlugins = enumerateAvailablePlugins(StringUtils::Utf8ToUtf16(pluginDir));
+    const auto availablePlugins = enumerateAvailablePlugins(gPluginDirectory);
 
     // Add the plugins directory as valid dependency directory
     auto pluginDirectoryCookie = addDllDirectory(gPluginDirectory.c_str());
@@ -794,20 +921,15 @@ int pluginmenuadd(int hMenu, const char* title)
     if(!title || !strlen(title))
         return -1;
     EXCLUSIVE_ACQUIRE(LockPluginMenuList);
-    int nFound = -1;
-    for(unsigned int i = 0; i < gPluginMenuList.size(); i++)
+    auto found = std::find_if(gPluginMenuList.begin(), gPluginMenuList.end(), [hMenu](const PLUG_MENU & menu)
     {
-        if(gPluginMenuList.at(i).hEntryMenu == hMenu)
-        {
-            nFound = i;
-            break;
-        }
-    }
-    if(nFound == -1) //not a valid menu handle
+        return menu.hEntryMenu == hMenu;
+    });
+    if(found == gPluginMenuList.end()) //not a valid menu handle
         return -1;
     int hMenuNew = GuiMenuAdd(hMenu, title);
     PLUG_MENU newMenu;
-    newMenu.pluginHandle = gPluginMenuList.at(nFound).pluginHandle;
+    newMenu.pluginHandle = found->pluginHandle;
     newMenu.hEntryMenu = hMenuNew;
     newMenu.hParentMenu = hMenu;
     gPluginMenuList.push_back(newMenu);
@@ -1158,9 +1280,9 @@ bool pluginmenuentryremove(int pluginHandle, int hEntry)
 
 struct ExprFuncWrapper
 {
-    void* user;
-    int argc;
-    CBPLUGINEXPRFUNCTION cbFunc;
+    void* user = nullptr;
+    int argc = 0;
+    CBPLUGINEXPRFUNCTION cbFunc = nullptr;
     std::vector<duint> cbArgv;
 
     static bool callback(ExpressionValue* result, int argc, const ExpressionValue* argv, void* userdata)
@@ -1187,7 +1309,7 @@ bool pluginexprfuncregister(int pluginHandle, const char* name, int argc, CBPLUG
     plugExprfunction.pluginHandle = pluginHandle;
     strcpy_s(plugExprfunction.name, name);
 
-    ExprFuncWrapper* wrapper = new ExprFuncWrapper;
+    auto* wrapper = new ExprFuncWrapper;
     wrapper->argc = argc;
     wrapper->cbFunc = cbFunction;
     wrapper->user = userdata;
@@ -1197,7 +1319,7 @@ bool pluginexprfuncregister(int pluginHandle, const char* name, int argc, CBPLUG
     for(auto & arg : args)
         arg = ValueTypeNumber;
 
-    if(!ExpressionFunctions::Register(name, ValueTypeNumber, args, wrapper->callback, wrapper))
+    if(!ExpressionFunctions::Register(name, ValueTypeNumber, args, ExprFuncWrapper::callback, wrapper))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "[PLUGIN, %s] Expression function \"%s\" failed to register...\n"), plugName.c_str(), name);
         return false;

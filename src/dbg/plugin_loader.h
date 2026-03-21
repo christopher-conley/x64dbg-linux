@@ -1,5 +1,4 @@
-#ifndef _PLUGIN_LOADER_H
-#define _PLUGIN_LOADER_H
+#pragma once
 
 #include "_global.h"
 #include "_plugins.h"
@@ -12,63 +11,64 @@ typedef void (*PLUGSETUP)(PLUG_SETUPSTRUCT* setupStruct);
 //structures
 struct PLUG_MENU
 {
-    int pluginHandle; //plugin handle
-    int hEntryMenu; //GUI entry/menu handle (unique)
-    int hParentMenu; //parent GUI menu handle
+    int pluginHandle = -1; //plugin handle
+    int hEntryMenu = -1; //GUI entry/menu handle (unique)
+    int hParentMenu = -1; //parent GUI menu handle
 };
 
 struct PLUG_MENUENTRY : PLUG_MENU
 {
-    int hEntryPlugin; //plugin entry handle (unique per plugin)
+    int hEntryPlugin = -1; //plugin entry handle (unique per plugin)
 };
 
 struct PLUG_DATA
 {
-    char plugpath[MAX_PATH];
-    char plugname[MAX_PATH];
-    HINSTANCE hPlugin;
-    PLUGINIT pluginit;
-    PLUGSTOP plugstop;
-    PLUGSETUP plugsetup;
-    int hMenu;
-    int hMenuDisasm;
-    int hMenuDump;
-    int hMenuStack;
-    int hMenuGraph;
-    int hMenuMemmap;
-    int hMenuSymmod;
-    PLUG_INITSTRUCT initStruct;
+    char plugpath[MAX_PATH] = {};
+    char plugname[MAX_PATH] = {};
+    HINSTANCE hPlugin = nullptr;
+    PLUGINIT pluginit = nullptr;
+    PLUGSTOP plugstop = nullptr;
+    PLUGSETUP plugsetup = nullptr;
+    int hMenu = -1;
+    int hMenuDisasm = -1;
+    int hMenuDump = -1;
+    int hMenuStack = -1;
+    int hMenuGraph = -1;
+    int hMenuMemmap = -1;
+    int hMenuSymmod = -1;
+    PLUG_INITSTRUCT initStruct = {};
 };
 
 struct PLUG_CALLBACK
 {
-    int pluginHandle;
-    CBTYPE cbType;
-    CBPLUGIN cbPlugin;
+    int pluginHandle = -1;
+    CBTYPE cbType = CB_LAST;
+    CBPLUGIN cbPlugin = nullptr;
 };
 
 struct PLUG_COMMAND
 {
-    int pluginHandle;
-    char command[deflen];
+    int pluginHandle = -1;
+    char command[deflen] = {};
 };
 
 struct PLUG_EXPRFUNCTION
 {
-    int pluginHandle;
-    char name[deflen];
+    int pluginHandle = -1;
+    char name[deflen] = {};
 };
 
 struct PLUG_FORMATFUNCTION
 {
-    int pluginHandle;
-    char name[deflen];
+    int pluginHandle = -1;
+    char name[deflen] = {};
 };
 
 //plugin management functions
 bool pluginload(const char* pluginname, bool loadall = false);
 bool pluginunload(const char* pluginname, bool unloadall = false);
-void pluginloadall(const char* pluginDir);
+void pluginsetdirectory(const char* pluginDir);
+void pluginloadall();
 void pluginunloadall();
 void plugincmdunregisterall(int pluginHandle);
 void pluginexprfuncunregisterall(int pluginHandle);
@@ -101,5 +101,3 @@ bool pluginexprfuncregisterex(int pluginHandle, const char* name, const ValueTyp
 bool pluginexprfuncunregister(int pluginHandle, const char* name);
 bool pluginformatfuncregister(int pluginHandle, const char* type, CBPLUGINFORMATFUNCTION cbFunction, void* userdata);
 bool pluginformatfuncunregister(int pluginHandle, const char* type);
-
-#endif // _PLUGIN_LOADER_H

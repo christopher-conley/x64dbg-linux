@@ -19,6 +19,7 @@ static wchar_t szIniFile[MAX_PATH] = L"";
 static CRITICAL_SECTION csIni;
 static CRITICAL_SECTION csTranslate;
 static bool bDisableGUIUpdate;
+static bool bIsHeadless;
 
 #define CHECK_GUI_UPDATE_DISABLED \
     if (bDisableGUIUpdate) \
@@ -168,6 +169,7 @@ BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config)
     //Initialize critial section
     InitializeCriticalSection(&csIni);
     InitializeCriticalSection(&csTranslate);
+    bIsHeadless = config->hGuiModule != nullptr;
 
     // Signature checking functions
     auto hMainModule = GetModuleHandleW(nullptr);
@@ -301,6 +303,11 @@ BRIDGE_IMPEXP const wchar_t* BridgeStart()
     DeleteCriticalSection(&csIni);
     DeleteCriticalSection(&csTranslate);
     return nullptr;
+}
+
+BRIDGE_IMPEXP bool BridgeIsHeadless()
+{
+    return bIsHeadless;
 }
 
 BRIDGE_IMPEXP void* BridgeAlloc(size_t size)
@@ -1168,6 +1175,11 @@ BRIDGE_IMPEXP void DbgGetThreadList(THREADLIST* list)
 BRIDGE_IMPEXP void DbgSettingsUpdated()
 {
     _dbg_sendmessage(DBG_SETTINGS_UPDATED, 0, 0);
+}
+
+BRIDGE_IMPEXP bool DbgIsTesting()
+{
+    return _dbg_sendmessage(DBG_IS_TESTING, 0, 0) != 0;
 }
 
 BRIDGE_IMPEXP void DbgDisasmFastAt(duint addr, BASIC_INSTRUCTION_INFO* basicinfo)
