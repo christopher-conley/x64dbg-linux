@@ -1,23 +1,24 @@
 #include "_scriptapi_flag.h"
 #include "value.h"
+#include "debugger.h"
 
 static const char* flagTable[] =
 {
-    "_ZF",
-    "_OF",
-    "_CF",
-    "_PF",
-    "_SF",
-    "_TF",
-    "_AF",
-    "_DF",
-    "_IF"
+    "ZF",
+    "OF",
+    "CF",
+    "PF",
+    "SF",
+    "TF",
+    "AF",
+    "DF",
+    "IF"
 };
 
 SCRIPT_EXPORT bool Script::Flag::Get(FlagEnum flag)
 {
-    duint value;
-    return valfromstring(flagTable[flag], &value) ? !!value : false;
+    auto eflags = GetContextDataEx(hActiveThread, UE_CFLAGS);
+    return valflagfromstring(eflags, flagTable[flag]);
 }
 
 SCRIPT_EXPORT bool Script::Flag::Set(FlagEnum flag, bool value)
