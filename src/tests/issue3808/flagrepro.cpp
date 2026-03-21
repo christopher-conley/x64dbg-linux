@@ -52,71 +52,50 @@ namespace
         );
     }
 
-    bool IsPrimed(const FlagSnapshot & snapshot)
-    {
-        return snapshot.regdumpOk
-               && snapshot.zfExprOk
-               && snapshot.cfExprOk
-               && snapshot.regdump.flags.z
-               && !snapshot.regdump.flags.c
-               && snapshot.zfExpr == 1
-               && snapshot.cfExpr == 0
-               && snapshot.zfApi
-               && !snapshot.cfApi;
-    }
-
-    bool IsBrokenAfterSetters(const FlagSnapshot & snapshot)
-    {
-        return snapshot.regdumpOk
-               && snapshot.zfExprOk
-               && snapshot.cfExprOk
-               && snapshot.regdump.flags.z
-               && !snapshot.regdump.flags.c
-               && snapshot.zfExpr == 1
-               && snapshot.cfExpr == 0
-               && snapshot.zfApi
-               && !snapshot.cfApi;
-    }
-
     bool cbFlagRepro3808(int, char**)
     {
         _plugin_logputs("[issue3808] Priming ZF=1 CF=0 through the command path");
         if(!DbgCmdExecDirect("_ZF=1") || !DbgCmdExecDirect("_CF=0"))
-        {
-            _plugin_logputs("[issue3808] ERROR failed to prime flags with command path");
-            return false;
-        }
+            return _plugin_testassert(false, "failed to prime flags through the command path");
 
         const auto primed = TakeSnapshot();
         LogSnapshot("after_command_path", primed);
+        if(!_plugin_testassert(
+                    primed.regdumpOk
+                    && primed.zfExprOk
+                    && primed.cfExprOk
+                    && primed.regdump.flags.z
+                    && !primed.regdump.flags.c
+                    && primed.zfExpr == 1
+                    && primed.cfExpr == 0
+                    && primed.zfApi
+                    && !primed.cfApi,
+                    "command path did not prime ZF=1 CF=0 correctly"))
+            return false;
 
         const bool setZfOk = Script::Flag::SetZF(false);
         const auto afterSetZf = TakeSnapshot();
         LogSnapshot("after_SetZF_false", afterSetZf);
+        if(!_plugin_testassert(setZfOk, "Script::Flag::SetZF(false) returned failure"))
+            return false;
 
         const bool setCfOk = Script::Flag::SetCF(true);
         const auto finalSnapshot = TakeSnapshot();
         LogSnapshot("after_SetCF_true", finalSnapshot);
+        if(!_plugin_testassert(setCfOk, "Script::Flag::SetCF(true) returned failure"))
+            return false;
 
-        const bool primedOk = IsPrimed(primed);
-        const bool broken = primedOk && IsBrokenAfterSetters(finalSnapshot);
-        const bool exactIssue = broken && setZfOk && setCfOk;
-
-        _plugin_logprintf(
-            "[issue3808] RESULT broken=%d exact_issue=%d primed=%d setzf_ok=%d setcf_ok=%d final_reg_zf=%d final_reg_cf=%d final_expr_zf=%llu final_expr_cf=%llu final_api_zf=%d final_api_cf=%d\n",
-            broken ? 1 : 0,
-            exactIssue ? 1 : 0,
-            primedOk ? 1 : 0,
-            setZfOk ? 1 : 0,
-            setCfOk ? 1 : 0,
-            finalSnapshot.regdumpOk && finalSnapshot.regdump.flags.z ? 1 : 0,
-            finalSnapshot.regdumpOk && finalSnapshot.regdump.flags.c ? 1 : 0,
-            static_cast<unsigned long long>(finalSnapshot.zfExpr),
-            static_cast<unsigned long long>(finalSnapshot.cfExpr),
-            finalSnapshot.zfApi ? 1 : 0,
-            finalSnapshot.cfApi ? 1 : 0
-        );
-        return true;
+        return _plugin_testassert(
+                   finalSnapshot.regdumpOk
+                   && finalSnapshot.zfExprOk
+                   && finalSnapshot.cfExprOk
+                   && !finalSnapshot.regdump.flags.z
+                   && finalSnapshot.regdump.flags.c
+                   && finalSnapshot.zfExpr == 0
+                   && finalSnapshot.cfExpr == 1
+                   && !finalSnapshot.zfApi
+                   && finalSnapshot.cfApi,
+                   "Script::Flag::Set* did not update the final flag state to ZF=0 CF=1");
     }
 }
 
