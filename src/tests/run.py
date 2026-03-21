@@ -40,7 +40,7 @@ class TestResult:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run x64dbg convention-based headless tests.")
     parser.add_argument("tests", nargs="*", help="Optional test ids relative to src/tests, for example: issue3808")
-    parser.add_argument("--arch", choices=["x64", "x32"], default="x64", help="Architecture to run. Default: x64")
+    parser.add_argument("--arch", choices=["x64", "x32", "x86"], default="x64", help="Architecture to run. Default: x64. x86 is accepted as an alias for x32")
     parser.add_argument("--headless", help="Path to headless.exe. Defaults to bin/<arch>/headless.exe")
     parser.add_argument("--timeout", type=int, default=90, help="Per-test timeout in seconds. Default: 90")
     parser.add_argument("--artifacts-dir", help="Directory to keep artifacts in. Defaults to a temporary directory")
@@ -53,6 +53,10 @@ def ensure_file(path: Path, description: str) -> Path:
     if not path.is_file():
         raise FileNotFoundError(f"Missing {description}: {path}")
     return path.resolve()
+
+
+def normalize_arch(arch: str) -> str:
+    return "x32" if arch == "x86" else arch
 
 
 def path_arg(path: Path, cwd: Path) -> str:
@@ -244,6 +248,7 @@ def main() -> int:
         return 2
 
     args = parse_args()
+    args.arch = normalize_arch(args.arch)
     repo_root = Path(__file__).resolve().parents[2]
     headless = ensure_file(Path(args.headless) if args.headless else repo_root / "bin" / args.arch / "headless.exe", "headless executable")
 

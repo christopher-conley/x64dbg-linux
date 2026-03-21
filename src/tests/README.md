@@ -55,6 +55,11 @@ By default temporary artifacts are created under:
 
 This keeps all temporary test runs under one parent directory for easier cleanup.
 
+CI also runs the active suite in GitHub Actions for both architectures:
+
+- x64 via `py src/tests/run.py --arch x64`
+- x86 via `py src/tests/run.py --arch x86` (`x86` is accepted as an alias for `x32`)
+
 The runner launches one `headless.exe -testing` process per test with:
 
 - isolated `-userdir`

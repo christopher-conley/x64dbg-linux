@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <shellapi.h>
 
+#include <stdlib.h>
 #include <wchar.h>
 
 extern "C"

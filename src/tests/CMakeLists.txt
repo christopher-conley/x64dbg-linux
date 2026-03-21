@@ -10,7 +10,7 @@ endif()
 
 set(X64DBG_TEST_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/bin/${X64DBG_TEST_ARCH}/tests")
 
-add_custom_target(x64dbg_tests)
+add_custom_target(x64dbg_tests ALL)
 add_subdirectory(issue3808)
 add_subdirectory(cmdline_init)
 add_subdirectory(cmdline_setcommandline)
