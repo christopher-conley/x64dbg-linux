@@ -22,6 +22,8 @@ Exports used by the scripts:
 - `ExecSequence`
 - `ReadTarget`
 - `WriteTarget`
+- `WriteHeap`
+- `StartHeap`
 
 A large padding block forces `ReadTarget` and `WriteTarget` onto a later page while keeping them in the same merged region as the code.
 
