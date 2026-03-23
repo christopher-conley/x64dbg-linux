@@ -642,7 +642,7 @@ static bool cbDeleteAllMemoryBreakpoints(const BREAKPOINT* bp)
         dprintf(QT_TRANSLATE_NOOP("DBG", "Delete memory breakpoint failed (BpDelete): %p\n"), bp->addr);
         return false;
     }
-    if(bp->enabled && bp->active && !RemoveMemoryBPX(bp->addr, bp->memsize))
+    if(bp->enabled && bp->active && !RemoveMemoryBPX(bp->addr, size))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "Delete memory breakpoint failed (RemoveMemoryBPX): %p\n"), bp->addr);
         return false;
@@ -662,7 +662,7 @@ static bool cbEnableAllMemoryBreakpoints(const BREAKPOINT* bp)
         dprintf(QT_TRANSLATE_NOOP("DBG", "Could not enable memory breakpoint %p (BpEnable)\n"), bp->addr);
         return false;
     }
-    if(!SetMemoryBPXEx(bp->addr, bp->memsize, (TitanMemoryBreakpointType)bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
+    if(!SetMemoryBPXEx(bp->addr, size, (TitanMemoryBreakpointType)bp->titantype, !bp->singleshoot, cbMemoryBreakpoint))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "Could not enable memory breakpoint %p (SetMemoryBPXEx)\n"), bp->addr);
         return false;
@@ -732,32 +732,28 @@ bool cbDebugSetMemoryBpx(int argc, char* argv[])
 
     duint size = 0;
     duint base = MemFindBaseAddr(addr, &size, true);
-
-    duint page = addr & ~(PAGE_SIZE - 1);   // aligns given address down to page start
-    size -= (page - base);
-
     bool singleshoot = false;
     if(!restore)
         singleshoot = true;
     BREAKPOINT bp;
-    if(BpGet(page, BPMEMORY, 0, &bp))
+    if(BpGet(base, BPMEMORY, 0, &bp))
     {
         if(!bp.enabled)
             return DbgCmdExecDirect(StringUtils::sprintf("bpme %p", bp.addr).c_str());
         dputs(QT_TRANSLATE_NOOP("DBG", "Memory breakpoint already set!"));
         return true;
     }
-    if(!BpNew(page, true, singleshoot, 0, BPMEMORY, type, 0, size))
+    if(!BpNew(base, true, singleshoot, 0, BPMEMORY, type, 0, size))
     {
         dputs(QT_TRANSLATE_NOOP("DBG", "Error setting memory breakpoint! (BpNew)"));
         return false;
     }
-    if(!SetMemoryBPXEx(page, size, type, restore, cbMemoryBreakpoint))
+    if(!SetMemoryBPXEx(base, size, type, restore, cbMemoryBreakpoint))
     {
         dputs(QT_TRANSLATE_NOOP("DBG", "Error setting memory breakpoint! (SetMemoryBPXEx)"));
         return false;
     }
-    dprintf(QT_TRANSLATE_NOOP("DBG", "Memory breakpoint at %p[%p] set!\n"), page, size);
+    dprintf(QT_TRANSLATE_NOOP("DBG", "Memory breakpoint at %p[%p] set!\n"), base, size);
     GuiUpdateAllViews();
     return true;
 }

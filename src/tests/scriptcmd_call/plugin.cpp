@@ -23,7 +23,7 @@ namespace
         return DbgValFromString(expression);
     }
 
-    bool dispatchScriptCallback(const char* label, std::atomic<unsigned int>& counter)
+    bool dispatchScriptCallback(const char* label, std::atomic<unsigned int> & counter)
     {
         counter.fetch_add(1);
         const auto command = std::string("scriptcmd call ") + label;

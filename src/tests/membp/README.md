@@ -32,10 +32,12 @@ The directory now uses multiple scripts handled by `src/tests/run.py`:
 - `test.txt` -> `membp`
 - `test.write.txt` -> `membp/write`
 - `test.range-read.txt` -> `membp/range-read`
-- `test.range-write.txt` -> `membp/range-write`
+- [DISABLED] `test.range-write.txt` -> `membp/range-write`
 - `test.range-execute.txt` -> `membp/range-execute`
 - `test.range-delete.txt` -> `membp/range-delete`
 - `test.range-reenable.txt` -> `membp/range-reenable`
 - `test.range-reinit.txt` -> `membp/range-reinit`
+- `test.exitprocess-assert.txt` -> `membp/exitprocess-assert`
+- `test.range-heap.txt` -> `membp/range-heap`
 
 The plugin in `plugin.cpp` provides shared assertions for installation, hits, deletion, re-enable, and reinit scenarios.

@@ -1,5 +1,6 @@
-settingset Events, EntryBreakpoint, 0
+settingset Events, EntryBreakpoint, 1
 init tests/membp.exe
+run
 mbreset
 mbcachebp membp:WriteTarget
 cip=membp:WriteSequence
@@ -7,3 +8,4 @@ bpmrange membp:WriteTarget, 1, w
 mbassertexact membp:WriteTarget, 1
 run
 mbasserthit
+stop

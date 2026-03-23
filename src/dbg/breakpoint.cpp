@@ -56,15 +56,7 @@ static void setBpActive(BREAKPOINT & bp, duint addrAdjust = 0)
 
 static BREAKPOINT* findMemoryBreakpoint(duint Address)
 {
-    duint targetKeyAddr;
-    auto currentMod = ModInfoFromAddr(Address);
-
-    if(currentMod)
-        targetKeyAddr = currentMod->hash + (Address - currentMod->base);
-    else
-        targetKeyAddr = Address; // Breakpoints that are put outside modules (heap, stack, etc), use the actual address and not RVA.
-
-    auto it = breakpoints.upper_bound(BreakpointKey(BPMEMORY, targetKeyAddr));
+    auto it = breakpoints.upper_bound(BreakpointKey(BPMEMORY, ModHashFromAddr(Address)));
     if(it == breakpoints.begin())
         return nullptr;
 
@@ -75,7 +67,7 @@ static BREAKPOINT* findMemoryBreakpoint(duint Address)
     {
         auto & bp = it->second;
 
-        duint bpStart = currentMod ? (currentMod->base + bp.addr) : bp.addr;
+        duint bpStart = ModBaseFromAddr(Address) + bp.addr; // Breakpoints that are put outside modules (heap, stack, etc), use the actual address and not RVA
         duint bpEnd = bpStart + bp.memsize;
 
         if(Address >= bpStart && Address < bpEnd)

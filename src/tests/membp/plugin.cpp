@@ -66,7 +66,7 @@ namespace
         return found;
     }
 
-    bool assertExpectedHit(duint expectedBp, bool requireProcessAlive);
+    bool assertExpectedHit(duint expectedBp, bool requireProcessAlive, duint count);
 
     void cbPlugin(CBTYPE cbType, void* callbackInfo)
     {
@@ -96,7 +96,7 @@ namespace
                 gExitObserved = true;
                 gExitCode = info->ExitProcess->dwExitCode;
                 if(gExpectExitHit.load())
-                    assertExpectedHit(gExpectedExitBpAddr.load(), false);
+                    assertExpectedHit(gExpectedExitBpAddr.load(), false, 1);
             }
         }
     }
@@ -128,14 +128,14 @@ namespace
             return false;
 
         return _plugin_testassert(
-            actualSize == expectedSize,
-            "expected region breakpoint [%0llX, 0x%llX), got [0x%llX, 0x%llX) for target %s",
-            static_cast<unsigned long long>(expectedStart),
-            static_cast<unsigned long long>(expectedStart + expectedSize),
-            static_cast<unsigned long long>(expectedStart),
-            static_cast<unsigned long long>(expectedStart + actualSize),
-            argv[1]
-        );
+                   actualSize == expectedSize,
+                   "expected region breakpoint [%0llX, 0x%llX), got [0x%llX, 0x%llX) for target %s",
+                   static_cast<unsigned long long>(expectedStart),
+                   static_cast<unsigned long long>(expectedStart + expectedSize),
+                   static_cast<unsigned long long>(expectedStart),
+                   static_cast<unsigned long long>(expectedStart + actualSize),
+                   argv[1]
+               );
     }
 
     bool cbAssertExact(int argc, char** argv)
@@ -155,13 +155,13 @@ namespace
             return false;
 
         return _plugin_testassert(
-            actualSize == expectedSize,
-            "expected exact breakpoint [%0llX, 0x%llX), got [0x%llX, 0x%llX)",
-            static_cast<unsigned long long>(expectedStart),
-            static_cast<unsigned long long>(expectedStart + expectedSize),
-            static_cast<unsigned long long>(expectedStart),
-            static_cast<unsigned long long>(expectedStart + actualSize)
-        );
+                   actualSize == expectedSize,
+                   "expected exact breakpoint [%0llX, 0x%llX), got [0x%llX, 0x%llX)",
+                   static_cast<unsigned long long>(expectedStart),
+                   static_cast<unsigned long long>(expectedStart + expectedSize),
+                   static_cast<unsigned long long>(expectedStart),
+                   static_cast<unsigned long long>(expectedStart + actualSize)
+               );
     }
 
     bool cbCacheBp(int argc, char** argv)
@@ -175,11 +175,11 @@ namespace
         return _plugin_testassert(true, "cached breakpoint address 0x%llX", static_cast<unsigned long long>(expectedBp));
     }
 
-    bool assertExpectedHit(duint expectedBp, bool requireProcessAlive)
+    bool assertExpectedHit(duint expectedBp, bool requireProcessAlive, duint count)
     {
         if(!_plugin_testassert(expectedBp != 0, "failed to resolve expected breakpoint address"))
             return false;
-        if(!_plugin_testassert(gMemoryHitCount.load() == 1, "expected exactly 1 memory breakpoint callback, got %u", gMemoryHitCount.load()))
+        if(!_plugin_testassert(gMemoryHitCount.load() == count, "expected exactly %lu memory breakpoint callback, got %u", count, gMemoryHitCount.load()))
             return false;
         if(!_plugin_testassert(gLastBpAddr.load() == expectedBp, "expected memory breakpoint address 0x%llX, got 0x%llX", static_cast<unsigned long long>(expectedBp), static_cast<unsigned long long>(gLastBpAddr.load())))
             return false;
@@ -191,11 +191,14 @@ namespace
     bool cbAssertHit(int argc, char** argv)
     {
         duint expectedBp = 0;
+        duint count = 1;
         if(argc >= 2)
             expectedBp = evalExpr(argv[1]);
+        if(argc >= 3)
+            count = evalExpr(argv[2]);
         if(expectedBp == 0)
             expectedBp = gCachedBpAddr.load();
-        return assertExpectedHit(expectedBp, true);
+        return assertExpectedHit(expectedBp, true, count);
     }
 
     bool cbAssertNoHit(int argc, char** argv)

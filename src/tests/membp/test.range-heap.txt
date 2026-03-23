@@ -1,0 +1,15 @@
+settingset Events, EntryBreakpoint, 1
+init tests/membp.exe
+run
+mbreset
+cip=membp:StartHeap
+bpmrange membp:WriteHeap, 1, x
+run
+bpmc membp:WriteHeap
+push r12
+mov r12, [membp:HeapPointer]
+bpmrange r12, 1, a
+run
+mbasserthit r12, 2
+pop r12
+stop

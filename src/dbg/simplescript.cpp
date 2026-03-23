@@ -724,8 +724,8 @@ static bool scriptRun(int destline, bool gui)
     scriptResetInterruptState();
     // the script fully executed (which means scriptIp is reset to the first line), without any errors
     return !scriptIsAbortReason(interruptReason)
-        && scriptIp == scriptNextIp(0)
-        && (scriptLastError == STATUS_EXIT || scriptLastError == STATUS_CONTINUE || scriptLastError == STATUS_CONTINUE_BRANCH);
+           && scriptIp == scriptNextIp(0)
+           && (scriptLastError == STATUS_EXIT || scriptLastError == STATUS_CONTINUE || scriptLastError == STATUS_CONTINUE_BRANCH);
 }
 
 static bool scriptLoad(const char* filename, bool gui)
