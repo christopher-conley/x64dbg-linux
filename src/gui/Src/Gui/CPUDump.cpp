@@ -255,6 +255,12 @@ void CPUDump::setupContextMenu()
         return true;
     }));
 
+    makeShortcutAction(DIcon("hex"), tr("Cycle Hex View"), SLOT(cycleHexViewSlot()), "ActionDumpViewHex");
+    makeShortcutAction(DIcon("strings"), tr("Cycle Text View"), SLOT(cycleTextViewSlot()), "ActionDumpViewText");
+    makeShortcutAction(DIcon("integer"), tr("Cycle Integer View"), SLOT(cycleIntegerViewSlot()), "ActionDumpViewInteger");
+    makeShortcutAction(DIcon("float"), tr("Cycle Float View"), SLOT(cycleFloatViewSlot()), "ActionDumpViewFloat");
+    makeShortcutAction(DIcon("address"), tr("Cycle Address View"), SLOT(cycleAddressViewSlot()), "ActionDumpViewAddress");
+
     mMenuBuilder->loadFromConfig();
     updateShortcuts();
 }
@@ -706,6 +712,7 @@ void CPUDump::hexCodepageSlot()
     CodepageSelectionDialog dialog(this);
     if(dialog.exec() != QDialog::Accepted)
         return;
+    Config()->setUint("HexDump", "DefaultView", (duint)ViewHexCodepage);
     auto codepage = dialog.getSelectedCodepage();
 
     int charwidth = getCharWidth();
@@ -844,6 +851,7 @@ void CPUDump::textCodepageSlot()
     CodepageSelectionDialog dialog(this);
     if(dialog.exec() != QDialog::Accepted)
         return;
+    Config()->setUint("HexDump", "DefaultView", (duint)ViewTextCodepage);
     auto codepage = dialog.getSelectedCodepage();
 
     ColumnDescriptor colDesc;
@@ -1604,6 +1612,103 @@ void CPUDump::allocMemorySlot()
             return;
         }
     }
+}
+
+CPUDump::ViewEnum_t CPUDump::getCurrentView() const
+{
+    return (ViewEnum_t)ConfigUint("HexDump", "DefaultView");
+}
+
+void CPUDump::cycleHexViewSlot()
+{
+    ViewEnum_t current = getCurrentView();
+
+    if(current == ViewHexAscii)
+        setView(ViewHexUnicode);
+    else if(current == ViewHexUnicode)
+        hexCodepageSlot();
+    else
+        setView(ViewHexAscii);
+}
+
+void CPUDump::cycleTextViewSlot()
+{
+    ViewEnum_t current = getCurrentView();
+
+    if(current == ViewTextAscii)
+        setView(ViewTextUnicode);
+    else if(current == ViewTextUnicode)
+        textCodepageSlot();
+    else
+        setView(ViewTextAscii);
+}
+
+void CPUDump::cycleIntegerViewSlot()
+{
+    ViewEnum_t current = getCurrentView();
+    static const ViewEnum_t intViews[] =
+    {
+        ViewIntegerHexByte,
+        ViewIntegerHexShort,
+        ViewIntegerHexLong,
+        ViewIntegerHexLongLong,
+        ViewIntegerSignedByte,
+        ViewIntegerSignedShort,
+        ViewIntegerSignedLong,
+        ViewIntegerSignedLongLong,
+        ViewIntegerUnsignedByte,
+        ViewIntegerUnsignedShort,
+        ViewIntegerUnsignedLong,
+        ViewIntegerUnsignedLongLong,
+    };
+
+    const size_t intViewsCount = sizeof(intViews) / sizeof(intViews[0]);
+    ViewEnum_t next = intViews[0];
+    for(size_t i = 0; i < intViewsCount; i++)
+    {
+        if(intViews[i] == current)
+        {
+            next = intViews[(i + 1) % intViewsCount];
+            break;
+        }
+    }
+
+    setView(next);
+}
+
+void CPUDump::cycleFloatViewSlot()
+{
+    ViewEnum_t current = getCurrentView();
+    static const ViewEnum_t floatViews[] =
+    {
+        ViewFloatHalf,
+        ViewFloatFloat,
+        ViewFloatDouble,
+        ViewFloatLongDouble,
+    };
+
+    const size_t floatViewsCount = sizeof(floatViews) / sizeof(floatViews[0]);
+    ViewEnum_t next = floatViews[0];
+    for(size_t i = 0; i < floatViewsCount; i++)
+    {
+        if(floatViews[i] == current)
+        {
+            next = floatViews[(i + 1) % floatViewsCount];
+            break;
+        }
+    }
+
+    setView(next);
+}
+
+void CPUDump::cycleAddressViewSlot()
+{
+    ViewEnum_t current = getCurrentView();
+
+    if(current == ViewAddressAscii || current == ViewAddress)
+        setView(ViewAddressUnicode);
+    else
+        setView(ViewAddressAscii);
 }
 
 void CPUDump::setView(ViewEnum_t view)

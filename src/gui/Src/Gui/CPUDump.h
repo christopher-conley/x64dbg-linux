@@ -86,6 +86,12 @@ public slots:
 
     void headerButtonReleasedSlot(duint colIndex);
 
+    void cycleHexViewSlot();
+    void cycleTextViewSlot();
+    void cycleIntegerViewSlot();
+    void cycleFloatViewSlot();
+    void cycleAddressViewSlot();
+
 private:
     MenuBuilder* mMenuBuilder;
     CommonActions* mCommonActions;
@@ -130,5 +136,6 @@ private:
         ViewIntegerHexByte,
     };
 
+    ViewEnum_t getCurrentView() const;
     void setView(ViewEnum_t view);
 };

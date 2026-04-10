@@ -480,6 +480,11 @@ Configuration::Configuration() : QObject(), noMoreMsgbox(false)
     defaultShortcuts.insert("ActionBinaryEdit", Shortcut({tr("Actions"), tr("Binary Edit")}, "Ctrl+E"));
     defaultShortcuts.insert("ActionBinaryFill", Shortcut({tr("Actions"), tr("Binary Fill")}, "F"));
     defaultShortcuts.insert("ActionBinaryFillNops", Shortcut({tr("Actions"), tr("Binary Fill NOPs")}, "Ctrl+9"));
+    defaultShortcuts.insert("ActionDumpViewHex", Shortcut({tr("Dump"), tr("Cycle Hex View")}, "Ctrl+H"));
+    defaultShortcuts.insert("ActionDumpViewText", Shortcut({tr("Dump"), tr("Cycle Text View")}, "Ctrl+T"));
+    defaultShortcuts.insert("ActionDumpViewInteger", Shortcut({tr("Dump"), tr("Cycle Integer View")}, "Ctrl+N"));
+    defaultShortcuts.insert("ActionDumpViewFloat", Shortcut({tr("Dump"), tr("Cycle Float View")}, "Ctrl+F"));
+    defaultShortcuts.insert("ActionDumpViewAddress", Shortcut({tr("Dump"), tr("Cycle Address View")}, "Ctrl+A"));
     defaultShortcuts.insert("ActionBinaryCopy", Shortcut({tr("Actions"), tr("Binary Copy")}, "Shift+C"));
     defaultShortcuts.insert("ActionBinaryPaste", Shortcut({tr("Actions"), tr("Binary Paste")}, "Shift+V"));
     defaultShortcuts.insert("ActionBinaryPasteIgnoreSize", Shortcut({tr("Actions"), tr("Binary Paste (Ignore Size)")}, "Ctrl+Shift+V"));
