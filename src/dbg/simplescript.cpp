@@ -131,7 +131,6 @@ static bool scriptHandleInterrupt()
             while(gScriptInterruptReason.load() == ScriptInterrupt::YieldDebugEvent)
                 WaitForSingleObject(scriptResumeEvent(), 100);
             gScriptYieldContext.active = false;
-            ResetEvent(scriptYieldedEvent());
             continue;
         }
         return scriptIsAbortReason(reason);
@@ -876,11 +875,21 @@ ScriptCommandOutcome ScriptCmdExecAwait(const char* command, bool gui, const SCR
     // If we did not capture the script state it will be reset by the queue.
     // NOTE: Relevant if you step over 'erun' and a breakpoint with 'scriptcmd' is hit.
     auto state = interruptState != nullptr ? *interruptState : scriptState.load();
-    if(gScriptYieldContext.active.load())
+    if(gScriptYieldContext.active.load() || gScriptInterruptReason.load() == ScriptInterrupt::YieldDebugEvent)
     {
-        auto outcome = scriptExecCommand(command, gui, state);
-        scriptMergeYieldCommandOutcome(outcome);
-        return outcome;
+        // Wait for the script thread to transition to the active yield state
+        while(!gScriptYieldContext.active.load() && gScriptInterruptReason.load() == ScriptInterrupt::YieldDebugEvent)
+        {
+            WaitForSingleObject(scriptYieldedEvent(), 10);
+        }
+
+        // Execute directly if the script thread successfully yielded
+        if(gScriptYieldContext.active.load())
+        {
+            auto outcome = scriptExecCommand(command, gui, state);
+            scriptMergeYieldCommandOutcome(outcome);
+            return outcome;
+        }
     }
     return scriptQueue.await([command, state, gui]()
     {
@@ -908,11 +917,18 @@ ScriptInterruptState ScriptInterruptAwait(ScriptInterrupt reason)
 
     if(reason == ScriptInterrupt::YieldDebugEvent)
     {
+        gScriptInterruptReason = reason;
         ResetEvent(scriptYieldedEvent());
         ResetEvent(scriptResumeEvent());
-        gScriptInterruptReason = reason;
-        while(WaitForSingleObject(scriptYieldedEvent(), 100) == WAIT_TIMEOUT)
+        while(!gScriptYieldContext.active.load())
+        {
+            WaitForSingleObject(scriptYieldedEvent(), 100);
+
+            if(gScriptInterruptReason.load() != ScriptInterrupt::YieldDebugEvent)
+                break;
+
             GuiProcessEvents();
+        }
     }
     else
     {
@@ -932,6 +948,7 @@ void ScriptResume()
         return;
     gScriptInterruptReason = ScriptInterrupt::None;
     SetEvent(scriptResumeEvent());
+    SetEvent(scriptYieldedEvent());
 }
 
 SCRIPTLINETYPE ScriptGetLineTypeLocked(int line)
