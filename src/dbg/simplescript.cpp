@@ -306,7 +306,7 @@ static bool scriptCreateLineMap(const char* filename, bool gui)
         else if(StringUtils::EndsWith(cur.raw, ":")) //label
         {
             cur.type = linelabel;
-            cur.label = cur.raw.substr(0, cur.raw.length() - 1); //remove colon
+            cur.label = StringUtils::Trim(cur.raw.substr(0, cur.raw.length() - 1)); //remove colon
             if((cur.label.length() == 0) || (cur.label == "\"\"")) //no label text
             {
                 char message[256] = "";
@@ -319,7 +319,7 @@ static bool scriptCreateLineMap(const char* filename, bool gui)
             if(foundlabel) //label defined twice
             {
                 char message[256] = "";
-                sprintf_s(message, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Duplicate label \"%s\" detected on lines %d and %d!")), cur.label, foundlabel, i + 1);
+                sprintf_s(message, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Duplicate label \"%s\" detected on lines %d and %d!")), cur.label.c_str(), foundlabel, i + 1);
                 scriptError(0, message, gui);
                 scriptLineMap.clear();
                 return false;
