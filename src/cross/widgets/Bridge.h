@@ -74,7 +74,7 @@ typedef enum
     InstructionHeading = 1,
     InstructionTailing = 2,
     InstructionOverlapped = 3, // The byte was executed with differing instruction base addresses
-    Unknown = 4// The following is not implemented yet.
+    TraceRecordByteTypeUnknown = 4 // The following is not implemented yet.
 } TRACERECORDBYTETYPE;
 
 typedef struct

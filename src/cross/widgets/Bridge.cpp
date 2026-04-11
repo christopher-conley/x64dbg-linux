@@ -94,7 +94,7 @@ DBGFUNCTIONS* DbgFunctions()
         };
         f.GetTraceRecordByteType = [](duint addr)
         {
-            return TRACERECORDBYTETYPE::Unknown;
+            return TRACERECORDBYTETYPE::TraceRecordByteTypeUnknown;
         };
         f.ModBaseFromAddr = [](duint addr) -> duint
         {
