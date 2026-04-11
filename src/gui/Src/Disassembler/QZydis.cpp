@@ -1,5 +1,6 @@
 #include "QZydis.h"
 #include "StringUtil.h"
+#include <algorithm>
 #include <Utils/EncodeMap.h>
 #include <Utils/CodeFolding.h>
 #include <Bridge.h>
@@ -7,6 +8,39 @@
 #ifndef _countof
 #define _countof(array) (sizeof(array) / sizeof(array[0]))
 #endif // _countof
+
+// TODO: header
+enum TraceRecordByteType_2bit
+{
+    _InstructionBody = 0,
+    _InstructionHeading = 1,
+    _InstructionTailing = 2,
+    _InstructionOverlapped = 3,
+    _Unknown = 4
+};
+
+static uint getTraceRecordInstructionSize(TRACERECORDBYTETYPE(*getTraceRecordByteType)(duint), duint address, duint remainingSize)
+{
+    if(getTraceRecordByteType == nullptr || remainingSize == 0)
+        return 0;
+
+    auto currentByteType = getTraceRecordByteType(address);
+    if(currentByteType != TraceRecordByteType_2bit::_InstructionHeading
+            && currentByteType != TraceRecordByteType_2bit::_InstructionOverlapped)
+        return 0;
+
+    auto maxLookahead = std::min<duint>(remainingSize - 1, 14); // x86/x64 instructions are at most 15 bytes long
+    for(duint m = 1; m <= maxLookahead; m++)
+    {
+        auto byteType = getTraceRecordByteType(address + m);
+        if(byteType == TraceRecordByteType_2bit::_InstructionTailing)
+            return m + 1;
+        if(byteType == TraceRecordByteType_2bit::_InstructionHeading || byteType == TraceRecordByteType_2bit::_InstructionOverlapped)
+            return m;
+    }
+
+    return 0;
+}
 
 QZydis::QZydis(int maxModuleSize, Architecture* architecture)
     : mTokenizer(maxModuleSize, architecture), mArchitecture(architecture)
@@ -41,6 +75,8 @@ ulong QZydis::DisassembleBack(const uint8_t* data, duint base, duint size, duint
 
     // Reset Disasm Structure
     Zydis zydis(mArchitecture->disasm64());
+
+    auto GetTraceRecordByteType = DbgFunctions()->GetTraceRecordByteType;
 
     // Check if the pointer is not null
     if(data == NULL)
@@ -94,10 +130,24 @@ ulong QZydis::DisassembleBack(const uint8_t* data, duint base, duint size, duint
         }
         else
         {
-            if(!zydis.DisassembleSafe(addr + base, pdata, (int)size))
-                cmdsize = 2; //heuristic for better output (FF FE or FE FF are usually part of an instruction)
-            else
-                cmdsize = zydis.Size();
+            // Check byte type
+            bool hasByteType = false;
+            if(mUseRunTrace)
+            {
+                auto traceCmdSize = getTraceRecordInstructionSize(GetTraceRecordByteType, base + addr, size);
+                if(traceCmdSize != 0)
+                {
+                    cmdsize = traceCmdSize;
+                    hasByteType = true;
+                }
+            }
+            if(!hasByteType)
+            {
+                if(!zydis.DisassembleSafe(addr + base, pdata, (int)size))
+                    cmdsize = 2; //heuristic for better output (FF FE or FE FF are usually part of an instruction)
+                else
+                    cmdsize = zydis.Size();
+            }
 
             cmdsize = mEncodeMap->getDataSize(base + addr, cmdsize);
 
@@ -147,6 +197,7 @@ ulong QZydis::DisassembleNext(const uint8_t* data, duint base, duint size, duint
     if(n <= 0)
         return ip;
 
+    auto GetTraceRecordByteType = DbgFunctions()->GetTraceRecordByteType;
 
     pdata = data + ip;
     size -= ip;
@@ -159,11 +210,23 @@ ulong QZydis::DisassembleNext(const uint8_t* data, duint base, duint size, duint
         }
         else
         {
-            if(!zydis.DisassembleSafe(ip + base, pdata, (int)size))
-                cmdsize = 1;
-            else
-                cmdsize = zydis.Size();
-
+            bool hasByteType = false;
+            if(mUseRunTrace)
+            {
+                auto traceCmdSize = getTraceRecordInstructionSize(GetTraceRecordByteType, base + ip, size);
+                if(traceCmdSize != 0)
+                {
+                    cmdsize = traceCmdSize;
+                    hasByteType = true;
+                }
+            }
+            if(!hasByteType)
+            {
+                if(!zydis.DisassembleSafe(ip + base, pdata, (int)size))
+                    cmdsize = 1;
+                else
+                    cmdsize = zydis.Size();
+            }
             cmdsize = mEncodeMap->getDataSize(base + ip, cmdsize);
 
         }
@@ -379,6 +442,7 @@ void QZydis::setCodeFoldingManager(CodeFoldingHelper* CodeFoldingManager)
 void QZydis::UpdateConfig()
 {
     mLongDataInst = ConfigBool("Disassembler", "LongDataInstruction");
+    mUseRunTrace = ConfigBool("Disassembler", "UseRunTrace");
     mTokenizer.UpdateConfig();
 }
 

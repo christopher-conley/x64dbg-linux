@@ -98,6 +98,7 @@ private slots:
     void on_chkNoSourceLinesAutoComments_toggled(bool checked);
     void on_chkDoubleClickAssemble_toggled(bool checked);
     void on_spinMaximumModuleNameSize_valueChanged(int arg1);
+    void on_chkUseRunTrace_toggled(bool checked);
     //Gui Tab
     void on_chkFpuRegistersLittleEndian_stateChanged(int arg1);
     void on_chkSaveColumnOrder_stateChanged(int arg1);
@@ -237,6 +238,7 @@ private:
         bool disasmNoSourceLineAutoComments = false;
         bool disasmAssembleOnDoubleClick = false;
         int disasmMaxModuleSize = -1;
+        bool disasmUseRunTrace = false;
         //Gui Tab
         bool guiFpuRegistersLittleEndian = false;
         bool guiSaveColumnOrder = false;
