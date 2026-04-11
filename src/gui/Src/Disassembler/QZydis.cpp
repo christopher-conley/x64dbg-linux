@@ -1,5 +1,6 @@
 #include "QZydis.h"
 #include "StringUtil.h"
+#include <algorithm>
 #include <Utils/EncodeMap.h>
 #include <Utils/CodeFolding.h>
 #include <Bridge.h>
@@ -17,6 +18,29 @@ enum TraceRecordByteType_2bit
     _InstructionOverlapped = 3,
     _Unknown = 4
 };
+
+static uint getTraceRecordInstructionSize(TRACERECORDBYTETYPE(*getTraceRecordByteType)(duint), duint address, duint remainingSize)
+{
+    if(getTraceRecordByteType == nullptr || remainingSize == 0)
+        return 0;
+
+    auto currentByteType = getTraceRecordByteType(address);
+    if(currentByteType != TraceRecordByteType_2bit::_InstructionHeading
+            && currentByteType != TraceRecordByteType_2bit::_InstructionOverlapped)
+        return 0;
+
+    auto maxLookahead = std::min<duint>(remainingSize - 1, 14); // x86/x64 instructions are at most 15 bytes long
+    for(duint m = 1; m <= maxLookahead; m++)
+    {
+        auto byteType = getTraceRecordByteType(address + m);
+        if(byteType == TraceRecordByteType_2bit::_InstructionTailing)
+            return m + 1;
+        if(byteType == TraceRecordByteType_2bit::_InstructionHeading || byteType == TraceRecordByteType_2bit::_InstructionOverlapped)
+            return m;
+    }
+
+    return 0;
+}
 
 QZydis::QZydis(int maxModuleSize, Architecture* architecture)
     : mTokenizer(maxModuleSize, architecture), mArchitecture(architecture)
@@ -108,25 +132,13 @@ ulong QZydis::DisassembleBack(const uint8_t* data, duint base, duint size, duint
         {
             // Check byte type
             bool hasByteType = false;
-            if(mUseRunTrace && GetTraceRecordByteType(base + addr + 1) != TraceRecordByteType_2bit::_Unknown)
+            if(mUseRunTrace)
             {
-                for(int m = 1; m <= 16; m++)
+                auto traceCmdSize = getTraceRecordInstructionSize(GetTraceRecordByteType, base + addr, size);
+                if(traceCmdSize != 0)
                 {
-                    auto byteType = GetTraceRecordByteType(base + addr + m);
-                    if(byteType == TraceRecordByteType_2bit::_InstructionTailing)
-                    {
-                        cmdsize = m + 1;
-                        hasByteType = true;
-                        break;
-                    }
-                    else if(byteType == TraceRecordByteType_2bit::_InstructionHeading || byteType == TraceRecordByteType_2bit::_InstructionOverlapped)
-                    {
-                        // TODO one instruction with multiple overlapped instructions
-                        cmdsize = m;
-                        hasByteType = true;
-                        break;
-                    }
-
+                    cmdsize = traceCmdSize;
+                    hasByteType = true;
                 }
             }
             if(!hasByteType)
@@ -199,25 +211,13 @@ ulong QZydis::DisassembleNext(const uint8_t* data, duint base, duint size, duint
         else
         {
             bool hasByteType = false;
-            if(mUseRunTrace && GetTraceRecordByteType(base + ip + 1) != TraceRecordByteType_2bit::_Unknown)
+            if(mUseRunTrace)
             {
-                for(int m = 1; m <= 16; m++)
+                auto traceCmdSize = getTraceRecordInstructionSize(GetTraceRecordByteType, base + ip, size);
+                if(traceCmdSize != 0)
                 {
-                    auto byteType = GetTraceRecordByteType(base + ip + m);
-                    if(byteType == TraceRecordByteType_2bit::_InstructionTailing)
-                    {
-                        cmdsize = m + 1;
-                        hasByteType = true;
-                        break;
-                    }
-                    else if(byteType == TraceRecordByteType_2bit::_InstructionHeading || byteType == TraceRecordByteType_2bit::_InstructionOverlapped)
-                    {
-                        // TODO one instruction with multiple overlapped instructions
-                        cmdsize = m;
-                        hasByteType = true;
-                        break;
-                    }
-
+                    cmdsize = traceCmdSize;
+                    hasByteType = true;
                 }
             }
             if(!hasByteType)
