@@ -54,11 +54,38 @@ static void setBpActive(BREAKPOINT & bp, duint addrAdjust = 0)
     }
 }
 
+static BREAKPOINT* findMemoryBreakpoint(duint Address)
+{
+    auto it = breakpoints.upper_bound(BreakpointKey(BPMEMORY, ModHashFromAddr(Address)));
+    if(it == breakpoints.begin())
+        return nullptr;
+
+    // upper_bound always returns an iterator greater than the given key
+    --it;
+
+    if(it->first.first == BPMEMORY)
+    {
+        auto & bp = it->second;
+
+        duint bpStart = ModBaseFromAddr(Address) + bp.addr; // Breakpoints that are put outside modules (heap, stack, etc), use the actual address and not RVA
+        duint bpEnd = bpStart + bp.memsize;
+
+        if(Address >= bpStart && Address < bpEnd)
+            return &bp;
+    }
+
+    return nullptr;
+}
+
 BREAKPOINT* BpInfoFromAddr(BP_TYPE Type, duint Address)
 {
     //
     // NOTE: THIS DOES _NOT_ USE LOCKS
     //
+
+    if(Type == BPMEMORY)
+        return findMemoryBreakpoint(Address);
+
     std::map<BreakpointKey, BREAKPOINT>::iterator found;
     if(Type != BPDLL && Type != BPEXCEPTION)
         found = breakpoints.find(BreakpointKey(Type, ModHashFromAddr(Address)));

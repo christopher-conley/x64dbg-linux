@@ -53,10 +53,87 @@ static std::vector<SCRIPTFRAME> scriptStack;
 static int scriptIp = 0;
 static int scriptIpOld = 0;
 static std::atomic<SCRIPTSTATE> scriptState;
-static std::atomic_bool bScriptAbort;
+static std::atomic<ScriptInterrupt> gScriptInterruptReason{ ScriptInterrupt::None };
+struct ScriptYieldContext
+{
+    std::atomic_bool active{ false };
+    std::atomic<ScriptCommandOutcome> pendingOutcome{ ScriptCommandOutcome::Continue };
+};
+static ScriptYieldContext gScriptYieldContext;
 static std::atomic_bool bScriptLogEnabled;
 static CMDRESULT scriptLastError = STATUS_ERROR;
 static bool bRunGui = false;
+static bool gScriptCreatedDebugSession = false; // observed false->true transition during script execution
+
+static HANDLE scriptYieldedEvent()
+{
+    static HANDLE event = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    return event;
+}
+
+static HANDLE scriptResumeEvent()
+{
+    static HANDLE event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    return event;
+}
+
+static bool scriptIsAbortReason(ScriptInterrupt reason)
+{
+    switch(reason)
+    {
+    case ScriptInterrupt::AbortUser:
+    case ScriptInterrupt::AbortAssertion:
+    case ScriptInterrupt::AbortShutdown:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static void scriptResetInterruptState()
+{
+    gScriptInterruptReason = ScriptInterrupt::None;
+    gScriptYieldContext.active = false;
+    gScriptYieldContext.pendingOutcome = ScriptCommandOutcome::Continue;
+    ResetEvent(scriptYieldedEvent());
+    ResetEvent(scriptResumeEvent());
+}
+
+static void scriptMergeYieldCommandOutcome(ScriptCommandOutcome outcome)
+{
+    auto current = gScriptYieldContext.pendingOutcome.load();
+    while(current < outcome && !gScriptYieldContext.pendingOutcome.compare_exchange_weak(current, outcome))
+    {
+    }
+}
+
+static void scriptUpdateDebugSessionOwnership(bool wasDebugging, bool isDebugging)
+{
+    if(!wasDebugging && isDebugging)
+        gScriptCreatedDebugSession = true;
+    else if(wasDebugging && !isDebugging && gScriptCreatedDebugSession)
+        gScriptCreatedDebugSession = false;
+}
+
+static bool scriptHandleInterrupt()
+{
+    while(true)
+    {
+        auto reason = gScriptInterruptReason.load();
+        if(reason == ScriptInterrupt::None)
+            return false;
+        if(reason == ScriptInterrupt::YieldDebugEvent)
+        {
+            gScriptYieldContext.active = true;
+            SetEvent(scriptYieldedEvent());
+            while(gScriptInterruptReason.load() == ScriptInterrupt::YieldDebugEvent)
+                WaitForSingleObject(scriptResumeEvent(), 100);
+            gScriptYieldContext.active = false;
+            continue;
+        }
+        return scriptIsAbortReason(reason);
+    }
+}
 
 static SCRIPTBRANCHTYPE scriptGetBranchType(const String & text)
 {
@@ -479,15 +556,27 @@ static CMDRESULT scriptInternalCmdExec(const char* cmd, bool gui, SCRIPTSTATE st
             return state == SCRIPT_STEPPING ? STATUS_PAUSE : STATUS_CONTINUE_BRANCH;
         }
     }
+    auto debuggingBefore = DbgIsDebugging();
     auto res = cmddirectexec(cmd);
     // Wait for the debuggee to pause
-    while(bIsDebugging && dbgisrunning() && !bScriptAbort)
+    while(bIsDebugging && dbgisrunning())
     {
+        if(scriptHandleInterrupt())
+        {
+            bScriptLogEnabled = false;
+            return STATUS_ERROR;
+        }
         Sleep(1);
     }
+    auto debuggingAfter = DbgIsDebugging();
+    scriptUpdateDebugSessionOwnership(debuggingBefore, debuggingAfter);
     bScriptLogEnabled = false;
-    if(!res)
+    auto yieldOutcome = gScriptYieldContext.pendingOutcome.exchange(ScriptCommandOutcome::Continue);
+    const auto shouldCheckInterrupt = !gScriptYieldContext.active.load();
+    if((shouldCheckInterrupt && scriptHandleInterrupt()) || yieldOutcome == ScriptCommandOutcome::Abort || !res)
         return STATUS_ERROR;
+    if(yieldOutcome == ScriptCommandOutcome::Pause)
+        return STATUS_PAUSE;
     return state == SCRIPT_RUNNING ? STATUS_CONTINUE : STATUS_PAUSE;
 }
 
@@ -560,15 +649,17 @@ static bool scriptRun(int destline, bool gui)
         if(!scriptInternalBpGet(destline)) //no breakpoint set
             scriptInternalBpToggle(destline);
     }
-    bScriptAbort = false;
+    scriptResetInterruptState();
     if(scriptIp)
         scriptIp--;
     scriptIp = scriptNextIp(scriptIp);
     bool bContinue = true;
     bool bIgnoreTimeout = settingboolget("Engine", "NoScriptTimeout", false);
     auto start = GetTickCount();
-    while(bContinue && !bScriptAbort) //run loop
+    while(bContinue) //run loop
     {
+        if(scriptHandleInterrupt())
+            break;
         bContinue = scriptInternalCmd(gui, SCRIPT_RUNNING);
         if(scriptInternalBpGet(scriptIp)) //breakpoint=stop run loop
             bContinue = false;
@@ -585,13 +676,17 @@ static bool scriptRun(int destline, bool gui)
             }
         }
     }
+    auto interruptReason = gScriptInterruptReason.load();
     scriptState = SCRIPT_PAUSED; // set the script state to paused
     // re-enable GUI updates when appropriate
     if(disabledGuiUpdates)
         GuiUpdateEnable(true);
     GuiScriptSetIp(scriptIp);
+    scriptResetInterruptState();
     // the script fully executed (which means scriptIp is reset to the first line), without any errors
-    return scriptIp == scriptNextIp(0) && (scriptLastError == STATUS_EXIT || scriptLastError == STATUS_CONTINUE || scriptLastError == STATUS_CONTINUE_BRANCH);
+    return !scriptIsAbortReason(interruptReason)
+           && scriptIp == scriptNextIp(0)
+           && (scriptLastError == STATUS_EXIT || scriptLastError == STATUS_CONTINUE || scriptLastError == STATUS_CONTINUE_BRANCH);
 }
 
 static bool scriptLoad(const char* filename, bool gui)
@@ -604,7 +699,8 @@ static bool scriptLoad(const char* filename, bool gui)
     scriptIpOld = 0;
     scriptBpList.clear();
     scriptStack.clear();
-    bScriptAbort = false;
+    gScriptCreatedDebugSession = false;
+    scriptResetInterruptState();
     if(!scriptCreateLineMap(filename, gui))
         return false; // Script load failed
     int lines = (int)scriptLineMap.size();
@@ -637,7 +733,8 @@ void ScriptUnloadAwait()
         scriptStack.clear();
         scriptIp = 0;
         scriptIpOld = 0;
-        bScriptAbort = false;
+        gScriptCreatedDebugSession = false;
+        scriptResetInterruptState();
     });
 }
 
@@ -663,10 +760,12 @@ void ScriptStepAsync(bool gui)
     {
         if(scriptState == SCRIPT_PAUSED)  // only step when the script is paused
         {
+            scriptResetInterruptState();
             scriptState = SCRIPT_STEPPING;
             bRunGui = gui;
             scriptInternalCmd(gui, SCRIPT_STEPPING);
             scriptState = SCRIPT_PAUSED;
+            scriptResetInterruptState();
             GuiScriptSetIp(scriptIp);
         }
     });
@@ -709,34 +808,54 @@ bool ScriptBpToggleLocked(int line)
     return true;
 }
 
-bool ScriptCmdExecAwait(const char* command, bool gui, const SCRIPTSTATE* abortState)
+static ScriptCommandOutcome scriptExecCommand(const char* command, bool gui, SCRIPTSTATE state)
+{
+    scriptIpOld = scriptIp;
+    scriptLastError = scriptInternalCmdExec(command, gui, state);
+    switch(scriptLastError)
+    {
+    case STATUS_ERROR:
+        return ScriptCommandOutcome::Abort;
+    case STATUS_PAUSE:
+        return ScriptCommandOutcome::Pause;
+    case STATUS_EXIT:
+    case STATUS_CONTINUE:
+        break;
+    case STATUS_CONTINUE_BRANCH:
+        // If the user executes `scriptcmd call xxx`, start running.
+        if(state == SCRIPT_PAUSED)
+            ScriptRunAsync(scriptIp, gui);
+        break;
+    }
+    return ScriptCommandOutcome::Continue;
+}
+
+ScriptCommandOutcome ScriptCmdExecAwait(const char* command, bool gui, const SCRIPTSTATE* interruptState)
 {
     // Capture the current script now, because this function might be called
-    // through 'dbgcmdexecdirect("scriptcmd")' from a breakpoint command.
+    // through a breakpoint command or dbgcmdexecdirect("scriptcmd") from a plugin callback.
     // If we did not capture the script state it will be reset by the queue.
     // NOTE: Relevant if you step over 'erun' and a breakpoint with 'scriptcmd' is hit.
-    auto state = abortState != nullptr ? *abortState : scriptState.load();
+    auto state = interruptState != nullptr ? *interruptState : scriptState.load();
+    if(gScriptYieldContext.active.load() || gScriptInterruptReason.load() == ScriptInterrupt::YieldDebugEvent)
+    {
+        // Wait for the script thread to transition to the active yield state
+        while(!gScriptYieldContext.active.load() && gScriptInterruptReason.load() == ScriptInterrupt::YieldDebugEvent)
+        {
+            WaitForSingleObject(scriptYieldedEvent(), 10);
+        }
+
+        // Execute directly if the script thread successfully yielded
+        if(gScriptYieldContext.active.load())
+        {
+            auto outcome = scriptExecCommand(command, gui, state);
+            scriptMergeYieldCommandOutcome(outcome);
+            return outcome;
+        }
+    }
     return scriptQueue.await([command, state, gui]()
     {
-        scriptIpOld = scriptIp;
-        scriptLastError = scriptInternalCmdExec(command, gui, state);
-        switch(scriptLastError)
-        {
-        case STATUS_ERROR:
-            return false;
-        case STATUS_EXIT:
-        case STATUS_PAUSE:
-        case STATUS_CONTINUE:
-            break;
-        case STATUS_CONTINUE_BRANCH:
-            // If the user executes `scriptcmd call xxx`, start running.
-            if(state == SCRIPT_PAUSED)
-            {
-                ScriptRunAsync(scriptIp, gui);
-            }
-            break;
-        }
-        return true;
+        return scriptExecCommand(command, gui, state);
     });
 }
 
@@ -752,18 +871,46 @@ void ScriptSetIpAwait(int line)
     });
 }
 
-SCRIPTABORTSTATE ScriptAbortAwait()
+ScriptInterruptState ScriptInterruptAwait(ScriptInterrupt reason)
 {
     auto state = scriptState.load();
-    if(state != SCRIPT_PAUSED)
+    if(state == SCRIPT_PAUSED)
+        return { state, bRunGui };
+
+    if(reason == ScriptInterrupt::YieldDebugEvent)
     {
-        bScriptAbort = true;
+        gScriptInterruptReason = reason;
+        ResetEvent(scriptYieldedEvent());
+        ResetEvent(scriptResumeEvent());
+        while(!gScriptYieldContext.active.load())
+        {
+            WaitForSingleObject(scriptYieldedEvent(), 100);
+
+            if(gScriptInterruptReason.load() != ScriptInterrupt::YieldDebugEvent)
+                break;
+
+            GuiProcessEvents();
+        }
+    }
+    else
+    {
+        gScriptInterruptReason = reason;
+        SetEvent(scriptResumeEvent());
         scriptQueue.await([]()
         {
             // Empty lambda just to wait for queue completion
         });
     }
     return { state, bRunGui };
+}
+
+void ScriptResume()
+{
+    if(gScriptInterruptReason.load() != ScriptInterrupt::YieldDebugEvent)
+        return;
+    gScriptInterruptReason = ScriptInterrupt::None;
+    SetEvent(scriptResumeEvent());
+    SetEvent(scriptYieldedEvent());
 }
 
 SCRIPTLINETYPE ScriptGetLineTypeLocked(int line)
