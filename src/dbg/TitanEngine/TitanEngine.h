@@ -327,7 +327,6 @@ __declspec(dllexport) bool GetAVXContext(HANDLE hActiveThread, TITAN_ENGINE_CONT
 __declspec(dllexport) bool SetAVXContext(HANDLE hActiveThread, TITAN_ENGINE_CONTEXT_t* titcontext);
 __declspec(dllexport) bool GetAVX512Context(HANDLE hActiveThread, TITAN_ENGINE_CONTEXT_AVX512_t* titcontext);
 __declspec(dllexport) bool SetAVX512Context(HANDLE hActiveThread, TITAN_ENGINE_CONTEXT_AVX512_t* titcontext);
-__declspec(dllexport) bool Fill(LPVOID MemoryStart, DWORD MemorySize, PBYTE FillByte); // TODO: remove
 __declspec(dllexport) const DEBUG_EVENT* GetDebugData(); // TODO: remove?
 __declspec(dllexport) void SetCustomHandler(TitanCustomHandler ExceptionId, TITANCALLBACKARG CallBack);
 __declspec(dllexport) void StepInto(TITANCBSTEP traceCallBack);

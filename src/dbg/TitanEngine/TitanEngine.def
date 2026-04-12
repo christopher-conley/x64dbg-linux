@@ -20,7 +20,6 @@ EXPORTS
     SetAVXContext
     GetAVX512Context
     SetAVX512Context
-    Fill
     GetDebugData
     SetCustomHandler
     StepInto
