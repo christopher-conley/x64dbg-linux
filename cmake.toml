@@ -29,6 +29,7 @@ Qt5 = { components = ["Widgets", "WinExtras"] }
 
 [subdir."src/zydis_wrapper"]
 [subdir."src/gui/Src/ThirdPartyLibs/md4c"]
+[subdir."src/third_party"]
 [subdir."src/tests"]
 
 [target.bridge]

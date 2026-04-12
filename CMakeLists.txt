@@ -77,6 +77,16 @@ endif()
 add_subdirectory("src/gui/Src/ThirdPartyLibs/md4c")
 set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
+# Subdirectory: src/third_party
+set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+if(CMAKE_FOLDER)
+	set(CMAKE_FOLDER "${CMAKE_FOLDER}/src/third_party")
+else()
+	set(CMAKE_FOLDER "src/third_party")
+endif()
+add_subdirectory("src/third_party")
+set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
+
 # Subdirectory: src/tests
 set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
 if(CMAKE_FOLDER)
