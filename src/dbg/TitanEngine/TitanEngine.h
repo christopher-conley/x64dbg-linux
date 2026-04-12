@@ -21,6 +21,7 @@ enum TitanAccessType
 
 enum TitanEngineVariable
 {
+    UE_ENGINE_NO_CONSOLE_WINDOW = 4,
     UE_ENGINE_SET_DEBUG_PRIVILEGE = 9,
     UE_ENGINE_SAFE_ATTACH = 10,
     UE_ENGINE_MEMBP_ALT = 11,

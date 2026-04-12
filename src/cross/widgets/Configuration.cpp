@@ -316,6 +316,7 @@ Configuration::Configuration(const ConfigurationPalette & p) : QObject(), noMore
     QMap<QString, bool> engineBool;
     engineBool.insert("ListAllPages", false);
     engineBool.insert("ShowSuspectedCallStack", false);
+    engineBool.insert("NoConsoleWindow", false);
     defaultBools.insert("Engine", engineBool);
 
     QMap<QString, bool> miscBool;

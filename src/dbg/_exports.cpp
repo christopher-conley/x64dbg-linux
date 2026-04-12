@@ -1057,6 +1057,7 @@ extern "C" DLL_EXPORT duint _dbg_sendmessage(DBGMSG type, void* param1, void* pa
         SetEngineVariable(UE_ENGINE_SAFE_ATTACH, settingboolget("Engine", "SafeAttach", false));
         SetEngineVariable(UE_ENGINE_MEMBP_ALT, settingboolget("Engine", "MembpAlt", false));
         SetEngineVariable(UE_ENGINE_DISABLE_ASLR, settingboolget("Engine", "DisableAslr", false));
+        SetEngineVariable(UE_ENGINE_NO_CONSOLE_WINDOW, settingboolget("Engine", "NoConsoleWindow", false));
         bOnlyCipAutoComments = settingboolget("Disassembler", "OnlyCipAutoComments", false);
         bNoSourceLineAutoComments = settingboolget("Disassembler", "NoSourceLineAutoComments", false);
         bListAllPages = settingboolget("Engine", "ListAllPages", false);
