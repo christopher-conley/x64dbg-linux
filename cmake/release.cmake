@@ -60,6 +60,21 @@ function(handle_deps_copied arch)
     endforeach()
 endfunction()
 
+function(copy_debug_engines arch)
+    file(COPY "${ROOT_DIR}/bin/${arch}/TitanEngine.dll" DESTINATION "${RELEASE_MAIN_DIR}/${arch}")
+    foreach(ENGINE_DIR GleeBug StaticEngine)
+        file(MAKE_DIRECTORY "${RELEASE_MAIN_DIR}/${arch}/${ENGINE_DIR}")
+        file(COPY "${ROOT_DIR}/bin/${arch}/${ENGINE_DIR}/TitanEngine.dll" DESTINATION "${RELEASE_MAIN_DIR}/${arch}/${ENGINE_DIR}")
+    endforeach()
+endfunction()
+
+function(copy_debug_engine_symbols arch)
+    foreach(ENGINE_DIR GleeBug StaticEngine)
+        file(MAKE_DIRECTORY "${RELEASE_DIR}/pdb/${arch}/${ENGINE_DIR}")
+        file(COPY "${ROOT_DIR}/bin/${arch}/${ENGINE_DIR}/TitanEngine.pdb" DESTINATION "${RELEASE_DIR}/pdb/${arch}/${ENGINE_DIR}")
+    endforeach()
+endfunction()
+
 handle_deps_copied("x64")
 handle_deps_copied("x32")
 
@@ -84,6 +99,7 @@ file(COPY "${ROOT_DIR}/bin/x32/x32dbg.dll" DESTINATION "${RELEASE_MAIN_DIR}/x32"
 file(COPY "${ROOT_DIR}/bin/x32/x32dbg.exe" DESTINATION "${RELEASE_MAIN_DIR}/x32")
 file(COPY "${ROOT_DIR}/bin/x32/x32gui.dll" DESTINATION "${RELEASE_MAIN_DIR}/x32")
 file(COPY "${ROOT_DIR}/bin/x32/loaddll.exe" DESTINATION "${RELEASE_MAIN_DIR}/x32")
+copy_debug_engines("x32")
 
 # Copy x64 files
 file(COPY "${ROOT_DIR}/bin/x64/x64bridge.dll" DESTINATION "${RELEASE_MAIN_DIR}/x64")
@@ -91,6 +107,7 @@ file(COPY "${ROOT_DIR}/bin/x64/x64dbg.dll" DESTINATION "${RELEASE_MAIN_DIR}/x64"
 file(COPY "${ROOT_DIR}/bin/x64/x64dbg.exe" DESTINATION "${RELEASE_MAIN_DIR}/x64")
 file(COPY "${ROOT_DIR}/bin/x64/x64gui.dll" DESTINATION "${RELEASE_MAIN_DIR}/x64")
 file(COPY "${ROOT_DIR}/bin/x64/loaddll.exe" DESTINATION "${RELEASE_MAIN_DIR}/x64")
+copy_debug_engines("x64")
 
 # Create commithash.txt
 execute_process(
@@ -109,6 +126,8 @@ file(COPY ${PDB_FILES} DESTINATION "${RELEASE_DIR}/pdb")
 
 file(GLOB PDB_X32_FILES "${ROOT_DIR}/bin/x32/*.pdb")
 file(COPY ${PDB_X32_FILES} DESTINATION "${RELEASE_DIR}/pdb/x32")
+copy_debug_engine_symbols("x32")
 
 file(GLOB PDB_X64_FILES "${ROOT_DIR}/bin/x64/*.pdb")
 file(COPY ${PDB_X64_FILES} DESTINATION "${RELEASE_DIR}/pdb/x64")
+copy_debug_engine_symbols("x64")
