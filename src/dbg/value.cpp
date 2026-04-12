@@ -2526,12 +2526,11 @@ duint valfileoffsettova(const char* modname, duint offset)
 {
     SHARED_ACQUIRE(LockModules);
     const auto modInfo = ModInfoFromAddr(ModBaseFromName(modname));
-    if(modInfo && modInfo->fileMapVA)
+    if(modInfo && modInfo->fileMapVA && offset < modInfo->loadedSize)
     {
-        ULONGLONG rva = ConvertFileOffsetToVA(modInfo->fileMapVA, //FileMapVA
-                                              modInfo->fileMapVA + (ULONG_PTR)offset, //Offset inside FileMapVA
-                                              false); //Return without ImageBase
-        return offset < modInfo->loadedSize ? (duint)rva + ModBaseFromName(modname) : 0;
+        ULONGLONG rva = 0;
+        if(ModOffsetToRva(modInfo->headers, modInfo->loadedSize, offset, &rva))
+            return (duint)rva + ModBaseFromName(modname);
     }
     return 0;
 }
@@ -2547,10 +2546,9 @@ duint valvatofileoffset(duint va)
     const auto modInfo = ModInfoFromAddr(va);
     if(modInfo && modInfo->fileMapVA)
     {
-        if(modInfo->loadedSize > MAXDWORD)
-            return 0;
-        ULONGLONG offset = ConvertVAtoFileOffsetEx(modInfo->fileMapVA, (DWORD)modInfo->loadedSize, 0, va - modInfo->base, true, false);
-        return (duint)offset;
+        const auto mappedOffset = ModRvaToOffset(modInfo->fileMapVA, modInfo->headers, modInfo->loadedSize, va - modInfo->base);
+        if(mappedOffset >= modInfo->fileMapVA && mappedOffset < modInfo->fileMapVA + modInfo->loadedSize)
+            return duint(mappedOffset - modInfo->fileMapVA);
     }
     return 0;
 }

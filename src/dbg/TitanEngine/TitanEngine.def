@@ -1,7 +1,5 @@
 LIBRARY TitanEngine
 EXPORTS
-    ConvertVAtoFileOffsetEx
-    ConvertFileOffsetToVA
     MemoryReadSafe
     MemoryWriteSafe
     GetPEBLocation
@@ -39,7 +37,5 @@ EXPORTS
     IsFileBeingDebugged
     TitanOpenProcess
     TitanOpenThread
-    StaticFileLoadW
-    StaticFileUnloadW
     SetEngineVariable
     EngineCheckStructAlignment

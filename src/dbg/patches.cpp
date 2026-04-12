@@ -9,6 +9,7 @@
 #include "debugger.h"
 #include "threading.h"
 #include "module.h"
+#include "filemap.h"
 
 static std::unordered_map<duint, PATCHINFO> patches;
 static std::unordered_map<DWORD, size_t> lastEnumSize;
@@ -264,13 +265,23 @@ int PatchFile(const PATCHINFO* List, int Count, const char* FileName, char* Erro
 
     // Try loading (will fail if SetFileAttributesW fails)
     HANDLE fileHandle;
-    DWORD loadedSize;
+    uint64_t loadedSize;
     HANDLE fileMap;
     ULONG_PTR fileMapVa;
-    if(!StaticFileLoadW(dstPath.c_str(), UE_ACCESS_ALL, false, &fileHandle, &loadedSize, &fileMap, &fileMapVa))
+    if(!MapFileW(dstPath.c_str(), FileMapAccess::All, fileHandle, loadedSize, fileMap, fileMapVa))
     {
         if(Error)
-            strcpy_s(Error, MAX_ERROR_SIZE, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "StaticFileLoad failed")));
+            strcpy_s(Error, MAX_ERROR_SIZE, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Failed to map copied file")));
+
+        return -1;
+    }
+
+    PIMAGE_NT_HEADERS ntHeaders = nullptr;
+    if(ModImageNtHeaders(fileMapVa, loadedSize, &ntHeaders) < 0)
+    {
+        UnmapFileView(fileHandle, loadedSize, fileMap, fileMapVa);
+        if(Error)
+            strcpy_s(Error, MAX_ERROR_SIZE, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Copied file is not a valid PE image")));
 
         return -1;
     }
@@ -281,7 +292,11 @@ int PatchFile(const PATCHINFO* List, int Count, const char* FileName, char* Erro
     for(int i = 0; i < Count; i++)
     {
         // Convert the virtual address to an offset within disk file data
-        unsigned char* ptr = (unsigned char*)ConvertVAtoFileOffsetEx(fileMapVa, loadedSize, moduleBase, List[i].addr, false, true);
+        if(List[i].addr < moduleBase)
+            continue;
+
+        const auto patchRva = List[i].addr - moduleBase;
+        unsigned char* ptr = (unsigned char*)ModRvaToOffset(fileMapVa, ntHeaders, loadedSize, patchRva);
 
         // Skip patches that do not have a raw address
         if(!ptr)
@@ -292,10 +307,10 @@ int PatchFile(const PATCHINFO* List, int Count, const char* FileName, char* Erro
     }
 
     // Unload the file from memory and commit changes to disk
-    if(!StaticFileUnloadW(dstPath.c_str(), true, fileHandle, loadedSize, fileMap, fileMapVa))
+    if(!UnmapFileView(fileHandle, loadedSize, fileMap, fileMapVa, true, true))
     {
         if(Error)
-            strcpy_s(Error, MAX_ERROR_SIZE, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "StaticFileUnload failed")));
+            strcpy_s(Error, MAX_ERROR_SIZE, GuiTranslateText(QT_TRANSLATE_NOOP("DBG", "Failed to flush or unmap copied file")));
 
         return -1;
     }
