@@ -993,7 +993,6 @@ endif()
 
 if(MSVC) # msvc
 	target_link_options(exe PRIVATE
-		"/DEF:${CMAKE_SOURCE_DIR}/src/exe/signaturecheck.def"
 		"/DELAYLOAD:user32.dll"
 		"/DELAYLOAD:wintrust.dll"
 		"/DELAYLOAD:$<TARGET_FILE_NAME:bridge>"
@@ -1026,6 +1025,8 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4) # x86
 	set_target_properties(exe PROPERTIES
 		OUTPUT_NAME
 			x32dbg
+		ARCHIVE_OUTPUT_NAME
+			x32dbg_exe
 		PDB_NAME
 			x32dbg_exe
 	)
@@ -1035,6 +1036,8 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8) # x64
 	set_target_properties(exe PROPERTIES
 		OUTPUT_NAME
 			x64dbg
+		ARCHIVE_OUTPUT_NAME
+			x64dbg_exe
 		PDB_NAME
 			x64dbg_exe
 	)
@@ -1114,12 +1117,6 @@ endif()
 target_link_libraries(headless PRIVATE
 	bridge
 )
-
-if(MSVC) # msvc
-	target_link_options(headless PRIVATE
-		"/DEF:${CMAKE_SOURCE_DIR}/src/exe/signaturecheck.def"
-	)
-endif()
 
 add_dependencies(headless
 	exe

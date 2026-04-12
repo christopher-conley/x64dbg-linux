@@ -13,7 +13,7 @@ if(Qt5_FOUND)
     return()
 endif()
 
-if(Qt5_FIND_REQUIRED AND MSVC)
+if(Qt5_FIND_REQUIRED AND WIN32 AND (MSVC OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC"))
     message(STATUS "Downloading Qt5...")
     # Fix warnings about DOWNLOAD_EXTRACT_TIMESTAMP
     if(POLICY CMP0135)
@@ -35,5 +35,22 @@ if(Qt5_FIND_REQUIRED AND MSVC)
     FetchContent_MakeAvailable(Qt5)
     unset(FETCHCONTENT_QUIET)
     set(Qt5_ROOT ${qt5_SOURCE_DIR})
-    find_package(Qt5 COMPONENTS ${Qt5_FIND_COMPONENTS} CONFIG REQUIRED)
+    find_package(Qt5 COMPONENTS ${Qt5_FIND_COMPONENTS} QUIET CONFIG)
+endif()
+
+if(Qt5_FOUND)
+    if(NOT Qt5_FIND_QUIETLY)
+        message(STATUS "Qt5 found: ${Qt5_DIR}")
+    endif()
+    return()
+endif()
+
+set(Qt5_FOUND FALSE)
+
+if(Qt5_FIND_REQUIRED)
+    string(JOIN ", " _qt5_required_components ${Qt5_FIND_COMPONENTS})
+    message(FATAL_ERROR
+        "Qt5 not found. Required components: ${_qt5_required_components}. "
+        "For MSVC builds, Qt can be auto-downloaded. For other toolchains, install a compatible Qt SDK and set Qt5_DIR or CMAKE_PREFIX_PATH so CMake can find it."
+    )
 endif()

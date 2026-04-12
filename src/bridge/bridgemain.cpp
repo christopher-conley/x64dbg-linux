@@ -281,12 +281,12 @@ BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config)
     return nullptr;
 }
 
-BRIDGE_IMPEXP HMODULE WINAPI BridgeLoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure)
+BRIDGE_IMPEXP HMODULE BridgeLoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure)
 {
     return pLoadLibraryCheckedW(szDll, allowFailure);
 }
 
-BRIDGE_IMPEXP HMODULE WINAPI BridgeLoadLibraryCheckedA(const char* szDll, bool allowFailure)
+BRIDGE_IMPEXP HMODULE BridgeLoadLibraryCheckedA(const char* szDll, bool allowFailure)
 {
     return pLoadLibraryCheckedA(szDll, allowFailure);
 }

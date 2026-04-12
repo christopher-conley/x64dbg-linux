@@ -9,33 +9,23 @@
 #define _countof(array) (sizeof(array) / sizeof(array[0]))
 #endif // _countof
 
-// TODO: header
-enum TraceRecordByteType_2bit
-{
-    _InstructionBody = 0,
-    _InstructionHeading = 1,
-    _InstructionTailing = 2,
-    _InstructionOverlapped = 3,
-    _Unknown = 4
-};
-
 static uint getTraceRecordInstructionSize(TRACERECORDBYTETYPE(*getTraceRecordByteType)(duint), duint address, duint remainingSize)
 {
     if(getTraceRecordByteType == nullptr || remainingSize == 0)
         return 0;
 
     auto currentByteType = getTraceRecordByteType(address);
-    if(currentByteType != TraceRecordByteType_2bit::_InstructionHeading
-            && currentByteType != TraceRecordByteType_2bit::_InstructionOverlapped)
+    if(currentByteType != InstructionHeading
+            && currentByteType != InstructionOverlapped)
         return 0;
 
     auto maxLookahead = std::min<duint>(remainingSize - 1, 14); // x86/x64 instructions are at most 15 bytes long
     for(duint m = 1; m <= maxLookahead; m++)
     {
         auto byteType = getTraceRecordByteType(address + m);
-        if(byteType == TraceRecordByteType_2bit::_InstructionTailing)
+        if(byteType == InstructionTailing)
             return m + 1;
-        if(byteType == TraceRecordByteType_2bit::_InstructionHeading || byteType == TraceRecordByteType_2bit::_InstructionOverlapped)
+        if(byteType == InstructionHeading || byteType == InstructionOverlapped)
             return m;
     }
 

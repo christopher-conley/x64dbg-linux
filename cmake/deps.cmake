@@ -88,26 +88,37 @@ if(NOT WIN32)
     return()
 endif()
 
-if(NOT TARGET Qt5::windeployqt AND Qt5_FOUND AND TARGET Qt5::qmake)
-    get_target_property(_qt5_qmake_location Qt5::qmake IMPORTED_LOCATION)
+if(NOT TARGET Qt5::windeployqt)
+    if(Qt5_FOUND AND TARGET Qt5::qmake)
+        get_target_property(_qt5_qmake_location Qt5::qmake IMPORTED_LOCATION)
 
-    execute_process(
-        COMMAND "${_qt5_qmake_location}" -query QT_INSTALL_PREFIX
-        RESULT_VARIABLE return_code
-        OUTPUT_VARIABLE qt5_install_prefix
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+        execute_process(
+            COMMAND "${_qt5_qmake_location}" -query QT_INSTALL_PREFIX
+            RESULT_VARIABLE return_code
+            OUTPUT_VARIABLE qt5_install_prefix
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
 
-    set(imported_location "${qt5_install_prefix}/bin/windeployqt.exe")
-    if(NOT EXISTS ${imported_location})
-        message(FATAL_ERROR "Qt5 tool not found: ${imported_location}")
+        set(imported_location "${qt5_install_prefix}/bin/windeployqt.exe")
+        if(EXISTS ${imported_location})
+            add_executable(Qt5::windeployqt IMPORTED)
+
+            set_target_properties(Qt5::windeployqt PROPERTIES
+                IMPORTED_LOCATION ${imported_location}
+            )
+        endif()
     endif()
 
-    add_executable(Qt5::windeployqt IMPORTED)
-
-    set_target_properties(Qt5::windeployqt PROPERTIES
-        IMPORTED_LOCATION ${imported_location}
-    )
+    if(NOT TARGET Qt5::windeployqt)
+        # Fallback: search for windeployqt on PATH
+        find_program(_qt5_windeployqt_from_path NAMES windeployqt.exe windeployqt)
+        if(_qt5_windeployqt_from_path)
+            add_executable(Qt5::windeployqt IMPORTED)
+            set_target_properties(Qt5::windeployqt PROPERTIES
+                IMPORTED_LOCATION ${_qt5_windeployqt_from_path}
+            )
+        endif()
+    endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -117,6 +128,9 @@ else()
 endif()
 
 get_target_property(_qt5_windeployqt_location Qt5::windeployqt IMPORTED_LOCATION)
+if(NOT _qt5_windeployqt_location)
+    message(FATAL_ERROR "Could not locate Qt5::windeployqt. Install Qt with windeployqt and ensure it is discoverable (in PATH or via Qt5::qmake).")
+endif()
 
 file(GLOB_RECURSE DEPS_INPUT_DLLS "${DEPS_DIR}/*.dll")
 list(SORT DEPS_INPUT_DLLS)
