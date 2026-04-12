@@ -19,11 +19,6 @@ enum TitanAccessType
     UE_ACCESS_ALL = 2,
 };
 
-enum TitanHideLevel
-{
-    UE_HIDE_PEBONLY = 0,
-};
-
 enum TitanEngineVariable
 {
     UE_ENGINE_SET_DEBUG_PRIVILEGE = 9,
@@ -315,7 +310,6 @@ __declspec(dllexport) bool MemoryWriteSafe(HANDLE hProcess, LPVOID lpBaseAddress
 // TitanEngine.Hider.functions:
 __declspec(dllexport) ULONG_PTR GetPEBLocation(HANDLE hProcess);
 __declspec(dllexport) ULONG_PTR GetTEBLocation(HANDLE hThread);
-__declspec(dllexport) bool HideDebugger(HANDLE hProcess, TitanHideLevel HideLevel); // TODO: remove
 // TitanEngine.Debugger.functions:
 __declspec(dllexport) PROCESS_INFORMATION* InitDebugW(const wchar_t* szFileName, const wchar_t* szCommandLine, const wchar_t* szCurrentFolder);
 __declspec(dllexport) bool StopDebug();
