@@ -14,6 +14,14 @@ from typing import Iterable
 
 FINAL_RE = re.compile(r"^\[x64dbg-test\] FINAL status=(?P<status>pass|fail) asserts=(?P<asserts>\d+)(?: reason=(?P<reason>\S+))?$")
 TEST_LOG_RE = re.compile(r"^\[x64dbg-test\]")
+ARTIFACT_GITIGNORE = ".gitignore"
+ARTIFACT_GITIGNORE_MARKER = "# x64dbg-test\n*"
+DEBUG_ENGINE_VALUES = {
+    "TitanEngine": 0,
+    "GleeBug": 1,
+    "StaticEngine": 2,
+}
+DEBUG_ENGINE_ALIASES = {name.lower(): name for name in DEBUG_ENGINE_VALUES}
 
 
 @dataclass
@@ -37,11 +45,21 @@ class TestResult:
     artifact_dir: Path
 
 
+def normalize_engine(engine: str) -> str:
+    canonical = DEBUG_ENGINE_ALIASES.get(engine.strip().lower())
+    if canonical is None:
+        choices = ", ".join(sorted(DEBUG_ENGINE_VALUES))
+        raise argparse.ArgumentTypeError(f"invalid engine '{engine}', choose from: {choices}")
+    return canonical
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run x64dbg convention-based headless tests.")
     parser.add_argument("tests", nargs="*", help="Optional test ids relative to src/tests, for example: issue3808 or membp/write")
     parser.add_argument("--arch", choices=["x64", "x32", "x86"], default="x64", help="Architecture to run. Default: x64. x86 is accepted as an alias for x32")
+    parser.add_argument("--engine", type=normalize_engine, choices=sorted(DEBUG_ENGINE_VALUES), default="TitanEngine", help="Debug engine to use. Default: TitanEngine")
     parser.add_argument("--headless", help="Path to headless.exe. Defaults to bin/<arch>/headless.exe")
+    parser.add_argument("--console-window", action="store_true", help="Allow debuggee console windows. Default: suppress console windows during tests")
     parser.add_argument("--timeout", type=int, default=90, help="Per-test timeout in seconds. Default: 90")
     parser.add_argument("--artifacts-dir", help="Directory to keep artifacts in. Defaults to a temporary directory")
     parser.add_argument("--keep-artifacts", action="store_true", help="Keep artifacts even if all tests pass")
@@ -147,6 +165,52 @@ def discover_tests(repo_root: Path, arch: str, requested: set[str], validate_run
     return tests
 
 
+def ensure_debug_engine_runtime(headless: Path, engine: str) -> None:
+    engine_runtime = {
+        "TitanEngine": headless.parent / "TitanEngine.dll",
+        "GleeBug": headless.parent / "GleeBug" / "TitanEngine.dll",
+        "StaticEngine": headless.parent / "StaticEngine" / "TitanEngine.dll",
+    }[engine]
+    ensure_file(engine_runtime, f"{engine} debug engine runtime")
+
+
+def is_managed_dir(path: Path) -> bool:
+    gitignore = path / ARTIFACT_GITIGNORE
+    if not gitignore.is_file():
+        return False
+    contents = gitignore.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n").strip()
+    return ARTIFACT_GITIGNORE_MARKER in contents
+
+
+def ensure_managed_dir(path: Path) -> None:
+    if path.exists():
+        if not path.is_dir():
+            raise RuntimeError(f"Artifact path is not a directory: {path}")
+        if is_managed_dir(path):
+            return
+        if any(path.iterdir()):
+            raise RuntimeError(f"Refusing to use non-empty unmanaged artifact directory: {path}")
+    path.mkdir(parents=True, exist_ok=True)
+    (path / ARTIFACT_GITIGNORE).write_text("# x64dbg-test\n*\n", encoding="utf-8")
+
+
+def remove_managed_dir(path: Path) -> None:
+    if not path.exists():
+        return
+    if not is_managed_dir(path):
+        raise RuntimeError(f"Refusing to delete unmanaged artifact directory: {path}")
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def write_headless_ini(userdir: Path, engine: str, no_console_window: bool) -> None:
+    (userdir / "headless.ini").write_text(
+        "[Engine]\n"
+        f"DebugEngine={DEBUG_ENGINE_VALUES[engine]}\n"
+        f"NoConsoleWindow={1 if no_console_window else 0}\n",
+        encoding="utf-8",
+    )
+
+
 def parse_final_line(log_path: Path) -> tuple[bool, int | None, str]:
     if not log_path.is_file():
         return False, None, "missing_log"
@@ -187,14 +251,15 @@ def run_fallback_check(check_path: Path, log_path: Path, userdir: Path, runtime_
     return True, "pass"
 
 
-def run_test(headless: Path, test: TestCase, timeout: int, artifact_root: Path) -> TestResult:
+def run_test(headless: Path, test: TestCase, timeout: int, artifact_root: Path, engine: str, no_console_window: bool) -> TestResult:
     artifact_dir = artifact_root / test.rel.replace("/", "__")
     if artifact_dir.exists():
-        shutil.rmtree(artifact_dir, ignore_errors=True)
-    artifact_dir.mkdir(parents=True, exist_ok=True)
+        remove_managed_dir(artifact_dir)
+    ensure_managed_dir(artifact_dir)
 
     userdir = artifact_dir / "userdir"
     userdir.mkdir(parents=True, exist_ok=True)
+    write_headless_ini(userdir, engine, no_console_window)
     log_path = artifact_dir / "debug.log"
     stdout_path = artifact_dir / "stdout.txt"
 
@@ -289,6 +354,7 @@ def main() -> int:
     args.arch = normalize_arch(args.arch)
     repo_root = Path(__file__).resolve().parents[2]
     headless = ensure_file(Path(args.headless) if args.headless else repo_root / "bin" / args.arch / "headless.exe", "headless executable")
+    ensure_debug_engine_runtime(headless, args.engine)
 
     requested = {name.replace("\\", "/") for name in args.tests}
     tests = discover_tests(repo_root, args.arch, requested, validate_runtime=not args.list)
@@ -302,18 +368,18 @@ def main() -> int:
     temporary_root = False
     if args.artifacts_dir:
         artifact_root = Path(args.artifacts_dir).resolve()
-        artifact_root.mkdir(parents=True, exist_ok=True)
+        ensure_managed_dir(artifact_root)
     else:
-        artifact_parent = Path(tempfile.gettempdir()) / f"x64dbg-tests-{args.arch}"
+        artifact_parent = Path(tempfile.gettempdir()) / f"x64dbg-tests-{args.arch}-{args.engine}"
         artifact_parent.mkdir(parents=True, exist_ok=True)
         artifact_root = artifact_parent / secrets.token_hex(8)
-        artifact_root.mkdir(parents=True, exist_ok=False)
+        ensure_managed_dir(artifact_root)
         temporary_root = True
 
     results: list[TestResult] = []
     overall_success = True
     for test in tests:
-        result = run_test(headless, test, args.timeout, artifact_root)
+        result = run_test(headless, test, args.timeout, artifact_root, args.engine, not args.console_window)
         results.append(result)
         print_test_result(result)
         print_failure_logs(result)
@@ -323,7 +389,7 @@ def main() -> int:
     print_results(results, artifact_root if keep_artifacts else None)
 
     if temporary_root and not keep_artifacts and artifact_root.exists():
-        shutil.rmtree(artifact_root, ignore_errors=True)
+        remove_managed_dir(artifact_root)
 
     return 0 if overall_success else 1
 

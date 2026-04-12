@@ -49,6 +49,15 @@ Run a single test:
 py src/tests/run.py --arch x64 issue3808
 ```
 
+Run with a specific debug engine:
+
+```powershell
+py src/tests/run.py --arch x64 --engine GleeBug membp/range-write
+```
+
+By default the runner suppresses debuggee console windows with `[Engine].NoConsoleWindow=1`.
+Use `--console-window` to allow them again.
+
 Run a single variant from a shared directory:
 
 ```powershell
@@ -66,19 +75,21 @@ The runner prints each test result as soon as that test finishes, then prints th
 By default temporary artifacts are created under:
 
 ```text
-%TEMP%/x64dbg-tests-<arch>/<randomid>/
+%TEMP%/x64dbg-tests-<arch>-<engine>/<randomid>/
 ```
 
 This keeps all temporary test runs under one parent directory for easier cleanup.
 
-CI also runs the active suite in GitHub Actions for both architectures:
+CI also runs the active suite in GitHub Actions for both architectures and both debugger engines:
 
-- x64 via `py src/tests/run.py --arch x64`
-- x86 via `py src/tests/run.py --arch x86` (`x86` is accepted as an alias for `x32`)
+- x64 via `py src/tests/run.py --arch x64 --engine TitanEngine` and `--engine GleeBug`
+- x86 via `py src/tests/run.py --arch x86 --engine TitanEngine` and `--engine GleeBug` (`x86` is accepted as an alias for `x32`)
 
 The runner launches one `headless.exe -testing` process per test with:
 
 - isolated `-userdir`
+- a per-test `headless.ini` that selects the requested `[Engine].DebugEngine`
+- `[Engine].NoConsoleWindow=1` by default to avoid console popup spam during automated tests
 - explicit `-plugin` preloads from the test runtime directory
 - `RedirectLog` to a per-test log file
 - `-cf` pointing at the built `test.txt`
