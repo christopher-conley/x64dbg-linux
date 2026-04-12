@@ -14,7 +14,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run Formatter
         run: .github/format/AStyleHelper.exe Silent || true
@@ -35,7 +35,7 @@ jobs:
 
       - name: Upload Patch
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: format-patch
           path: format.patch

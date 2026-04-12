@@ -19,18 +19,21 @@ endfunction()
 add_executable(test_membp_target target.cpp)
 target_compile_definitions(test_membp_target PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_features(test_membp_target PRIVATE cxx_std_17)
-target_compile_options(test_membp_target PRIVATE /O2 /GS-)
+if(MSVC)
+    target_compile_options(test_membp_target PRIVATE /GS-)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(test_membp_target PRIVATE -fno-stack-protector)
+endif()
 set_target_properties(test_membp_target PROPERTIES OUTPUT_NAME membp)
 x64dbg_set_output_dir(test_membp_target "${X64DBG_TEST_OUTPUT_DIR}")
 
 target_link_libraries(test_membp_target PRIVATE kernel32)
 target_link_options(test_membp_target PRIVATE
-    "/entry:start"
-    "/subsystem:console"
-    "/incremental:no"
-    "/merge:.mbd2=.mbc"
-    "/merge:.mbd3=.mbc"
-    "/section:.mbc,ERW"
+    "LINKER:/entry:start"
+    "LINKER:/incremental:no"
+    "LINKER:/merge:.mbd2=.mbc"
+    "LINKER:/merge:.mbd3=.mbc"
+    "LINKER:SHELL:/section:.mbc,ERW"
 )
 
 add_library(test_membp_plugin SHARED plugin.cpp)

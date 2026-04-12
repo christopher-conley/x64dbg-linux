@@ -84,7 +84,6 @@ bool ExHandlerGetSEH(std::vector<duint> & Entries)
     return true;
 }
 
-#pragma pack(8)
 struct VEH_ENTRY_XP
 {
     duint Flink;
@@ -132,7 +131,6 @@ bool ExHandlerGetVEH(std::vector<duint> & Entries)
     return ExHandlerGetVCH(Entries, true);
 }
 
-#pragma pack(8)
 struct VEH_ENTRY_VISTA
 {
     duint Flink;

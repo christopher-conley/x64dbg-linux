@@ -228,7 +228,7 @@ static bool FileExists(const wchar_t* szFullPath)
     return (attrib != INVALID_FILE_ATTRIBUTES && !(attrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-HMODULE WINAPI LoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure)
+extern "C" HMODULE LoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure)
 {
     std::wstring fullDllPath;
     if(wcschr(szDll, L'\\') == nullptr)
@@ -284,7 +284,7 @@ HMODULE WINAPI LoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure)
     return hModule;
 }
 
-HMODULE WINAPI LoadLibraryCheckedA(const char* szDll, bool allowFailure)
+extern "C" HMODULE LoadLibraryCheckedA(const char* szDll, bool allowFailure)
 {
     return LoadLibraryCheckedW(Utf8ToUtf16(szDll).c_str(), allowFailure);
 }

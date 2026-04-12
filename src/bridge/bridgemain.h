@@ -56,9 +56,9 @@ typedef struct _BRIDGE_CONFIG
 /// <returns>On error it returns a non-null error message.</returns>
 BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config);
 
-BRIDGE_IMPEXP HMODULE WINAPI BridgeLoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure);
+BRIDGE_IMPEXP HMODULE BridgeLoadLibraryCheckedW(const wchar_t* szDll, bool allowFailure);
 
-BRIDGE_IMPEXP HMODULE WINAPI BridgeLoadLibraryCheckedA(const char* szDll, bool allowFailure);
+BRIDGE_IMPEXP HMODULE BridgeLoadLibraryCheckedA(const char* szDll, bool allowFailure);
 
 /// <summary>
 /// Start the bridge.

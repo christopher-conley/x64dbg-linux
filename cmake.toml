@@ -29,6 +29,7 @@ Qt5 = { components = ["Widgets", "WinExtras"] }
 
 [subdir."src/zydis_wrapper"]
 [subdir."src/gui/Src/ThirdPartyLibs/md4c"]
+[subdir."src/third_party"]
 [subdir."src/tests"]
 
 [target.bridge]
@@ -200,7 +201,6 @@ link-libraries = [
     "Wintrust",
 ]
 msvc.link-options = [
-    "/DEF:${CMAKE_SOURCE_DIR}/src/exe/signaturecheck.def",
     "/DELAYLOAD:user32.dll",
     "/DELAYLOAD:wintrust.dll",
     "/DELAYLOAD:$<TARGET_FILE_NAME:bridge>",
@@ -217,6 +217,8 @@ x86.dependencies = ["launcher"]
 [target.exe.properties]
 x86.OUTPUT_NAME = "x32dbg"
 x64.OUTPUT_NAME = "x64dbg"
+x86.ARCHIVE_OUTPUT_NAME = "x32dbg_exe"
+x64.ARCHIVE_OUTPUT_NAME = "x64dbg_exe"
 x86.PDB_NAME = "x32dbg_exe"
 x64.PDB_NAME = "x64dbg_exe"
 WIN32_EXECUTABLE = "ON"
@@ -251,9 +253,6 @@ sources = [
 ]
 link-libraries = [
     "::bridge",
-]
-msvc.link-options = [
-    "/DEF:${CMAKE_SOURCE_DIR}/src/exe/signaturecheck.def",
 ]
 dependencies = ["exe"]
 
