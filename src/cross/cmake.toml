@@ -102,5 +102,5 @@ private-include-directories = [
 ]
 link-libraries = [
     "x64dbg::widgets",
-    "dl",
+    "::ElfBug",
 ]

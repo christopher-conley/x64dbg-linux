@@ -13,7 +13,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(CROSS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(widgets_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../gui/Src")
-# Zydis + md4c
+# Zydis + md4c + ElfBug
 add_subdirectory(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../zydis_wrapper
     ${CMAKE_CURRENT_BINARY_DIR}/zydis_wrapper
@@ -21,6 +21,10 @@ add_subdirectory(
 add_subdirectory(
     ${widgets_SOURCE_DIR}/ThirdPartyLibs/md4c
     ${CMAKE_CURRENT_BINARY_DIR}/md4c
+)
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug
+    ${CMAKE_CURRENT_BINARY_DIR}/ElfBug
 )
 
 include(${CROSS_DIR}/widgets/Qt.cmake)
@@ -124,7 +128,6 @@ add_executable(x64dbg
     main.cpp
     core/DbgAdapter.cpp
     core/DbgAdapter.h
-    core/ElfBugLoader.h
     core/LinuxArchitecture.h
     gui/MainWindow.cpp
     gui/MainWindow.h
@@ -141,5 +144,5 @@ target_include_directories(x64dbg PRIVATE
 target_link_libraries(x64dbg PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     x64dbg_widgets
-    ${CMAKE_DL_LIBS}
+    ElfBug
 )

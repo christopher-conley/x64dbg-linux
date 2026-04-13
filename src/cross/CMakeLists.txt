@@ -245,7 +245,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 		cmake.toml
 		"debugger/core/DbgAdapter.cpp"
 		"debugger/core/DbgAdapter.h"
-		"debugger/core/ElfBugLoader.h"
 		"debugger/core/LinuxArchitecture.h"
 		"debugger/gui/MainWindow.cpp"
 		"debugger/gui/MainWindow.h"
@@ -264,9 +263,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 		debugger
 	)
 
+	if(NOT TARGET ElfBug)
+		message(FATAL_ERROR "Target \"ElfBug\" referenced by \"debugger\" does not exist!")
+	endif()
+
 	target_link_libraries(debugger PRIVATE
 		x64dbg::widgets
-		dl
+		ElfBug
 	)
 
 	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)

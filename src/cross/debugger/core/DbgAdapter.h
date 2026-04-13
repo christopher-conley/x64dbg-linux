@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include "core/ElfBugLoader.h"
+#include <ElfBug/api/elfbug_api.h>
 #include "RegisterContext.h"
 #include "Bridge.h"
 
@@ -29,7 +29,7 @@ public:
     bool Stop() const; //discardable
 
     [[nodiscard]] bool isActive() const;
-    [[nodiscard]] bool isEngineLoaded() const { return mApi.isLoaded(); }
+    [[nodiscard]] bool isEngineLoaded() const { return mDebugger != nullptr; }
     [[nodiscard]] duint entryPoint() const { return mEntryPoint; }
 
     [[nodiscard]] bool toggleBreakpoint(duint addr) const;
@@ -57,7 +57,6 @@ private:
 
     void emitStoppedState(const QString & reason);
 
-    ElfBugApi mApi;
     ElfBugDebugger* mDebugger = nullptr;
     duint mEntryPoint = 0;
 };

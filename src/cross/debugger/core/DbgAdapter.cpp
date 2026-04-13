@@ -1,6 +1,5 @@
 #include "core/DbgAdapter.h"
 #include <cassert>
-#include <QCoreApplication>
 
 static REGDUMP toRegDump(const ElfBugRegisters & regs)
 {
@@ -55,22 +54,14 @@ DbgAdapter::~DbgAdapter()
 {
     DbgSetBreakpointQuery(nullptr);
     sInstance.store(nullptr);
-    if(mDebugger && mApi.Destroy)
-        mApi.Destroy(mDebugger);
-    mApi.unload();
+    if(mDebugger)
+        ElfBugDestroy(mDebugger);
 }
 
 bool DbgAdapter::loadEngine()
 {
-    if(mApi.isLoaded())
+    if(mDebugger)
         return true;
-
-    const auto enginePath = QCoreApplication::applicationDirPath() + "/engine/libElfBug.so";
-    if(!mApi.load(enginePath.toUtf8().constData()))
-    {
-        emit logMessage(QString("[x64dbg] Failed to load engine: %1").arg(dlerror()));
-        return false;
-    }
 
     ElfBugCallbacks cb = {};
     cb.onCreateProcess = &DbgAdapter::onCreateProcess;
@@ -83,31 +74,14 @@ bool DbgAdapter::loadEngine()
     cb.onDebugString = &DbgAdapter::onDebugString;
     cb.userdata = this;
 
-    mDebugger = mApi.Create(&cb);
+    mDebugger = ElfBugCreate(&cb);
     if(!mDebugger)
     {
         emit logMessage("[x64dbg] ElfBugCreate failed");
-        mApi.unload();
         return false;
     }
 
-    const char* missing[16];
-    int nMissing = mApi.missingOptional(missing, 16);
-    if(nMissing > 0)
-    {
-        QString list;
-        for(int i = 0; i < nMissing; i++)
-        {
-            if(i > 0)
-                list += ", ";
-            list += missing[i];
-        }
-        emit logMessage(QString("[x64dbg] Engine loaded (missing optional: %1)").arg(list));
-    }
-    else
-    {
-        emit logMessage("[x64dbg] Engine loaded");
-    }
+    emit logMessage("[x64dbg] Engine loaded");
     return true;
 }
 
@@ -115,17 +89,13 @@ bool DbgAdapter::loadEngine()
 
 bool DbgAdapter::read(const duint addr, void* dest, const duint size)
 {
-    if(!mApi.MemRead)
-        return false;
-    return mApi.MemRead(mDebugger, addr, dest, size);
+    return ElfBugMemRead(mDebugger, addr, dest, size);
 }
 
 bool DbgAdapter::getRange(const duint addr, duint & base, duint & size)
 {
-    if(!mApi.MemFindBaseAddr)
-        return false;
     uint64_t b, s;
-    if(!mApi.MemFindBaseAddr(mDebugger, addr, &b, &s))
+    if(!ElfBugMemFindBaseAddr(mDebugger, addr, &b, &s))
         return false;
     base = b;
     size = s;
@@ -134,80 +104,64 @@ bool DbgAdapter::getRange(const duint addr, duint & base, duint & size)
 
 bool DbgAdapter::isCodePtr(const duint addr)
 {
-    if(!mApi.MemIsCodePtr)
-        return false;
-    return mApi.MemIsCodePtr(mDebugger, addr);
+    return ElfBugMemIsCodePtr(mDebugger, addr);
 }
 
 bool DbgAdapter::isValidPtr(const duint addr)
 {
-    if(!mApi.MemIsValidPtr)
-        return false;
-    return mApi.MemIsValidPtr(mDebugger, addr);
+    return ElfBugMemIsValidPtr(mDebugger, addr);
 }
 
 // -- Debugger control --
 
 bool DbgAdapter::launch(const char* path) const
 {
-    if(!mApi.Init)
-        return false;
-    return mApi.Init(mDebugger, path);
+    return ElfBugInit(mDebugger, path);
 }
 
 void DbgAdapter::Start() const
 {
-    if(mApi.Start)
-        mApi.Start(mDebugger);
+    ElfBugStart(mDebugger);
 }
 
 void DbgAdapter::Continue() const
 {
-    if(mApi.Continue)
-        mApi.Continue(mDebugger);
+    ElfBugContinue(mDebugger);
 }
 
 void DbgAdapter::StepInto() const
 {
-    if(mApi.StepInto)
-        mApi.StepInto(mDebugger);
+    ElfBugStepInto(mDebugger);
 }
 
 void DbgAdapter::Pause() const
 {
-    if(mApi.Pause)
-        mApi.Pause(mDebugger);
+    ElfBugPause(mDebugger);
 }
 
 bool DbgAdapter::Stop() const
 {
-    if(!mApi.Stop)
-        return false;
-    return mApi.Stop(mDebugger);
+    return ElfBugStop(mDebugger);
 }
 
 bool DbgAdapter::isActive() const
 {
-    if(!mApi.GetPid)
-        return false;
-    return mApi.GetPid(mDebugger) > 0;
+    return ElfBugGetPid(mDebugger) > 0;
 }
 
 bool DbgAdapter::toggleBreakpoint(const duint addr) const
 {
-    if(!isActive() || !mApi.HasBreakpoint || !mApi.SetBreakpoint || !mApi.DeleteBreakpoint)
+    if(!isActive())
         return false;
 
-    if(mApi.HasBreakpoint(mDebugger, addr))
-        return mApi.DeleteBreakpoint(mDebugger, addr);
-    return mApi.SetBreakpoint(mDebugger, addr);
+    if(ElfBugHasBreakpoint(mDebugger, addr))
+        return ElfBugDeleteBreakpoint(mDebugger, addr);
+    return ElfBugSetBreakpoint(mDebugger, addr);
 }
 
 bool DbgAdapter::hasBreakpoint(const duint addr) const
 {
-    if(!mApi.HasBreakpoint)
-        return false;
-    return mApi.HasBreakpoint(mDebugger, addr);
+    return ElfBugHasBreakpoint(mDebugger, addr);
 }
 
 BPXTYPE DbgAdapter::queryBreakpoint(duint addr)
@@ -221,8 +175,7 @@ BPXTYPE DbgAdapter::queryBreakpoint(duint addr)
 void DbgAdapter::emitStoppedState(const QString & reason)
 {
     ElfBugRegisters regs = {};
-    if(mApi.GetRegisters)
-        mApi.GetRegisters(mDebugger, &regs);
+    ElfBugGetRegisters(mDebugger, &regs);
     auto dump = toRegDump(regs);
     emit registersUpdated(dump);
     emit stopped(dump.regcontext.cip, reason);
@@ -246,8 +199,7 @@ void DbgAdapter::onSystemBreakpoint(void* userdata)
 {
     auto* self = static_cast<DbgAdapter*>(userdata);
     ElfBugRegisters regs = {};
-    if(self->mApi.GetRegisters)
-        self->mApi.GetRegisters(self->mDebugger, &regs);
+    ElfBugGetRegisters(self->mDebugger, &regs);
     self->mEntryPoint = regs.rip;
 
     emit self->logMessage(QString("[x64dbg] Entry point: 0x%1").arg(self->mEntryPoint, 0, 16));

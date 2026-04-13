@@ -69,8 +69,6 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Gui/ReleaseNotesDialog.ui
     ${widgets_SOURCE_DIR}/Gui/ImageTextBrowser.cpp
     ${widgets_SOURCE_DIR}/Gui/ImageTextBrowser.h
-    ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
-    ${widgets_SOURCE_DIR}/Gui/RegistersView.h
     ${widgets_SOURCE_DIR}/Memory/MemoryPage.cpp
     ${widgets_SOURCE_DIR}/Memory/MemoryPage.h
     ${widgets_SOURCE_DIR}/Utils/ActionHelpers.h
@@ -100,6 +98,13 @@ target_include_directories(x64dbg_widgets PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${widgets_SOURCE_DIR}
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(x64dbg_widgets PRIVATE
+        ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
+        ${widgets_SOURCE_DIR}/Gui/RegistersView.h
+    )
+endif()
 
 source_group(TREE ${widgets_SOURCE_DIR} FILES ${widgets_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX hook FILES ${hook_SOURCES})

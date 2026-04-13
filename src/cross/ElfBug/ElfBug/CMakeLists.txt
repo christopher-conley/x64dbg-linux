@@ -1,4 +1,4 @@
-add_library(ElfBug SHARED
+add_library(ElfBug STATIC
     core/Debugger.cpp
     core/Debugger.Loop.cpp
     core/Debugger.Loop.Signal.cpp
@@ -15,9 +15,3 @@ add_library(ElfBug SHARED
 )
 
 target_include_directories(ElfBug PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_compile_definitions(ElfBug PRIVATE ELFBUG_BUILDING)
-set_target_properties(ElfBug PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    CXX_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN ON
-)
