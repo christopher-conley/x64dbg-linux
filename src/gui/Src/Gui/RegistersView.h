@@ -16,6 +16,9 @@ class CPUMultiDump;
 #endif
 
 class QPushButton;
+#ifndef _WIN32
+class RegistersCanvas;
+#endif
 
 #ifdef _WIN32
 typedef struct
@@ -152,8 +155,8 @@ public:
     ~RegistersView();
 
 #ifndef _WIN32
-    QSize minimumSizeHint() const override;
-    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override { return QSize(0, 0); }
+    QSize sizeHint() const override { return QSize(200, 400); }
 #endif
 
     static void* operator new(size_t size);
@@ -193,9 +196,6 @@ protected:
     virtual void paintEvent(QPaintEvent* event) override;
     virtual void keyPressEvent(QKeyEvent* event) override;
     virtual void wheelEvent(QWheelEvent* event) override;
-#ifndef _WIN32
-    virtual void resizeEvent(QResizeEvent* event) override;
-#endif
 
     // use-in-class-only methods
     void drawRegister(QPainter* p, REGISTER_NAME reg, char* value);
@@ -297,9 +297,9 @@ protected:
     void autoUpdateXMMModesAndRefresh();
     dsint mCip;
 #ifndef _WIN32
-    QSize mCachedMinSizeHint;
-    void updateScrollRanges();
-    void updateMinimumSize();
+    friend class RegistersCanvas;
+    RegistersCanvas* mCanvas = nullptr;
+    void updateCanvasSize();
 #endif
 #ifdef _WIN32
     std::vector<std::pair<const char*, uint8_t>> mHighlightRegs;

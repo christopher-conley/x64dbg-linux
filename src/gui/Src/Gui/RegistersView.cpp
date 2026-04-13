@@ -3,8 +3,6 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
-#include <QScrollBar>
-#include <QResizeEvent>
 #include <stdint.h>
 #include <new>
 #include <cstdlib>
@@ -29,6 +27,37 @@
 #include "ldconvert.h"
 #endif
 
+#ifndef _WIN32
+class RegistersCanvas : public QWidget
+{
+    RegistersView* mView;
+public:
+    explicit RegistersCanvas(RegistersView* view) : QWidget(view), mView(view)
+    {
+        setMouseTracking(true);
+    }
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        if(mView->mChangeViewButton)
+            mView->mChangeViewButton->setText(mView->mShowFpu ? RegistersView::tr("Hide FPU") : RegistersView::tr("Show FPU"));
+
+        QPainter painter(this);
+        painter.setClipRect(event->rect());
+        painter.setFont(mView->font());
+        painter.fillRect(rect(), QBrush(ConfigColor("RegistersBackgroundColor")));
+
+        if(!mView->isActive)
+            return;
+
+        for(auto itr = mView->mRegisterMapping.begin(); itr != mView->mRegisterMapping.end(); itr++)
+            mView->drawRegister(&painter, itr.key(), mView->registerValue(&mView->mRegDumpStruct, itr.key()));
+    }
+    void mousePressEvent(QMouseEvent* event) override { mView->mousePressEvent(event); }
+    void mouseMoveEvent(QMouseEvent* event) override { mView->mouseMoveEvent(event); }
+};
+#endif
+
 // Qt6 removed QFontMetrics::width() - provide file-local compat
 #if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
 #define FONT_WIDTH(fm, s) (fm).horizontalAdvance(s)
@@ -40,18 +69,6 @@ int RegistersView::getEstimateHeight()
 {
     return mRowsNeeded * mRowHeight;
 }
-
-#ifndef _WIN32
-QSize RegistersView::minimumSizeHint() const
-{
-    return mCachedMinSizeHint;
-}
-
-QSize RegistersView::sizeHint() const
-{
-    return mCachedMinSizeHint;
-}
-#endif
 
 void RegistersView::SetChangeButton(QPushButton* push_button)
 {
@@ -981,9 +998,6 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     mXMMMode = 0;
     mAVX512RegistersShown = isAVX512Supported();
     mXMMModeYMMOnly = !isAVX512Supported();
-#ifndef _WIN32
-    mCachedMinSizeHint = QSize(0, 0);
-#endif
     isActive = false;
 
     // general purposes register (we allow the user to modify the value)
@@ -1518,11 +1532,11 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
 
     this->setMouseTracking(true);
 #ifndef _WIN32
-    setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    setMinimumHeight(0);
-    connect(verticalScrollBar(), &QScrollBar::valueChanged, viewport(), QOverload<>::of(&QWidget::update));
-    connect(horizontalScrollBar(), &QScrollBar::valueChanged, viewport(), QOverload<>::of(&QWidget::update));
+    mCanvas = new RegistersCanvas(this);
+    setWidget(mCanvas);
+    setWidgetResizable(false);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setMinimumSize(0, 0);
 #endif
 }
 
@@ -1541,13 +1555,6 @@ void RegistersView::refreshShortcutsSlot()
 RegistersView::~RegistersView()
 {
 }
-
-#ifndef _WIN32
-void RegistersView::updateMinimumSize()
-{
-    updateGeometry();
-}
-#endif
 
 static bool detectAVX512()
 {
@@ -1587,10 +1594,7 @@ void RegistersView::fontsUpdatedSlot()
     //reload layout because the layout is dependent on the font.
     InitMappings();
 #ifndef _WIN32
-    QFontMetrics fm(font);
-    mCachedMinSizeHint = QSize(fm.horizontalAdvance("X") * 28, fm.height() * 2);
-    updateMinimumSize();
-    updateScrollRanges();
+    updateCanvasSize();
 #endif
     reload();
 }
@@ -1611,6 +1615,9 @@ void RegistersView::ShowFPU(bool set_showfpu)
 {
     mShowFpu = set_showfpu;
     InitMappings();
+#ifndef _WIN32
+    updateCanvasSize();
+#endif
     reload();
 }
 
@@ -1917,22 +1924,11 @@ void RegistersView::mouseDoubleClickEvent(QMouseEvent* event)
 #endif
 
 #ifndef _WIN32
-void RegistersView::updateScrollRanges()
+void RegistersView::updateCanvasSize()
 {
+    if(!mCanvas)
+        return;
     int contentHeight = getEstimateHeight() + yTopSpacing * 2;
-    int viewHeight = viewport()->height();
-    if(contentHeight > viewHeight)
-    {
-        verticalScrollBar()->setRange(0, contentHeight - viewHeight);
-        verticalScrollBar()->setPageStep(viewHeight);
-        if(mRowHeight > 0)
-            verticalScrollBar()->setSingleStep(mRowHeight);
-    }
-    else
-    {
-        verticalScrollBar()->setRange(0, 0);
-    }
-
     int maxWidth = 0;
     for(auto it = mRegisterPlaces.begin(); it != mRegisterPlaces.end(); ++it)
     {
@@ -1940,28 +1936,17 @@ void RegistersView::updateScrollRanges()
         if(right > maxWidth)
             maxWidth = right;
     }
-    int viewWidth = viewport()->width();
-    if(maxWidth > viewWidth)
-    {
-        horizontalScrollBar()->setRange(0, maxWidth - viewWidth);
-        horizontalScrollBar()->setPageStep(viewWidth);
-        horizontalScrollBar()->setSingleStep(mCharWidth * 4);
-    }
-    else
-    {
-        horizontalScrollBar()->setRange(0, 0);
-    }
-}
-
-void RegistersView::resizeEvent(QResizeEvent* event)
-{
-    QScrollArea::resizeEvent(event);
-    updateScrollRanges();
+    mCanvas->resize(maxWidth, contentHeight);
 }
 #endif
 
 void RegistersView::paintEvent(QPaintEvent* event)
 {
+#ifndef _WIN32
+    // On Linux, the canvas widget handles painting
+    QScrollArea::paintEvent(event);
+    return;
+#endif
     if(mChangeViewButton != NULL)
     {
         if(mShowFpu)
@@ -2029,12 +2014,6 @@ void RegistersView::wheelEvent(QWheelEvent* event)
         QScrollArea::wheelEvent(event);
 #endif
 }
-
-//QSize RegistersView::sizeHint() const
-//{
-//    // 32 character width
-//    return QSize(32 * mCharWidth, this->viewport()->height());
-//}
 
 #ifdef _WIN32
 void* RegistersView::operator new(size_t size)
@@ -2476,10 +2455,6 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
         if(mVScrollOffset != 0)
             ySpace = 0;
         int y = mRowHeight * (mRegisterPlaces[reg].line + mVScrollOffset) + ySpace;
-#ifndef _WIN32
-        y -= verticalScrollBar()->value();
-        x -= horizontalScrollBar()->value();
-#endif
 
         //draw raster
         /*
@@ -3556,7 +3531,7 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
         InitMappings();
 
 #ifndef _WIN32
-    updateScrollRanges();
+    updateCanvasSize();
 #endif
     // force repaint
     emit refresh();
