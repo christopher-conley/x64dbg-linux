@@ -7,6 +7,22 @@
 #include "value.h"
 #include "stringformat.h"
 #include "comment.h"
+#include <vector>
+
+static bool FillDebugMemory(duint addr, duint size, uint8_t value)
+{
+    if(size == 0)
+        return true;
+
+    std::vector<uint8_t> buffer(std::min<duint>(size, PAGE_SIZE), value);
+    for(duint offset = 0; offset < size; offset += buffer.size())
+    {
+        const auto chunkSize = std::min<duint>(duint(buffer.size()), size - offset);
+        if(!MemWrite(addr + offset, buffer.data(), chunkSize))
+            return false;
+    }
+    return true;
+}
 
 bool cbDebugAlloc(int argc, char* argv[])
 {
@@ -89,7 +105,7 @@ bool cbDebugMemset(int argc, char* argv[])
         size -= diff;
     }
     BYTE fi = value & 0xFF;
-    if(!Fill((void*)addr, size & 0xFFFFFFFF, &fi))
+    if(!FillDebugMemory(addr, size & 0xFFFFFFFF, fi))
         dputs(QT_TRANSLATE_NOOP("DBG", "Memset failed"));
     else
         dprintf(QT_TRANSLATE_NOOP("DBG", "Memory %p (size: %.8X) set to %.2X\n"), addr, DWORD(size & 0xFFFFFFFF), BYTE(value & 0xFF));

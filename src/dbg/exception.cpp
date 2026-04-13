@@ -206,7 +206,7 @@ bool SyscallInit()
         {
             if(strncmp(exportEntry.name.c_str(), "Nt", 2) != 0)
                 continue;
-            auto exportData = (const unsigned char*)ModRvaToOffset(info->fileMapVA, info->headers, exportEntry.rva);
+            auto exportData = (const unsigned char*)ModRvaToOffset(info->fileMapVA, info->headers, info->loadedSize, exportEntry.rva);
             if(!exportData)
                 continue;
             // https://github.com/mrexodia/TitanHide/blob/1c6ba9796e320f399f998b23fba2729122597e87/TitanHide/ntdll.cpp#L75

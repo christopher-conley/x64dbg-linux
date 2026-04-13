@@ -1,6 +1,6 @@
 #include "ntdll/ntdll.h"
 #include "module.h"
-#include "TitanEngine/TitanEngine.h"
+#include "filemap.h"
 #include "threading.h"
 #include "symbolinfo.h"
 #include "murmurhash.h"
@@ -20,7 +20,7 @@ std::unordered_map<duint, std::string> hashNameMap;
 
 // RtlImageNtHeaderEx is much better than the non-Ex version due to stricter validation, but isn't available on XP x86.
 // This is essentially a fallback replacement that does the same thing
-static NTSTATUS ImageNtHeaders(duint base, duint size, PIMAGE_NT_HEADERS* outHeaders)
+NTSTATUS ModImageNtHeaders(duint base, uint64_t size, PIMAGE_NT_HEADERS* outHeaders)
 {
     PIMAGE_NT_HEADERS ntHeaders;
 
@@ -64,21 +64,116 @@ static NTSTATUS ImageNtHeaders(duint base, duint size, PIMAGE_NT_HEADERS* outHea
     return STATUS_SUCCESS;
 }
 
-// Use only with SEC_COMMIT mappings, not SEC_IMAGE! (in that case, just do VA = base + rva...)
-ULONG64 ModRvaToOffset(ULONG64 base, PIMAGE_NT_HEADERS ntHeaders, ULONG64 rva)
+static ULONG64 ModSectionVirtualSize(PIMAGE_SECTION_HEADER section)
 {
+    return section->Misc.VirtualSize != 0 ? section->Misc.VirtualSize : section->SizeOfRawData;
+}
+
+static ULONG64 ModSectionRvaSize(PIMAGE_NT_HEADERS ntHeaders, PIMAGE_SECTION_HEADER section, WORD index)
+{
+    auto size = ModSectionVirtualSize(section);
+    if(index + 1 < ntHeaders->FileHeader.NumberOfSections)
+    {
+        auto nextSection = section + 1;
+        if(nextSection->VirtualAddress > section->VirtualAddress &&
+                section->VirtualAddress + size > nextSection->VirtualAddress)
+            size = nextSection->VirtualAddress - section->VirtualAddress;
+    }
+    return size;
+}
+
+static bool ModLowAlignmentMode(PIMAGE_NT_HEADERS ntHeaders)
+{
+    const auto sectionAlignment = HEADER_FIELD(ntHeaders, SectionAlignment);
+    const auto fileAlignment = HEADER_FIELD(ntHeaders, FileAlignment);
+    return sectionAlignment != 0 && sectionAlignment == fileAlignment && sectionAlignment <= 0x800;
+}
+
+static ULONG64 ModFirstSectionRva(PIMAGE_NT_HEADERS ntHeaders)
+{
+    if(ntHeaders->FileHeader.NumberOfSections == 0)
+        return HEADER_FIELD(ntHeaders, SizeOfHeaders);
+    return IMAGE_FIRST_SECTION(ntHeaders)->VirtualAddress;
+}
+
+// Use only with SEC_COMMIT mappings, not SEC_IMAGE! (in that case, just do VA = base + rva...)
+ULONG64 ModRvaToOffset(ULONG64 base, PIMAGE_NT_HEADERS ntHeaders, uint64_t loadedSize, ULONG64 rva)
+{
+    if(ntHeaders == nullptr)
+        return 0;
+
+    if(ModLowAlignmentMode(ntHeaders))
+        return rva < loadedSize ? base + rva : 0;
+
+    if(ntHeaders->FileHeader.NumberOfSections == 0)
+        return rva < std::min<ULONG64>(HEADER_FIELD(ntHeaders, SizeOfHeaders), loadedSize) ? base + rva : 0;
+
+    const auto firstSectionRva = ModFirstSectionRva(ntHeaders);
+    if(rva < firstSectionRva)
+        return rva < std::min<ULONG64>(HEADER_FIELD(ntHeaders, SizeOfHeaders), loadedSize) ? base + rva : 0;
+
     PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeaders);
     for(WORD i = 0; i < ntHeaders->FileHeader.NumberOfSections; ++i)
     {
-        if(rva >= section->VirtualAddress &&
-                rva < section->VirtualAddress + section->SizeOfRawData)
+        const auto sectionSize = ModSectionRvaSize(ntHeaders, section, i);
+        if(sectionSize != 0 &&
+                rva >= section->VirtualAddress &&
+                rva < section->VirtualAddress + sectionSize)
         {
-            ASSERT_TRUE(rva != 0); // Following garbage in is garbage out, RVA 0 should always yield VA 0
-            return base + (rva - section->VirtualAddress) + section->PointerToRawData;
+            if(section->SizeOfRawData == 0 || section->PointerToRawData == 0)
+                return 0;
+
+            const auto delta = rva - section->VirtualAddress;
+            if(delta >= section->SizeOfRawData)
+                return 0;
+
+            const auto fileOffset = ULONG64(section->PointerToRawData) + delta;
+            return fileOffset < loadedSize ? base + fileOffset : 0;
         }
         section++;
     }
     return 0;
+}
+
+bool ModOffsetToRva(PIMAGE_NT_HEADERS ntHeaders, uint64_t loadedSize, ULONG64 offset, ULONG64* rva)
+{
+    if(ntHeaders == nullptr || rva == nullptr || offset >= loadedSize)
+        return false;
+
+    if(ModLowAlignmentMode(ntHeaders))
+    {
+        if(offset < HEADER_FIELD(ntHeaders, SizeOfImage))
+        {
+            *rva = offset;
+            return true;
+        }
+        return false;
+    }
+
+    if(offset < HEADER_FIELD(ntHeaders, SizeOfHeaders))
+    {
+        *rva = offset;
+        return true;
+    }
+
+    if(ntHeaders->FileHeader.NumberOfSections == 0)
+        return false;
+
+    PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeaders);
+    for(WORD i = 0; i < ntHeaders->FileHeader.NumberOfSections; ++i)
+    {
+        const auto rawSize = ULONG64(section->SizeOfRawData);
+        if(section->PointerToRawData != 0 && rawSize != 0 &&
+                offset >= section->PointerToRawData &&
+                offset < section->PointerToRawData + rawSize)
+        {
+            *rva = section->VirtualAddress + (offset - section->PointerToRawData);
+            return true;
+        }
+        section++;
+    }
+
+    return false;
 }
 
 static void ReadExportDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
@@ -101,7 +196,7 @@ static void ReadExportDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
 
     auto rva2offset = [&Info](ULONG64 rva)
     {
-        return Info.isVirtual ? rva : ModRvaToOffset(0, Info.headers, rva);
+        return Info.isVirtual ? rva : ModRvaToOffset(0, Info.headers, Info.loadedSize, rva);
     };
 
     auto addressOfFunctionsOffset = rva2offset(exportDir->AddressOfFunctions);
@@ -143,7 +238,7 @@ static void ReadExportDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
         auto & entry = Info.exports.back();
         entry.ordinal = i + exportDir->Base;
         entry.rva = addressOfFunctions[i];
-        const auto entryVa = Info.isVirtual ? entry.rva : ModRvaToOffset(FileMapVA, Info.headers, entry.rva);
+        const auto entryVa = Info.isVirtual ? entry.rva : ModRvaToOffset(FileMapVA, Info.headers, Info.loadedSize, entry.rva);
         entry.forwarded = entryVa >= (ULONG64)exportDir && entryVa < (ULONG64)exportDir + exportDirSize;
         if(entry.forwarded)
         {
@@ -242,7 +337,7 @@ static void ReadImportDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
     const ULONG64 ordinalFlag = IMAGE64(Info.headers) ? IMAGE_ORDINAL_FLAG64 : IMAGE_ORDINAL_FLAG32;
     auto rva2offset = [&Info](ULONG64 rva)
     {
-        return Info.isVirtual ? rva : ModRvaToOffset(0, Info.headers, rva);
+        return Info.isVirtual ? rva : ModRvaToOffset(0, Info.headers, Info.loadedSize, rva);
     };
 
     for(size_t moduleIndex = 0; importDescriptor->Name != 0; ++importDescriptor, ++moduleIndex)
@@ -345,7 +440,7 @@ static void ReadTlsCallbacks(MODINFO & Info, ULONG_PTR FileMapVA)
 
     auto imageBase = HEADER_FIELD(Info.headers, ImageBase);
     auto rva = tlsDir->AddressOfCallBacks - imageBase;
-    auto tlsArrayOffset = Info.isVirtual ? rva : ModRvaToOffset(0, Info.headers, rva);
+    auto tlsArrayOffset = Info.isVirtual ? rva : ModRvaToOffset(0, Info.headers, Info.loadedSize, rva);
     if(!tlsArrayOffset)
         return;
 
@@ -484,7 +579,7 @@ static void ReadDebugDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
         // Check for valid RVA
         ULONG_PTR offset = 0;
         if(entry->AddressOfRawData)
-            offset = Info.isVirtual ? entry->AddressOfRawData : (ULONG_PTR)ModRvaToOffset(0, Info.headers, entry->AddressOfRawData);
+            offset = Info.isVirtual ? entry->AddressOfRawData : (ULONG_PTR)ModRvaToOffset(0, Info.headers, Info.loadedSize, entry->AddressOfRawData);
         else if(entry->PointerToRawData)
             offset = entry->PointerToRawData;
         if(!offset)
@@ -581,7 +676,7 @@ static void ReadDebugDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
     // At this point we know the entry is a valid CV one
     ULONG_PTR offset = 0;
     if(entry->AddressOfRawData)
-        offset = Info.isVirtual ? entry->AddressOfRawData : (ULONG_PTR)ModRvaToOffset(0, Info.headers, entry->AddressOfRawData);
+        offset = Info.isVirtual ? entry->AddressOfRawData : (ULONG_PTR)ModRvaToOffset(0, Info.headers, Info.loadedSize, entry->AddressOfRawData);
     else if(entry->PointerToRawData)
         offset = entry->PointerToRawData;
     auto cvData = (unsigned char*)(FileMapVA + offset);
@@ -780,7 +875,7 @@ static ModulePartyInfo modulePartyInfo;
 void GetModuleInfo(MODINFO & Info, ULONG_PTR FileMapVA)
 {
     // Get the PE headers
-    if(!NT_SUCCESS(ImageNtHeaders(FileMapVA, Info.loadedSize, &Info.headers)))
+    if(!NT_SUCCESS(ModImageNtHeaders(FileMapVA, Info.loadedSize, &Info.headers)))
     {
         dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s: invalid PE file!\n"), Info.name, Info.extension);
         return;
@@ -913,6 +1008,7 @@ std::unique_ptr<MODINFO> MODINFO::load(duint Base, duint Size, const char* FullP
     info.loadedSize = 0;
     info.fileMap = nullptr;
     info.fileMapVA = 0;
+    info.ownsFileHandle = false;
 
     // Load module data
     info.isVirtual = strstr(FullPath, "virtual:\\") == FullPath;
@@ -928,44 +1024,22 @@ std::unique_ptr<MODINFO> MODINFO::load(duint Base, duint Size, const char* FullP
         auto wszFullPath = StringUtils::Utf8ToUtf16(FullPath);
         bool fileLoaded = false;
 
-        // 1. If we have a file handle from the debug event, try mapping from it first
+        // 1. If we have a file handle from the debug event, try mapping from it first.
         // https://github.com/x64dbg/x64dbg/issues/3756
-        if(hFile)
+        if(hFile && MapExistingFileHandle(hFile, FileMapAccess::Read, info.loadedSize, info.fileMap, info.fileMapVA))
         {
-            LARGE_INTEGER fileSizeLI;
-            if(GetFileSizeEx(hFile, &fileSizeLI) && fileSizeLI.QuadPart > 0)
-            {
-                uint64_t fileSize = fileSizeLI.QuadPart;
-                HANDLE hMap = CreateFileMappingW(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
-                if(hMap)
-                {
-                    LPVOID mapView = MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
-                    if(mapView)
-                    {
-                        info.fileHandle = (HANDLE)1; // Non-zero for TitanEngine compatibility
-                        info.loadedSize = fileSize;
-                        info.fileMap = hMap;
-                        info.fileMapVA = (ULONG_PTR)mapView;
-                        fileLoaded = true;
-                    }
-                    else
-                    {
-                        CloseHandle(hMap);
-                    }
-                }
-            }
+            info.fileHandle = hFile;
+            info.ownsFileHandle = false;
+            fileLoaded = true;
         }
 
-        // 2. If no file handle or mapping failed, try loading from disk path (TitanEngine path, limited to 4GB)
-        DWORD titanLoadedSize = 0;
-        if(!fileLoaded && StaticFileLoadW(wszFullPath.c_str(), UE_ACCESS_READ, false, &info.fileHandle, &titanLoadedSize, &info.fileMap, &info.fileMapVA))
+        // 2. If no file handle or mapping failed, try opening and mapping the file from disk.
+        if(!fileLoaded && MapFileW(wszFullPath.c_str(), FileMapAccess::Read, info.fileHandle, info.loadedSize, info.fileMap, info.fileMapVA))
         {
-            info.loadedSize = titanLoadedSize;
-            CloseHandle(info.fileHandle);
-            info.fileHandle = (HANDLE)1; // Set to non-zero for TitanEngine compatibility
+            info.ownsFileHandle = true;
             fileLoaded = true;
             if(Base)
-                dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from file handle (path inaccessible)\n"), info.name, info.extension);
+                dprintf(QT_TRANSLATE_NOOP("DBG", "Module %s%s loaded from disk path\n"), info.name, info.extension);
         }
 
         // 3. If both failed, try reading from process memory as last resort
@@ -1601,7 +1675,12 @@ void MODINFO::unloadSymbols()
 void MODINFO::unmapFile()
 {
     if(fileMapVA)
-        StaticFileUnloadW(StringUtils::Utf8ToUtf16(path).c_str(), false, fileHandle, (DWORD)loadedSize, fileMap, fileMapVA);
+        UnmapFileView(fileHandle, loadedSize, fileMap, fileMapVA, ownsFileHandle, false);
+    fileHandle = nullptr;
+    fileMap = nullptr;
+    fileMapVA = 0;
+    loadedSize = 0;
+    ownsFileHandle = false;
 }
 
 const MODEXPORT* MODINFO::findExport(duint rva) const

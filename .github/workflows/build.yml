@@ -72,6 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x64, x86]
+        engine: [TitanEngine, GleeBug]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -87,14 +88,14 @@ jobs:
       - name: Run Tests
         shell: pwsh
         run: |
-          py src/tests/run.py --arch ${{ matrix.arch }} --artifacts-dir "test-artifacts/${{ matrix.arch }}"
+          py src/tests/run.py --arch ${{ matrix.arch }} --engine ${{ matrix.engine }} --artifacts-dir "test-artifacts/${{ matrix.arch }}-${{ matrix.engine }}"
 
       - name: Upload Test Artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: test-artifacts-${{ matrix.arch }}
-          path: test-artifacts/${{ matrix.arch }}
+          name: test-artifacts-${{ matrix.arch }}-${{ matrix.engine }}
+          path: test-artifacts/${{ matrix.arch }}-${{ matrix.engine }}
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 7

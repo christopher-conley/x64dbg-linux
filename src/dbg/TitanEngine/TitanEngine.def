@@ -1,12 +1,9 @@
 LIBRARY TitanEngine
 EXPORTS
-    ConvertVAtoFileOffsetEx
-    ConvertFileOffsetToVA
     MemoryReadSafe
     MemoryWriteSafe
     GetPEBLocation
     GetTEBLocation
-    HideDebugger
     InitDebugW
     StopDebug
     SetBPXOptions
@@ -23,7 +20,6 @@ EXPORTS
     SetAVXContext
     GetAVX512Context
     SetAVX512Context
-    Fill
     GetDebugData
     SetCustomHandler
     StepInto
@@ -39,7 +35,5 @@ EXPORTS
     IsFileBeingDebugged
     TitanOpenProcess
     TitanOpenThread
-    StaticFileLoadW
-    StaticFileUnloadW
     SetEngineVariable
     EngineCheckStructAlignment

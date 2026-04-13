@@ -113,6 +113,7 @@ struct MODINFO
     uint64_t loadedSize = 0;
     HANDLE fileMap = nullptr;
     ULONG_PTR fileMapVA = 0;
+    bool ownsFileHandle = false;
 
     MODULEPARTY party = mod_user;  // Party. Currently used value: 0: User, 1: System
     bool isVirtual = false;
@@ -136,7 +137,9 @@ struct MODINFO
     duint getProcAddress(const String & name, int maxForwardDepth = 10) const;
 };
 
-ULONG64 ModRvaToOffset(ULONG64 base, PIMAGE_NT_HEADERS ntHeaders, ULONG64 rva);
+NTSTATUS ModImageNtHeaders(duint base, uint64_t size, PIMAGE_NT_HEADERS* outHeaders);
+ULONG64 ModRvaToOffset(ULONG64 base, PIMAGE_NT_HEADERS ntHeaders, uint64_t loadedSize, ULONG64 rva);
+bool ModOffsetToRva(PIMAGE_NT_HEADERS ntHeaders, uint64_t loadedSize, ULONG64 offset, ULONG64* rva);
 bool ModLoad(duint Base, duint Size, const char* FullPath, bool loadSymbols = true, HANDLE hFile = nullptr);
 bool ModUnload(duint Base);
 void ModClear();

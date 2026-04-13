@@ -34,7 +34,7 @@ The directory now uses multiple scripts handled by `src/tests/run.py`:
 - `test.txt` -> `membp`
 - `test.write.txt` -> `membp/write`
 - `test.range-read.txt` -> `membp/range-read`
-- [DISABLED] `test.range-write.txt` -> `membp/range-write`
+- `test.range-write.txt` -> `membp/range-write`
 - `test.range-execute.txt` -> `membp/range-execute`
 - `test.range-delete.txt` -> `membp/range-delete`
 - `test.range-reenable.txt` -> `membp/range-reenable`

@@ -20,7 +20,8 @@ add_executable(test_membp_target target.cpp)
 target_compile_definitions(test_membp_target PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_features(test_membp_target PRIVATE cxx_std_17)
 if(MSVC)
-    target_compile_options(test_membp_target PRIVATE /GS-)
+    string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    target_compile_options(test_membp_target PRIVATE /GS- /GR- /Zl)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(test_membp_target PRIVATE -fno-stack-protector)
 endif()
@@ -31,6 +32,7 @@ target_link_libraries(test_membp_target PRIVATE kernel32)
 target_link_options(test_membp_target PRIVATE
     "LINKER:/entry:start"
     "LINKER:/incremental:no"
+    "LINKER:/nodefaultlib"
     "LINKER:/merge:.mbd2=.mbc"
     "LINKER:/merge:.mbd3=.mbc"
     "LINKER:SHELL:/section:.mbc,ERW"

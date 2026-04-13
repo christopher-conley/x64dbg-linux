@@ -13,6 +13,309 @@
 #include "commandline.h"
 #include "stringformat.h"
 
+static bool IsAtLeastVista()
+{
+    RTL_OSVERSIONINFOW version = {};
+    version.dwOSVersionInfoSize = sizeof(version);
+    return NT_SUCCESS(RtlGetVersion(&version)) && version.dwMajorVersion >= 6;
+}
+
+static int GetHeapFlagsOffset(bool x64)
+{
+    if(x64)
+        return IsAtLeastVista() ? 0x70 : 0x14;
+    return IsAtLeastVista() ? 0x40 : 0x0C;
+}
+
+static int GetHeapForceFlagsOffset(bool x64)
+{
+    if(x64)
+        return IsAtLeastVista() ? 0x74 : 0x18;
+    return IsAtLeastVista() ? 0x44 : 0x10;
+}
+
+#ifdef _WIN64
+#pragma pack(push, 4)
+struct PEB32_PARTIAL
+{
+    BOOLEAN InheritedAddressSpace;
+    BOOLEAN ReadImageFileExecOptions;
+    BOOLEAN BeingDebugged;
+    BOOLEAN BitField;
+    ULONG Mutant;
+    ULONG ImageBaseAddress;
+    ULONG Ldr;
+    ULONG ProcessParameters;
+    ULONG SubSystemData;
+    ULONG ProcessHeap;
+    ULONG FastPebLock;
+    ULONG AtlThunkSListPtr;
+    ULONG IFEOKey;
+    ULONG CrossProcessFlags;
+    ULONG KernelCallbackTable;
+    ULONG SystemReserved;
+    ULONG AtlThunkSListPtr32;
+    ULONG ApiSetMap;
+    ULONG TlsExpansionCounter;
+    ULONG TlsBitmap;
+    ULONG TlsBitmapBits[2];
+    ULONG ReadOnlySharedMemoryBase;
+    ULONG SharedData;
+    ULONG ReadOnlyStaticServerData;
+    ULONG AnsiCodePageData;
+    ULONG OemCodePageData;
+    ULONG UnicodeCaseTableData;
+    ULONG NumberOfProcessors;
+    ULONG NtGlobalFlag;
+};
+#pragma pack(pop)
+#else
+#pragma pack(push, 8)
+struct PEB64_PARTIAL
+{
+    BOOLEAN InheritedAddressSpace;
+    BOOLEAN ReadImageFileExecOptions;
+    BOOLEAN BeingDebugged;
+    BOOLEAN BitField;
+    ULONG64 Mutant;
+    ULONG64 ImageBaseAddress;
+    ULONG64 Ldr;
+    ULONG64 ProcessParameters;
+    ULONG64 SubSystemData;
+    ULONG64 ProcessHeap;
+    ULONG64 FastPebLock;
+    ULONG64 AtlThunkSListPtr;
+    ULONG64 IFEOKey;
+    ULONG CrossProcessFlags;
+    ULONG Padding0;
+    ULONG64 KernelCallbackTable;
+    ULONG SystemReserved;
+    ULONG AtlThunkSListPtr32;
+    ULONG64 ApiSetMap;
+    ULONG TlsExpansionCounter;
+    ULONG Padding1;
+    ULONG64 TlsBitmap;
+    ULONG TlsBitmapBits[2];
+    ULONG64 ReadOnlySharedMemoryBase;
+    ULONG64 SharedData;
+    ULONG64 ReadOnlyStaticServerData;
+    ULONG64 AnsiCodePageData;
+    ULONG64 OemCodePageData;
+    ULONG64 UnicodeCaseTableData;
+    ULONG NumberOfProcessors;
+    ULONG NtGlobalFlag;
+};
+#pragma pack(pop)
+
+typedef NTSTATUS(NTAPI* NtWow64QueryInformationProcess64_t)(HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
+typedef NTSTATUS(NTAPI* NtWow64ReadVirtualMemory64_t)(HANDLE ProcessHandle, ULONG64 BaseAddress, PVOID Buffer, ULONG64 Size, PULONG64 NumberOfBytesRead);
+typedef NTSTATUS(NTAPI* NtWow64WriteVirtualMemory64_t)(HANDLE ProcessHandle, ULONG64 BaseAddress, PVOID Buffer, ULONG64 Size, PULONG64 NumberOfBytesWritten);
+
+static NtWow64QueryInformationProcess64_t NtWow64QueryInformationProcess64Ptr()
+{
+    static auto fn = (NtWow64QueryInformationProcess64_t)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtWow64QueryInformationProcess64");
+    return fn;
+}
+
+static NtWow64ReadVirtualMemory64_t NtWow64ReadVirtualMemory64Ptr()
+{
+    static auto fn = (NtWow64ReadVirtualMemory64_t)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtWow64ReadVirtualMemory64");
+    return fn;
+}
+
+static NtWow64WriteVirtualMemory64_t NtWow64WriteVirtualMemory64Ptr()
+{
+    static auto fn = (NtWow64WriteVirtualMemory64_t)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtWow64WriteVirtualMemory64");
+    return fn;
+}
+
+struct PROCESS_BASIC_INFORMATION64
+{
+    NTSTATUS ExitStatus;
+    ULONG64 PebBaseAddress;
+    ULONG64 AffinityMask;
+    LONG BasePriority;
+    ULONG64 UniqueProcessId;
+    ULONG64 InheritedFromUniqueProcessId;
+};
+#endif
+
+template<typename T>
+static bool ReadRemoteMemoryT(HANDLE hProcess, ULONG64 address, T* data)
+{
+#ifdef _WIN64
+    SIZE_T bytesRead = 0;
+    return NT_SUCCESS(NtReadVirtualMemory(hProcess, (void*)address, data, sizeof(T), &bytesRead)) && bytesRead == sizeof(T);
+#else
+    if(address <= static_cast<ULONG64>(static_cast<ULONG_PTR>(-1)))
+    {
+        SIZE_T bytesRead = 0;
+        if(NT_SUCCESS(NtReadVirtualMemory(hProcess, (void*)(ULONG_PTR)address, data, sizeof(T), &bytesRead)) && bytesRead == sizeof(T))
+            return true;
+    }
+    if(auto fn = NtWow64ReadVirtualMemory64Ptr())
+    {
+        ULONG64 bytesRead = 0;
+        return NT_SUCCESS(fn(hProcess, address, data, sizeof(T), &bytesRead)) && bytesRead == sizeof(T);
+    }
+    return false;
+#endif
+}
+
+template<typename T>
+static bool WriteRemoteMemoryT(HANDLE hProcess, ULONG64 address, const T* data)
+{
+#ifdef _WIN64
+    SIZE_T bytesWritten = 0;
+    return NT_SUCCESS(NtWriteVirtualMemory(hProcess, (void*)address, (void*)data, sizeof(T), &bytesWritten)) && bytesWritten == sizeof(T);
+#else
+    if(address <= static_cast<ULONG64>(static_cast<ULONG_PTR>(-1)))
+    {
+        SIZE_T bytesWritten = 0;
+        if(NT_SUCCESS(NtWriteVirtualMemory(hProcess, (void*)(ULONG_PTR)address, (void*)data, sizeof(T), &bytesWritten)) && bytesWritten == sizeof(T))
+            return true;
+    }
+    if(auto fn = NtWow64WriteVirtualMemory64Ptr())
+    {
+        ULONG64 bytesWritten = 0;
+        return NT_SUCCESS(fn(hProcess, address, (void*)data, sizeof(T), &bytesWritten)) && bytesWritten == sizeof(T);
+    }
+    return false;
+#endif
+}
+
+static bool HideNativePeb(HANDLE hProcess)
+{
+    PROCESS_BASIC_INFORMATION pbi = {};
+    ULONG returnLength = 0;
+    if(!NT_SUCCESS(NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength)) || !pbi.PebBaseAddress)
+        return false;
+
+    PEB peb = {};
+    if(!ReadRemoteMemoryT(hProcess, ULONG64(pbi.PebBaseAddress), &peb))
+        return false;
+
+    peb.BeingDebugged = FALSE;
+    peb.NtGlobalFlag &= ~0x70;
+
+    if(!WriteRemoteMemoryT(hProcess, ULONG64(pbi.PebBaseAddress), &peb))
+        return false;
+
+    if(peb.ProcessHeap)
+    {
+        DWORD heapFlags = 0;
+        DWORD heapForceFlags = 0;
+        const auto heapFlagsAddress = ULONG64(peb.ProcessHeap) + GetHeapFlagsOffset(sizeof(void*) == 8);
+        const auto heapForceFlagsAddress = ULONG64(peb.ProcessHeap) + GetHeapForceFlagsOffset(sizeof(void*) == 8);
+        if(!ReadRemoteMemoryT(hProcess, heapFlagsAddress, &heapFlags) || !ReadRemoteMemoryT(hProcess, heapForceFlagsAddress, &heapForceFlags))
+            return false;
+        heapFlags &= HEAP_GROWABLE;
+        heapForceFlags = 0;
+        if(!WriteRemoteMemoryT(hProcess, heapFlagsAddress, &heapFlags) || !WriteRemoteMemoryT(hProcess, heapForceFlagsAddress, &heapForceFlags))
+            return false;
+    }
+
+    return true;
+}
+
+#ifdef _WIN64
+static bool HideWow64Peb32(HANDLE hProcess)
+{
+    ULONG_PTR wow64Peb = 0;
+    ULONG returnLength = 0;
+    if(!NT_SUCCESS(NtQueryInformationProcess(hProcess, ProcessWow64Information, &wow64Peb, sizeof(wow64Peb), &returnLength)) || !wow64Peb)
+        return true;
+
+    PEB32_PARTIAL peb32 = {};
+    if(!ReadRemoteMemoryT(hProcess, wow64Peb, &peb32))
+        return false;
+
+    peb32.BeingDebugged = FALSE;
+    peb32.NtGlobalFlag &= ~0x70;
+
+    if(!WriteRemoteMemoryT(hProcess, wow64Peb, &peb32))
+        return false;
+
+    if(peb32.ProcessHeap)
+    {
+        DWORD heapFlags = 0;
+        DWORD heapForceFlags = 0;
+        const auto heapFlagsAddress = ULONG64(peb32.ProcessHeap) + GetHeapFlagsOffset(false);
+        const auto heapForceFlagsAddress = ULONG64(peb32.ProcessHeap) + GetHeapForceFlagsOffset(false);
+        if(!ReadRemoteMemoryT(hProcess, heapFlagsAddress, &heapFlags) || !ReadRemoteMemoryT(hProcess, heapForceFlagsAddress, &heapForceFlags))
+            return false;
+        heapFlags &= HEAP_GROWABLE;
+        heapForceFlags = 0;
+        if(!WriteRemoteMemoryT(hProcess, heapFlagsAddress, &heapFlags) || !WriteRemoteMemoryT(hProcess, heapForceFlagsAddress, &heapForceFlags))
+            return false;
+    }
+
+    return true;
+}
+#else
+static bool HideWow64Peb64(HANDLE hProcess)
+{
+    ULONG_PTR wow64Peb = 0;
+    ULONG returnLength = 0;
+    if(!NT_SUCCESS(NtQueryInformationProcess(hProcess, ProcessWow64Information, &wow64Peb, sizeof(wow64Peb), &returnLength)) || !wow64Peb)
+        return true;
+
+    auto query64 = NtWow64QueryInformationProcess64Ptr();
+    if(!query64)
+        return false;
+
+    PROCESS_BASIC_INFORMATION64 pbi64 = {};
+    ULONG returnLength64 = 0;
+    if(!NT_SUCCESS(query64(hProcess, ProcessBasicInformation, &pbi64, sizeof(pbi64), &returnLength64)) || !pbi64.PebBaseAddress)
+        return false;
+
+    PEB64_PARTIAL peb64 = {};
+    if(!ReadRemoteMemoryT(hProcess, pbi64.PebBaseAddress, &peb64))
+        return false;
+
+    peb64.BeingDebugged = FALSE;
+    peb64.NtGlobalFlag &= ~0x70;
+
+    if(!WriteRemoteMemoryT(hProcess, pbi64.PebBaseAddress, &peb64))
+        return false;
+
+    if(peb64.ProcessHeap)
+    {
+        DWORD heapFlags = 0;
+        DWORD heapForceFlags = 0;
+        const auto heapFlagsAddress = peb64.ProcessHeap + GetHeapFlagsOffset(true);
+        const auto heapForceFlagsAddress = peb64.ProcessHeap + GetHeapForceFlagsOffset(true);
+        if(!ReadRemoteMemoryT(hProcess, heapFlagsAddress, &heapFlags) || !ReadRemoteMemoryT(hProcess, heapForceFlagsAddress, &heapForceFlags))
+            return false;
+        heapFlags &= HEAP_GROWABLE;
+        heapForceFlags = 0;
+        if(!WriteRemoteMemoryT(hProcess, heapFlagsAddress, &heapFlags) || !WriteRemoteMemoryT(hProcess, heapForceFlagsAddress, &heapForceFlags))
+            return false;
+    }
+
+    return true;
+}
+#endif
+
+static bool HideDebuggerPebOnly(HANDLE hProcess)
+{
+    if(!hProcess)
+        return false;
+
+    if(!HideNativePeb(hProcess))
+        return false;
+
+#ifdef _WIN64
+    if(!HideWow64Peb32(hProcess))
+        return false;
+#else
+    if(!HideWow64Peb64(hProcess))
+        return false;
+#endif
+
+    return true;
+}
+
 bool cbInstrChd(int argc, char* argv[])
 {
     String directory;
@@ -49,7 +352,7 @@ bool cbInstrZzz(int argc, char* argv[])
 
 bool cbDebugHide(int argc, char* argv[])
 {
-    if(HideDebugger(fdProcessInfo->hProcess, UE_HIDE_PEBONLY))
+    if(HideDebuggerPebOnly(fdProcessInfo->hProcess))
         dputs(QT_TRANSLATE_NOOP("DBG", "Debugger hidden"));
     else
         dputs(QT_TRANSLATE_NOOP("DBG", "Something went wrong"));
