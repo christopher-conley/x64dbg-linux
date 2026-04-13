@@ -121,7 +121,7 @@ namespace ElfBug
                     mThread->registers.Gip() = bpAddr;
                     mThread->registers.Write();
 
-                    const auto& info = it->second;
+                    const auto & info = it->second;
                     const bool singleshot = info.singleshot;
 
                     const auto cbIt = mProcess->breakpointCallbacks.find(key);

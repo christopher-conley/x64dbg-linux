@@ -16,7 +16,7 @@ public:
     ~DbgAdapter() override;
 
     bool read(duint addr, void* dest, duint size) override;
-    bool getRange(duint addr, duint& base, duint& size) override;
+    bool getRange(duint addr, duint & base, duint & size) override;
     bool isCodePtr(duint addr) override;
     bool isValidPtr(duint addr) override;
 
@@ -38,9 +38,9 @@ public:
 signals:
     void processCreated(duint entryPoint);
     void processExited(int exitCode);
-    void registersUpdated(const REGDUMP& regs);
-    void logMessage(const QString& msg);
-    void stopped(duint rip, const QString& reason);
+    void registersUpdated(const REGDUMP & regs);
+    void logMessage(const QString & msg);
+    void stopped(duint rip, const QString & reason);
 
 private:
     static BPXTYPE queryBreakpoint(duint addr);
@@ -55,7 +55,7 @@ private:
     static void onError(const char* error, void* userdata);
     static void onDebugString(const char* text, void* userdata);
 
-    void emitStoppedState(const QString& reason);
+    void emitStoppedState(const QString & reason);
 
     ElfBugApi mApi;
     ElfBugDebugger* mDebugger = nullptr;

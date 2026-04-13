@@ -29,8 +29,8 @@ private slots:
     void onToggleBreakpoint() const;
     void onProcessCreated(duint entryPoint) const;
     void onProcessExited(int exitCode) const;
-    void onStopped(duint rip, const QString& reason) const;
-    void onLogMessage(const QString& msg) const;
+    void onStopped(duint rip, const QString & reason) const;
+    void onLogMessage(const QString & msg) const;
 
 private:
     void stopDebugThread();

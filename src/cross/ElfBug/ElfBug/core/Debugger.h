@@ -32,16 +32,16 @@ namespace ElfBug
         virtual void cbExitProcessEvent(int exitCode);
         virtual void cbCreateThreadEvent(pid_t tid);
         virtual void cbExitThreadEvent(pid_t tid);
-        virtual void cbLoadDllEvent(ptr baseAddress, const std::string& path);
+        virtual void cbLoadDllEvent(ptr baseAddress, const std::string & path);
         virtual void cbUnloadDllEvent(ptr baseAddress);
         virtual void cbExceptionEvent(int signal, ptr address);
-        virtual void cbBreakpoint(const BreakpointInfo& info);
+        virtual void cbBreakpoint(const BreakpointInfo & info);
         virtual void cbStep();
         virtual void cbSystemBreakpoint();
         virtual void cbAttachBreakpoint();
         virtual void cbUnhandledException(int signal, ptr address);
-        virtual void cbInternalError(const std::string& error);
-        virtual void cbDebugStringEvent(const std::string& text);
+        virtual void cbInternalError(const std::string & error);
+        virtual void cbDebugStringEvent(const std::string & text);
         virtual void cbPaused(); // called when the debuggee is paused by user
         virtual void cbPauseTick(); // called each iteration of the pause spin loop
 

@@ -2,7 +2,7 @@
 #include <cassert>
 #include <QCoreApplication>
 
-static REGDUMP toRegDump(const ElfBugRegisters& regs)
+static REGDUMP toRegDump(const ElfBugRegisters & regs)
 {
     REGDUMP dump{};
     dump.regcontext.cax = regs.rax;
@@ -120,7 +120,7 @@ bool DbgAdapter::read(const duint addr, void* dest, const duint size)
     return mApi.MemRead(mDebugger, addr, dest, size);
 }
 
-bool DbgAdapter::getRange(const duint addr, duint& base, duint& size)
+bool DbgAdapter::getRange(const duint addr, duint & base, duint & size)
 {
     if(!mApi.MemFindBaseAddr)
         return false;
@@ -218,7 +218,7 @@ BPXTYPE DbgAdapter::queryBreakpoint(duint addr)
     return instance->hasBreakpoint(addr) ? bp_normal : bp_none;
 }
 
-void DbgAdapter::emitStoppedState(const QString& reason)
+void DbgAdapter::emitStoppedState(const QString & reason)
 {
     ElfBugRegisters regs = {};
     if(mApi.GetRegisters)

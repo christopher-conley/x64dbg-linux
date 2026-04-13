@@ -10,7 +10,7 @@ namespace ElfBug
     {
     }
 
-    Process::Process(Process&& other) noexcept
+    Process::Process(Process && other) noexcept
         : pid(other.pid)
         , threads(std::move(other.threads))
         , breakpoints(std::move(other.breakpoints))
@@ -31,14 +31,14 @@ namespace ElfBug
 
     int Process::memFd() const
     {
-        if(mMemFd == -1)
+        std::call_once(mMemFdOnce, [this]()
         {
             char path[64];
             snprintf(path, sizeof(path), "/proc/%d/mem", pid);
             mMemFd = open(path, O_RDWR);
             if(mMemFd == -1)
                 mMemFd = open(path, O_RDONLY);
-        }
+        });
         return mMemFd;
     }
 }

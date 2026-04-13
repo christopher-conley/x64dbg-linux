@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <sys/uio.h>
 
-struct [[maybe_unused]] ElfBugDebugger : ElfBug::Debugger
+struct ElfBugDebugger : ElfBug::Debugger
 {
     ElfBugCallbacks cb = {};
 
@@ -92,7 +92,7 @@ struct [[maybe_unused]] ElfBugDebugger : ElfBug::Debugger
             pending.swap(pendingBpRequests);
         }
 
-        for(const auto& req : pending)
+        for(const auto & req : pending)
         {
             if(!mProcess)
                 continue;
@@ -203,7 +203,7 @@ protected:
             cb.onSystemBreakpoint(cb.userdata);
     }
 
-    void cbBreakpoint(const ElfBug::BreakpointInfo& info) override
+    void cbBreakpoint(const ElfBug::BreakpointInfo & info) override
     {
         processPendingBreakpoints();
         if(cb.onBreakpoint)
@@ -229,13 +229,13 @@ protected:
         processPendingBreakpoints();
     }
 
-    void cbInternalError(const std::string& error) override
+    void cbInternalError(const std::string & error) override
     {
         if(cb.onError)
             cb.onError(error.c_str(), cb.userdata);
     }
 
-    void cbDebugStringEvent(const std::string& text) override
+    void cbDebugStringEvent(const std::string & text) override
     {
         if(cb.onDebugString)
             cb.onDebugString(text.c_str(), cb.userdata);
@@ -254,56 +254,78 @@ extern "C" {
 
     void ElfBugDestroy(ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return;
         delete dbg;
     }
 
     bool ElfBugInit(ElfBugDebugger* dbg, const char* path)
     {
+        if(!dbg)
+            return false;
         return dbg->Init(path);
     }
 
     void ElfBugStart(ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return;
         dbg->Start();
     }
 
     void ElfBugContinue(ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return;
         dbg->Continue();
     }
 
     void ElfBugStepInto(ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return;
         dbg->StepInto();
     }
 
     void ElfBugPause(ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return;
         dbg->Pause();
     }
 
     bool ElfBugStop(ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return false;
         return dbg->Stop();
     }
 
     bool ElfBugGetRegisters(const ElfBugDebugger* dbg, ElfBugRegisters* regs)
     {
+        if(!dbg || !regs)
+            return false;
         return dbg->readRegisters(regs);
     }
 
     pid_t ElfBugGetPid(const ElfBugDebugger* dbg)
     {
+        if(!dbg)
+            return 0;
         return dbg->activePid.load(std::memory_order_acquire);
     }
 
     bool ElfBugMemRead(const ElfBugDebugger* dbg, const uint64_t addr, void* dest, const uint64_t size)
     {
+        if(!dbg)
+            return false;
         return dbg->memRead(addr, dest, size);
     }
 
     bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base, uint64_t* size)
     {
+        if(!dbg || !base || !size)
+            return false;
         if(!dbg->active.load(std::memory_order_acquire))
             return false;
 
@@ -319,6 +341,8 @@ extern "C" {
 
     bool ElfBugMemIsCodePtr(const ElfBugDebugger* dbg, const uint64_t addr)
     {
+        if(!dbg)
+            return false;
         if(!dbg->active.load(std::memory_order_acquire))
             return false;
 
@@ -329,6 +353,8 @@ extern "C" {
 
     bool ElfBugMemIsValidPtr(const ElfBugDebugger* dbg, const uint64_t addr)
     {
+        if(!dbg)
+            return false;
         if(!dbg->active.load(std::memory_order_acquire))
             return false;
 
@@ -338,6 +364,8 @@ extern "C" {
 
     bool ElfBugSetBreakpoint(ElfBugDebugger* dbg, uint64_t addr)
     {
+        if(!dbg)
+            return false;
         if(!dbg->active.load(std::memory_order_acquire))
             return false;
 
@@ -348,6 +376,8 @@ extern "C" {
 
     bool ElfBugDeleteBreakpoint(ElfBugDebugger* dbg, const uint64_t addr)
     {
+        if(!dbg)
+            return false;
         if(!dbg->active.load(std::memory_order_acquire))
             return false;
 
@@ -358,6 +388,8 @@ extern "C" {
 
     bool ElfBugHasBreakpoint(const ElfBugDebugger* dbg, const uint64_t addr)
     {
+        if(!dbg)
+            return false;
         std::lock_guard lock(dbg->bpDataMutex);
         return dbg->breakpointAddrs.count(addr) > 0;
     }

@@ -36,7 +36,7 @@ namespace ElfBug
         return true;
     }
 
-    bool Process::SetBreakpoint(const ptr address, const BreakpointCallback& cbBreakpoint, bool singleshot, const SoftwareType type)
+    bool Process::SetBreakpoint(const ptr address, const BreakpointCallback & cbBreakpoint, bool singleshot, const SoftwareType type)
     {
         if(!SetBreakpoint(address, singleshot, type))
             return false;
@@ -78,7 +78,7 @@ namespace ElfBug
         return false;
     }
 
-    bool Process::SetMemoryBreakpoint(const ptr address, const ptr size, const BreakpointCallback& cbBreakpoint, const MemoryType type, bool singleshot)
+    bool Process::SetMemoryBreakpoint(const ptr address, const ptr size, const BreakpointCallback & cbBreakpoint, const MemoryType type, bool singleshot)
     {
         (void)address;
         (void)size;
@@ -94,7 +94,7 @@ namespace ElfBug
         return false;
     }
 
-    void Process::StepOver(const StepCallback& cbStep)
+    void Process::StepOver(const StepCallback & cbStep)
     {
         (void)cbStep;
     }

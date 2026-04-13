@@ -16,15 +16,15 @@ namespace ElfBug
         explicit Thread(pid_t tid);
 
         void StepInto();
-        void StepInto(const StepCallback& cbStep);
+        void StepInto(const StepCallback & cbStep);
 
         [[nodiscard]] bool isSingleStepping() const { return mIsSingleStepping; }
         void clearSingleStep() { mIsSingleStepping = false; }
 
         // TODO: implement via PTRACE_POKEUSER on debug register offsets
-        [[nodiscard]] bool GetFreeHardwareBreakpointSlot(const HardwareSlot& slot) const;
+        [[nodiscard]] bool GetFreeHardwareBreakpointSlot(const HardwareSlot & slot) const;
         bool SetHardwareBreakpoint(ptr address, HardwareSlot slot, HardwareType type = HardwareType::Execute, HardwareSize size = HardwareSize::Byte, bool singleshot = false);
-        bool SetHardwareBreakpoint(ptr address, HardwareSlot slot, const BreakpointCallback& cbBreakpoint, HardwareType type = HardwareType::Execute, HardwareSize size = HardwareSize::Byte, bool singleshot = false);
+        bool SetHardwareBreakpoint(ptr address, HardwareSlot slot, const BreakpointCallback & cbBreakpoint, HardwareType type = HardwareType::Execute, HardwareSize size = HardwareSize::Byte, bool singleshot = false);
         bool DeleteHardwareBreakpoint(ptr address);
 
     private:

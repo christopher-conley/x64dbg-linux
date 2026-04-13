@@ -15,7 +15,7 @@ namespace ElfBug
         ptrace(PTRACE_SINGLESTEP, tid, nullptr, nullptr);
     }
 
-    void Thread::StepInto(const StepCallback& cbStep)
+    void Thread::StepInto(const StepCallback & cbStep)
     {
         mStepCallback = cbStep;
         StepInto();

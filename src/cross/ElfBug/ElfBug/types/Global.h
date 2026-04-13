@@ -69,7 +69,7 @@ namespace ElfBug
 
     struct RangeCompare
     {
-        bool operator()(const Range& a, const Range& b) const
+        bool operator()(const Range & a, const Range & b) const
         {
             return a.end < b.start;
         }

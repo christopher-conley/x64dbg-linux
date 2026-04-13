@@ -257,7 +257,7 @@ void MainWindow::onProcessExited(const int exitCode) const
     statusBar()->showMessage(QString("Process exited with code %1").arg(exitCode));
 }
 
-void MainWindow::onLogMessage(const QString& msg) const
+void MainWindow::onLogMessage(const QString & msg) const
 {
     mLog->append(msg);
 }
@@ -291,7 +291,7 @@ void MainWindow::onToggleBreakpoint() const
     mDisassembly->reloadData();
 }
 
-void MainWindow::onStopped(const duint rip, const QString& reason) const
+void MainWindow::onStopped(const duint rip, const QString & reason) const
 {
     mDisassembly->gotoAddress(rip);
     mDisassembly->reloadData();

@@ -9,7 +9,15 @@
 namespace ElfBug
 {
     Debugger::Debugger() = default;
-    Debugger::~Debugger() = default;
+
+    Debugger::~Debugger()
+    {
+        if(mMainPid > 0)
+        {
+            kill(mMainPid, SIGKILL);
+            waitpid(mMainPid, nullptr, __WALL);
+        }
+    }
 
     bool Debugger::Init(const char* szFilePath, const char* const* argv, const char* szCurrentDirectory)
     {
@@ -101,16 +109,16 @@ namespace ElfBug
     void Debugger::cbExitProcessEvent(const int exitCode) { (void)exitCode; }
     void Debugger::cbCreateThreadEvent(const pid_t tid) { (void)tid; }
     void Debugger::cbExitThreadEvent(const pid_t tid) { (void)tid; }
-    void Debugger::cbLoadDllEvent(const ptr baseAddress, const std::string& path) { (void)baseAddress; (void)path; }
+    void Debugger::cbLoadDllEvent(const ptr baseAddress, const std::string & path) { (void)baseAddress; (void)path; }
     void Debugger::cbUnloadDllEvent(const ptr baseAddress) { (void)baseAddress; }
     void Debugger::cbExceptionEvent(const int signal, const ptr address) { (void)signal; (void)address; }
-    void Debugger::cbBreakpoint(const BreakpointInfo& info) { (void)info; }
+    void Debugger::cbBreakpoint(const BreakpointInfo & info) { (void)info; }
     void Debugger::cbStep() {}
     void Debugger::cbSystemBreakpoint() {}
     void Debugger::cbAttachBreakpoint() {}
     void Debugger::cbUnhandledException(const int signal, const ptr address) { (void)signal; (void)address; }
-    void Debugger::cbInternalError(const std::string& error) { (void)error; }
-    void Debugger::cbDebugStringEvent(const std::string& text) { (void)text; }
+    void Debugger::cbInternalError(const std::string & error) { (void)error; }
+    void Debugger::cbDebugStringEvent(const std::string & text) { (void)text; }
     void Debugger::cbPaused() {}
     void Debugger::cbPauseTick() {}
 }
