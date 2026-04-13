@@ -29,7 +29,11 @@ option(LIBPL_ENABLE_CLI "" OFF)
 option(LIBPL_ENABLE_TESTS "" OFF)
 option(LIBWOLV_ENABLE_TESTS "" OFF)
 
-project(cross)
+project(cross
+	LANGUAGES
+		C
+		CXX
+)
 
 include("widgets/Qt.cmake")
 

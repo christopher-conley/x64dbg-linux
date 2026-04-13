@@ -11,6 +11,11 @@ using duint = uint64_t;
 using dsint = int64_t;
 
 #ifndef _WIN32
+using DWORD = uint32_t;
+using WORD = uint16_t;
+using NTSTATUS = uint32_t;
+#define _TRUNCATE ((size_t)-1)
+
 template<size_t Count, class... Args>
 int sprintf_s(char (&Dest)[Count], const char* fmt, Args... args)
 {
