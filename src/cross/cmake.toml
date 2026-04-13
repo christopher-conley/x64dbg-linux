@@ -7,6 +7,9 @@ cmkr-include = "../../cmake/cmkr.cmake"
 name = "cross"
 include-after = ["widgets/Qt.cmake"]
 
+[conditions]
+linux = "CMAKE_SYSTEM_NAME STREQUAL \"Linux\""
+
 [options]
 LIBPL_ENABLE_CLI = false
 LIBPL_ENABLE_TESTS = false
@@ -15,6 +18,9 @@ LIBWOLV_ENABLE_TESTS = false
 [subdir.widgets]
 
 [subdir.vendor]
+
+[subdir.ElfBug]
+condition = "linux"
 
 [template.qt_executable]
 type = "executable"
@@ -78,4 +84,23 @@ link-libraries = [
 ]
 private-include-directories = [
     "hex_viewer",
+]
+
+[target.debugger]
+type = "qt_executable"
+condition = "linux"
+sources = [
+    "debugger/main.cpp",
+    "debugger/core/*.cpp",
+    "debugger/core/*.h",
+    "debugger/gui/*.cpp",
+    "debugger/gui/*.h",
+    "debugger/resources/icons.qrc",
+]
+private-include-directories = [
+    "debugger",
+]
+link-libraries = [
+    "x64dbg::widgets",
+    "dl",
 ]

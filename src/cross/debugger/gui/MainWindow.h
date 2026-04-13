@@ -6,7 +6,7 @@
 #include <BasicView/HexDump.h>
 #include <BasicView/Disassembly.h>
 #include "core/DbgAdapter.h"
-#include "RegistersView.h"
+#include "Gui/RegistersView.h"
 
 class QThread;
 

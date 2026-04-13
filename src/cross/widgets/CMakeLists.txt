@@ -24,6 +24,7 @@ set(hook_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/StringUtil.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Types.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Imports.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/RegisterContext.h
 )
 
 set(widgets_SOURCES
@@ -68,6 +69,8 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Gui/ReleaseNotesDialog.ui
     ${widgets_SOURCE_DIR}/Gui/ImageTextBrowser.cpp
     ${widgets_SOURCE_DIR}/Gui/ImageTextBrowser.h
+    ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
+    ${widgets_SOURCE_DIR}/Gui/RegistersView.h
     ${widgets_SOURCE_DIR}/Memory/MemoryPage.cpp
     ${widgets_SOURCE_DIR}/Memory/MemoryPage.h
     ${widgets_SOURCE_DIR}/Utils/ActionHelpers.h

@@ -57,6 +57,18 @@ endif()
 add_subdirectory(vendor)
 set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
+	# Subdirectory: ElfBug
+	set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+	if(CMAKE_FOLDER)
+		set(CMAKE_FOLDER "${CMAKE_FOLDER}/ElfBug")
+	else()
+		set(CMAKE_FOLDER ElfBug)
+	endif()
+	add_subdirectory(ElfBug)
+	set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
+
+endif()
 # Target: minidump
 set(minidump_SOURCES
 	cmake.toml
@@ -225,4 +237,41 @@ target_link_libraries(hex_viewer PRIVATE
 get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT hex_viewer)
+endif()
+
+# Target: debugger
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
+	set(debugger_SOURCES
+		cmake.toml
+		"debugger/core/DbgAdapter.cpp"
+		"debugger/core/DbgAdapter.h"
+		"debugger/core/ElfBugLoader.h"
+		"debugger/core/LinuxArchitecture.h"
+		"debugger/gui/MainWindow.cpp"
+		"debugger/gui/MainWindow.h"
+		"debugger/main.cpp"
+		"debugger/resources/icons.qrc"
+	)
+
+	qt_executable(debugger ${debugger_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${debugger_SOURCES})
+
+	target_compile_features(debugger PRIVATE
+		cxx_std_20
+	)
+
+	target_include_directories(debugger PRIVATE
+		debugger
+	)
+
+	target_link_libraries(debugger PRIVATE
+		x64dbg::widgets
+		dl
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT debugger)
+	endif()
+
 endif()
