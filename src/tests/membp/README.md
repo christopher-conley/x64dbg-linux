@@ -10,6 +10,8 @@ The same fixture is therefore reused for:
 
 - positive `membp` region-behavior checks
 - `bpmrange` exact-range install/hit/lifecycle regression tests
+- access-type match/mismatch regression tests
+- repeated-hit, single-shot, callback-mutation, and cross-page coverage
 
 ## Executable layout
 
@@ -18,14 +20,23 @@ The same fixture is therefore reused for:
 Exports used by the scripts:
 
 - `ReadSequence`
+- `ReadTwiceSequence`
 - `WriteSequence`
+- `ReadThenWriteSequence`
 - `ExecSequence`
+- `ExecLeaf`
+- `ExecTwiceSequence`
 - `ReadTarget`
 - `WriteTarget`
 - `WriteHeap`
 - `StartHeap`
+- `CrossPagePointer`
+- `CrossPageReadSequence`
+- `StartCrossPageRead`
+- `CrossPageWriteSequence`
+- `StartCrossPageWrite`
 
-A large padding block forces `ReadTarget` and `WriteTarget` onto a later page while keeping them in the same merged region as the code.
+A large padding block forces `ReadTarget` and `WriteTarget` onto a later page while keeping them in the same merged region as the code. Additional helpers cover repeated accesses, callback mutation scenarios, and exact ranges that cross a page boundary.
 
 ## Variant scripts
 
@@ -36,10 +47,32 @@ The directory now uses multiple scripts handled by `src/tests/run.py`:
 - `test.range-read.txt` -> `membp/range-read`
 - `test.range-write.txt` -> `membp/range-write`
 - `test.range-execute.txt` -> `membp/range-execute`
+- `test.range-read-ignore-write.txt` -> `membp/range-read-ignore-write`
+- `test.range-read-ignore-execute.txt` -> `membp/range-read-ignore-execute`
+- `test.range-write-ignore-read.txt` -> `membp/range-write-ignore-read`
+- `test.range-write-ignore-execute.txt` -> `membp/range-write-ignore-execute`
+- `test.range-execute-ignore-read.txt` -> `membp/range-execute-ignore-read`
+- `test.range-execute-ignore-write.txt` -> `membp/range-execute-ignore-write`
+- `test.range-access-read.txt` -> `membp/range-access-read`
+- `test.range-access-write.txt` -> `membp/range-access-write`
+- `test.range-access-execute.txt` -> `membp/range-access-execute`
+- `test.range-repeat-read.txt` -> `membp/range-repeat-read`
+- `test.range-repeat-execute.txt` -> `membp/range-repeat-execute`
+- `test.range-singleshot-read.txt` -> `membp/range-singleshot-read`
+- `test.range-singleshot-execute.txt` -> `membp/range-singleshot-execute`
 - `test.range-delete.txt` -> `membp/range-delete`
 - `test.range-reenable.txt` -> `membp/range-reenable`
 - `test.range-reinit.txt` -> `membp/range-reinit`
+- `test.range-callback-delete.txt` -> `membp/range-callback-delete`
+- `test.range-callback-add.txt` -> `membp/range-callback-add`
+- `test.range-same-page-delete-one.txt` -> `membp/range-same-page-delete-one`
+- `test.range-cross-page-read.txt` -> `membp/range-cross-page-read`
+- `test.range-cross-page-write.txt` -> `membp/range-cross-page-write`
+- `test.range-adjacent-cross-page-read.txt` -> `membp/range-adjacent-cross-page-read`
+- `test.range-three-page-read.txt` -> `membp/range-three-page-read`
+- `test.range-multithread-read.txt` -> `membp/range-multithread-read`
+- `test.range-stress-access.txt` -> `membp/range-stress-access`
 - `test.exitprocess-assert.txt` -> `membp/exitprocess-assert`
 - `test.range-heap.txt` -> `membp/range-heap`
 
-The plugin in `plugin.cpp` provides shared assertions for installation, hits, deletion, re-enable, and reinit scenarios.
+The plugin in `plugin.cpp` provides shared assertions for installation metadata, hit sequences, deletion, re-enable, reinit, callback-driven mutations, exit-time verification, and start-mode based test staging for multi-step fixtures.
