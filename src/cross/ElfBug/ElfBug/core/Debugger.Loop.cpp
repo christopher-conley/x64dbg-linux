@@ -87,23 +87,25 @@ namespace ElfBug
 
             if(WIFEXITED(status))
             {
-                exitProcessEvent(pid, WEXITSTATUS(status));
                 if(pid == mMainPid)
                 {
+                    exitProcessEvent(pid, WEXITSTATUS(status));
                     mIsRunning.store(false, std::memory_order_release);
                     break;
                 }
+                exitThreadEvent(pid);
                 continue;
             }
 
             if(WIFSIGNALED(status))
             {
-                exitProcessEvent(pid, -WTERMSIG(status));
                 if(pid == mMainPid)
                 {
+                    exitProcessEvent(pid, -WTERMSIG(status));
                     mIsRunning.store(false, std::memory_order_release);
                     break;
                 }
+                exitThreadEvent(pid);
                 continue;
             }
 

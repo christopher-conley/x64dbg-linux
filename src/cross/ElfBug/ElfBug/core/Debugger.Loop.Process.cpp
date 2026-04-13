@@ -24,6 +24,7 @@ namespace ElfBug
         {
             mProcess = nullptr;
             mThread = nullptr;
+            mMainPid = 0;
         }
     }
 }

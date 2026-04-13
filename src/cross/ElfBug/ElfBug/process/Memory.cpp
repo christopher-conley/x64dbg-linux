@@ -38,7 +38,9 @@ namespace ElfBug
 
         if(bytesRead)
             *bytesRead = static_cast<ptr>(result);
-        return result > 0;
+        if(static_cast<size_t>(result) < size)
+            memset(static_cast<char*>(buffer) + result, 0, size - result);
+        return static_cast<size_t>(result) == size;
     }
 
     bool Process::MemWrite(const ptr address, const void* buffer, const ptr size, ptr* bytesWritten) const
@@ -68,7 +70,7 @@ namespace ElfBug
 
         if(bytesWritten)
             *bytesWritten = static_cast<ptr>(result);
-        return result > 0;
+        return static_cast<size_t>(result) == size;
     }
 
     bool Process::MemIsValidPtr(const ptr address) const
