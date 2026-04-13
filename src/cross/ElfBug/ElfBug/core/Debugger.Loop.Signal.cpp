@@ -1,12 +1,17 @@
 #include <ElfBug/core/Debugger.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
+#include <cerrno>
+#include <cstring>
+#include <csignal>
 
 namespace ElfBug
 {
     void Debugger::handleSignal(const pid_t pid, const int status)
     {
         const int sig = WSTOPSIG(status);
+        mPendingSignal = 0;
+        mThread = nullptr;
 
         if(mProcess)
         {
@@ -26,6 +31,8 @@ namespace ElfBug
             if(mPauseRequested.load(std::memory_order_acquire))
             {
                 mPauseRequested.store(false, std::memory_order_release);
+                // TODO: all-stop mode - send tgkill(mMainPid, tid, SIGSTOP)
+                // to every other thread and waitpid each
                 if(mThread)
                 {
                     mThread->registers.Read();
@@ -36,20 +43,28 @@ namespace ElfBug
                 }
                 else
                 {
-                    ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+                    if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                        cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
                 }
             }
             else
             {
-                ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+                if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             }
             break;
         }
 
         default:
-            cbExceptionEvent(sig, 0);
+        {
+            ptr faultAddr = 0;
+            siginfo_t sigInfo;
+            if(ptrace(PTRACE_GETSIGINFO, pid, nullptr, &sigInfo) != -1)
+                faultAddr = reinterpret_cast<ptr>(sigInfo.si_addr);
+            cbExceptionEvent(sig, faultAddr);
             ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void*>(static_cast<uintptr_t>(sig)));
             break;
+        }
         }
     }
 
@@ -71,23 +86,27 @@ namespace ElfBug
                 }
                 break;
             }
-            ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+            if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
         }
 
         case PTRACE_EVENT_CLONE:
         {
             unsigned long newTid = 0;
-            ptrace(PTRACE_GETEVENTMSG, pid, nullptr, &newTid);
+            if(ptrace(PTRACE_GETEVENTMSG, pid, nullptr, &newTid) == -1)
+                cbInternalError("PTRACE_GETEVENTMSG failed: " + std::string(strerror(errno)));
             createThreadEvent(static_cast<pid_t>(newTid));
-            ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+            if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
         }
 
         case PTRACE_EVENT_EXIT:
         {
             exitThreadEvent(pid);
-            ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+            if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
         }
 
@@ -95,7 +114,8 @@ namespace ElfBug
         {
             if(!mThread)
             {
-                ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+                if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
                 break;
             }
 
@@ -159,8 +179,9 @@ namespace ElfBug
 
                             if(stepSig != SIGTRAP)
                             {
-                                ptrace(PTRACE_CONT, pid, nullptr,
-                                       reinterpret_cast<void*>(static_cast<uintptr_t>(stepSig)));
+                                if(ptrace(PTRACE_CONT, pid, nullptr,
+                                          reinterpret_cast<void*>(static_cast<uintptr_t>(stepSig))) == -1)
+                                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
                                 break;
                             }
                         }
@@ -172,7 +193,8 @@ namespace ElfBug
                 }
             }
 
-            ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+            if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
         }
         }

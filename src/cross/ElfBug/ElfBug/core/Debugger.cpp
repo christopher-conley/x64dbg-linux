@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 #include <sys/personality.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <csignal>
 #include <cstring>
 
@@ -21,25 +22,46 @@ namespace ElfBug
 
     bool Debugger::Init(const char* szFilePath, const char* const* argv, const char* szCurrentDirectory)
     {
+        int pipeFds[2];
+        if(pipe2(pipeFds, O_CLOEXEC) == -1)
+        {
+            cbInternalError("pipe2() failed: " + std::string(strerror(errno)));
+            return false;
+        }
+
         const pid_t pid = fork();
         if(pid == -1)
         {
+            close(pipeFds[0]);
+            close(pipeFds[1]);
             cbInternalError("fork() failed: " + std::string(strerror(errno)));
             return false;
         }
 
         if(pid == 0)
         {
+            close(pipeFds[0]);
+
+            auto childError = [&](const char* msg)
+            {
+                write(pipeFds[1], msg, strlen(msg));
+                _exit(1);
+            };
+
+            if(setpgid(0, 0) < 0)
+                childError("setpgid failed");
+
             if(szCurrentDirectory)
             {
                 if(chdir(szCurrentDirectory) == -1)
-                    _exit(1);
+                    childError("chdir failed");
             }
 
-            personality(ADDR_NO_RANDOMIZE);
+            if(personality(ADDR_NO_RANDOMIZE) == -1)
+                childError("personality(ADDR_NO_RANDOMIZE) failed");
 
             if(ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1)
-                _exit(1);
+                childError("PTRACE_TRACEME failed");
 
             if(argv)
                 execv(szFilePath, const_cast<char* const*>(argv));
@@ -49,7 +71,20 @@ namespace ElfBug
                 execv(szFilePath, const_cast<char* const*>(defaultArgv));
             }
 
-            _exit(1);
+            childError("execv failed");
+        }
+
+        close(pipeFds[1]);
+
+        char errBuf[256] = {};
+        const ssize_t n = read(pipeFds[0], errBuf, sizeof(errBuf) - 1);
+        close(pipeFds[0]);
+
+        if(n > 0)
+        {
+            waitpid(pid, nullptr, 0);
+            cbInternalError("child process failed: " + std::string(errBuf));
+            return false;
         }
 
         mMainPid = pid;
@@ -72,13 +107,21 @@ namespace ElfBug
 
     void Debugger::Continue()
     {
-        mPaused.store(false, std::memory_order_release);
+        {
+            std::lock_guard lock(mPauseMutex);
+            mPaused.store(false, std::memory_order_release);
+        }
+        mPauseCv.notify_one();
     }
 
     void Debugger::StepInto()
     {
-        mStepPending.store(true, std::memory_order_release);
-        mPaused.store(false, std::memory_order_release);
+        {
+            std::lock_guard lock(mPauseMutex);
+            mStepPending.store(true, std::memory_order_release);
+            mPaused.store(false, std::memory_order_release);
+        }
+        mPauseCv.notify_one();
     }
 
     void Debugger::Pause()
@@ -95,7 +138,12 @@ namespace ElfBug
         if(mMainPid <= 0)
             return false;
 
-        mPaused.store(false, std::memory_order_release);
+        mIsRunning.store(false, std::memory_order_release);
+        {
+            std::lock_guard lock(mPauseMutex);
+            mPaused.store(false, std::memory_order_release);
+        }
+        mPauseCv.notify_one();
 
         return kill(mMainPid, SIGKILL) == 0;
     }

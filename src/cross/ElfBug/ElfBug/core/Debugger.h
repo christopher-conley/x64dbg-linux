@@ -2,6 +2,8 @@
 
 #include <sys/types.h>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
 #include <string>
 #include <unordered_map>
 #include <ElfBug/types/ElfBug.h>
@@ -66,5 +68,8 @@ namespace ElfBug
         std::atomic<bool> mStepPending{false};
         std::atomic<bool> mPauseRequested{false};
         pid_t mMainPid = 0;
+        int mPendingSignal = 0;
+        std::mutex mPauseMutex;
+        std::condition_variable mPauseCv;
     };
 }

@@ -2,30 +2,40 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <cerrno>
 #include <cstring>
+#include <chrono>
 
 namespace ElfBug
 {
     bool Debugger::pauseAndResume(const pid_t pid)
     {
+        std::unique_lock lock(mPauseMutex);
         mPaused.store(true, std::memory_order_release);
+
         while(mPaused.load(std::memory_order_acquire) && mIsRunning.load(std::memory_order_acquire))
         {
-            cbPauseTick();
-            usleep(1000);
+            if(mPauseCv.wait_for(lock, std::chrono::milliseconds(10)) == std::cv_status::timeout)
+                cbPauseTick();
         }
+
+        lock.unlock();
 
         if(!mIsRunning.load(std::memory_order_acquire))
             return false;
 
         if(mStepPending.load(std::memory_order_acquire) && mThread)
         {
-            mStepPending.store(false, std::memory_order_relaxed);
+            mStepPending.store(false, std::memory_order_release);
             mThread->StepInto();
         }
         else
         {
-            ptrace(PTRACE_CONT, pid, nullptr, nullptr);
+            const int sig = mPendingSignal;
+            mPendingSignal = 0;
+            if(ptrace(PTRACE_CONT, pid, nullptr,
+                      reinterpret_cast<void*>(static_cast<uintptr_t>(sig))) == -1)
+                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
         }
         return true;
     }
@@ -51,6 +61,7 @@ namespace ElfBug
         }
 
         if(ptrace(PTRACE_SETOPTIONS, mMainPid, nullptr,
+                  PTRACE_O_TRACESYSGOOD |
                   PTRACE_O_TRACECLONE |
                   PTRACE_O_TRACEEXEC |
                   PTRACE_O_TRACEEXIT) == -1)
