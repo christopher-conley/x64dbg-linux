@@ -12,5 +12,5 @@ namespace ElfBug
     // x64 only (for now)
     typedef uint64 ptr;
 
-    #define ElfBugArchValue(x32value, x64value) (x64value)
+#define ElfBugArchValue(x32value, x64value) (x64value)
 }

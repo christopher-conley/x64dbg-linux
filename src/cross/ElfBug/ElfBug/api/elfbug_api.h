@@ -8,9 +8,9 @@ extern "C" {
 #endif
 
 #ifdef ELFBUG_BUILDING
-    #define ELFBUG_EXPORT __attribute__((visibility("default")))
+#define ELFBUG_EXPORT __attribute__((visibility("default")))
 #else
-    #define ELFBUG_EXPORT
+#define ELFBUG_EXPORT
 #endif
 
 typedef struct ElfBugDebugger ElfBugDebugger;

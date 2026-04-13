@@ -10,13 +10,22 @@ namespace ElfBug
 
     bool Thread::SetHardwareBreakpoint(const ptr address, const HardwareSlot slot, HardwareType type, const HardwareSize size, const bool singleshot)
     {
-        (void)address; (void)slot; (void)type; (void)size; (void)singleshot;
+        (void)address;
+        (void)slot;
+        (void)type;
+        (void)size;
+        (void)singleshot;
         return false;
     }
 
     bool Thread::SetHardwareBreakpoint(const ptr address, const HardwareSlot slot, const BreakpointCallback& cbBreakpoint, const HardwareType type, const HardwareSize size, const bool singleshot)
     {
-        (void)address; (void)slot; (void)cbBreakpoint; (void)type; (void)size; (void)singleshot;
+        (void)address;
+        (void)slot;
+        (void)cbBreakpoint;
+        (void)type;
+        (void)size;
+        (void)singleshot;
         return false;
     }
 

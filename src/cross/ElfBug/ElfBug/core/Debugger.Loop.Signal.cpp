@@ -48,7 +48,7 @@ namespace ElfBug
 
         default:
             cbExceptionEvent(sig, 0);
-            ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void *>(static_cast<uintptr_t>(sig)));
+            ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void*>(static_cast<uintptr_t>(sig)));
             break;
         }
     }
@@ -145,8 +145,8 @@ namespace ElfBug
                         if(WIFEXITED(stepStatus) || WIFSIGNALED(stepStatus))
                         {
                             exitProcessEvent(mMainPid, WIFEXITED(stepStatus)
-                                ? WEXITSTATUS(stepStatus)
-                                : -WTERMSIG(stepStatus));
+                                             ? WEXITSTATUS(stepStatus)
+                                             : -WTERMSIG(stepStatus));
                             mIsRunning.store(false, std::memory_order_release);
                             break;
                         }
@@ -160,7 +160,7 @@ namespace ElfBug
                             if(stepSig != SIGTRAP)
                             {
                                 ptrace(PTRACE_CONT, pid, nullptr,
-                                    reinterpret_cast<void*>(static_cast<uintptr_t>(stepSig)));
+                                       reinterpret_cast<void*>(static_cast<uintptr_t>(stepSig)));
                                 break;
                             }
                         }

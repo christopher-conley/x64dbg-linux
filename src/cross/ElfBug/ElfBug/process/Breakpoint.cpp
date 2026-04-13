@@ -71,13 +71,20 @@ namespace ElfBug
 
     bool Process::SetMemoryBreakpoint(const ptr address, const ptr size, const MemoryType type, bool singleshot)
     {
-        (void)address; (void)size; (void)type; (void)singleshot;
+        (void)address;
+        (void)size;
+        (void)type;
+        (void)singleshot;
         return false;
     }
 
     bool Process::SetMemoryBreakpoint(const ptr address, const ptr size, const BreakpointCallback& cbBreakpoint, const MemoryType type, bool singleshot)
     {
-        (void)address; (void)size; (void)cbBreakpoint; (void)type; (void)singleshot;
+        (void)address;
+        (void)size;
+        (void)cbBreakpoint;
+        (void)type;
+        (void)singleshot;
         return false;
     }
 

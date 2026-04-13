@@ -15,33 +15,33 @@ namespace ElfBug
         bool Read();
         bool Write();
 
-        ptr& Gax();
-        ptr& Gbx();
-        ptr& Gcx();
-        ptr& Gdx();
-        ptr& Gdi();
-        ptr& Gsi();
-        ptr& Gbp();
-        ptr& Gsp();
-        ptr& Gip();
+        ptr & Gax();
+        ptr & Gbx();
+        ptr & Gcx();
+        ptr & Gdx();
+        ptr & Gdi();
+        ptr & Gsi();
+        ptr & Gbp();
+        ptr & Gsp();
+        ptr & Gip();
 
-        ptr& Rax();
-        ptr& Rbx();
-        ptr& Rcx();
-        ptr& Rdx();
-        ptr& Rsi();
-        ptr& Rdi();
-        ptr& Rbp();
-        ptr& Rsp();
-        ptr& Rip();
-        ptr& R8();
-        ptr& R9();
-        ptr& R10();
-        ptr& R11();
-        ptr& R12();
-        ptr& R13();
-        ptr& R14();
-        ptr& R15();
+        ptr & Rax();
+        ptr & Rbx();
+        ptr & Rcx();
+        ptr & Rdx();
+        ptr & Rsi();
+        ptr & Rdi();
+        ptr & Rbp();
+        ptr & Rsp();
+        ptr & Rip();
+        ptr & R8();
+        ptr & R9();
+        ptr & R10();
+        ptr & R11();
+        ptr & R12();
+        ptr & R13();
+        ptr & R14();
+        ptr & R15();
 
         [[nodiscard]] bool TrapFlag() const;
         void SetTrapFlag(bool set);
@@ -62,7 +62,7 @@ namespace ElfBug
         bool SetDr6(ptr value);
         bool SetDr7(ptr value);
 
-        [[nodiscard]] const user_regs_struct& Native() const { return mRegs; }
+        [[nodiscard]] const user_regs_struct & Native() const { return mRegs; }
 
     private:
         pid_t mTid;

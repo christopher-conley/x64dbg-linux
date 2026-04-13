@@ -20,33 +20,33 @@ namespace ElfBug
         return ptrace(PTRACE_SETREGS, mTid, nullptr, &mRegs) != -1;
     }
 
-    ptr& Registers::Gax() { return reinterpret_cast<ptr&>(mRegs.rax); }
-    ptr& Registers::Gbx() { return reinterpret_cast<ptr&>(mRegs.rbx); }
-    ptr& Registers::Gcx() { return reinterpret_cast<ptr&>(mRegs.rcx); }
-    ptr& Registers::Gdx() { return reinterpret_cast<ptr&>(mRegs.rdx); }
-    ptr& Registers::Gdi() { return reinterpret_cast<ptr&>(mRegs.rdi); }
-    ptr& Registers::Gsi() { return reinterpret_cast<ptr&>(mRegs.rsi); }
-    ptr& Registers::Gbp() { return reinterpret_cast<ptr&>(mRegs.rbp); }
-    ptr& Registers::Gsp() { return reinterpret_cast<ptr&>(mRegs.rsp); }
-    ptr& Registers::Gip() { return reinterpret_cast<ptr&>(mRegs.rip); }
+    ptr & Registers::Gax() { return reinterpret_cast<ptr &>(mRegs.rax); }
+    ptr & Registers::Gbx() { return reinterpret_cast<ptr &>(mRegs.rbx); }
+    ptr & Registers::Gcx() { return reinterpret_cast<ptr &>(mRegs.rcx); }
+    ptr & Registers::Gdx() { return reinterpret_cast<ptr &>(mRegs.rdx); }
+    ptr & Registers::Gdi() { return reinterpret_cast<ptr &>(mRegs.rdi); }
+    ptr & Registers::Gsi() { return reinterpret_cast<ptr &>(mRegs.rsi); }
+    ptr & Registers::Gbp() { return reinterpret_cast<ptr &>(mRegs.rbp); }
+    ptr & Registers::Gsp() { return reinterpret_cast<ptr &>(mRegs.rsp); }
+    ptr & Registers::Gip() { return reinterpret_cast<ptr &>(mRegs.rip); }
 
-    ptr& Registers::Rax() { return reinterpret_cast<ptr&>(mRegs.rax); }
-    ptr& Registers::Rbx() { return reinterpret_cast<ptr&>(mRegs.rbx); }
-    ptr& Registers::Rcx() { return reinterpret_cast<ptr&>(mRegs.rcx); }
-    ptr& Registers::Rdx() { return reinterpret_cast<ptr&>(mRegs.rdx); }
-    ptr& Registers::Rsi() { return reinterpret_cast<ptr&>(mRegs.rsi); }
-    ptr& Registers::Rdi() { return reinterpret_cast<ptr&>(mRegs.rdi); }
-    ptr& Registers::Rbp() { return reinterpret_cast<ptr&>(mRegs.rbp); }
-    ptr& Registers::Rsp() { return reinterpret_cast<ptr&>(mRegs.rsp); }
-    ptr& Registers::Rip() { return reinterpret_cast<ptr&>(mRegs.rip); }
-    ptr& Registers::R8()  { return reinterpret_cast<ptr&>(mRegs.r8); }
-    ptr& Registers::R9()  { return reinterpret_cast<ptr&>(mRegs.r9); }
-    ptr& Registers::R10() { return reinterpret_cast<ptr&>(mRegs.r10); }
-    ptr& Registers::R11() { return reinterpret_cast<ptr&>(mRegs.r11); }
-    ptr& Registers::R12() { return reinterpret_cast<ptr&>(mRegs.r12); }
-    ptr& Registers::R13() { return reinterpret_cast<ptr&>(mRegs.r13); }
-    ptr& Registers::R14() { return reinterpret_cast<ptr&>(mRegs.r14); }
-    ptr& Registers::R15() { return reinterpret_cast<ptr&>(mRegs.r15); }
+    ptr & Registers::Rax() { return reinterpret_cast<ptr &>(mRegs.rax); }
+    ptr & Registers::Rbx() { return reinterpret_cast<ptr &>(mRegs.rbx); }
+    ptr & Registers::Rcx() { return reinterpret_cast<ptr &>(mRegs.rcx); }
+    ptr & Registers::Rdx() { return reinterpret_cast<ptr &>(mRegs.rdx); }
+    ptr & Registers::Rsi() { return reinterpret_cast<ptr &>(mRegs.rsi); }
+    ptr & Registers::Rdi() { return reinterpret_cast<ptr &>(mRegs.rdi); }
+    ptr & Registers::Rbp() { return reinterpret_cast<ptr &>(mRegs.rbp); }
+    ptr & Registers::Rsp() { return reinterpret_cast<ptr &>(mRegs.rsp); }
+    ptr & Registers::Rip() { return reinterpret_cast<ptr &>(mRegs.rip); }
+    ptr & Registers::R8()  { return reinterpret_cast<ptr &>(mRegs.r8); }
+    ptr & Registers::R9()  { return reinterpret_cast<ptr &>(mRegs.r9); }
+    ptr & Registers::R10() { return reinterpret_cast<ptr &>(mRegs.r10); }
+    ptr & Registers::R11() { return reinterpret_cast<ptr &>(mRegs.r11); }
+    ptr & Registers::R12() { return reinterpret_cast<ptr &>(mRegs.r12); }
+    ptr & Registers::R13() { return reinterpret_cast<ptr &>(mRegs.r13); }
+    ptr & Registers::R14() { return reinterpret_cast<ptr &>(mRegs.r14); }
+    ptr & Registers::R15() { return reinterpret_cast<ptr &>(mRegs.r15); }
 
     bool Registers::TrapFlag() const
     {

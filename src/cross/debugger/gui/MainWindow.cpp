@@ -31,7 +31,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(mProvider, &DbgAdapter::processCreated, this, &MainWindow::onProcessCreated, Qt::QueuedConnection);
     connect(mProvider, &DbgAdapter::processExited, this, &MainWindow::onProcessExited, Qt::QueuedConnection);
-    connect(mProvider, &DbgAdapter::registersUpdated, this, [this](const REGDUMP& dump) {
+    connect(mProvider, &DbgAdapter::registersUpdated, this, [this](const REGDUMP & dump)
+    {
         mRegisters->setRegisters(&dump);
     }, Qt::QueuedConnection);
     connect(mProvider, &DbgAdapter::logMessage, this, &MainWindow::onLogMessage, Qt::QueuedConnection);
@@ -128,8 +129,9 @@ void MainWindow::setupTabs()
     mLog->setFont(ConfigFont("Log"));
     mTabWidget->addTab(mLog, icon("log"), tr("Log"));
 
-    auto makePlaceholder = [this](const QString& text) {
-        const auto label = new QLabel(text, this); 
+    auto makePlaceholder = [this](const QString & text)
+    {
+        const auto label = new QLabel(text, this);
         label->setAlignment(Qt::AlignCenter);
         label->setFont(ConfigFont("Log"));
         return label;
@@ -382,7 +384,7 @@ void MainWindow::loadTheme()
     QColor comment(0x646464);
     QColor constant(0x56b6c2);
 
-    auto setColorPair = [&](const QString& name, QColor fg, QColor cbg = Qt::transparent)
+    auto setColorPair = [&](const QString & name, QColor fg, QColor cbg = Qt::transparent)
     {
         config->Colors[name + "Color"] = fg;
         config->Colors[name + "BackgroundColor"] = cbg;

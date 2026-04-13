@@ -41,7 +41,8 @@ namespace ElfBug
         return result > 0;
     }
 
-    bool Process::MemWrite(const ptr address, const void* buffer, const ptr size, ptr* bytesWritten) const {
+    bool Process::MemWrite(const ptr address, const void* buffer, const ptr size, ptr* bytesWritten) const
+    {
         if(!buffer || !size)
             return false;
 
@@ -79,7 +80,10 @@ namespace ElfBug
     bool Process::MemProtect(const ptr address, const ptr size, uint32 newProtect, uint32* oldProtect)
     {
         // TODO: implement via ptrace or /proc/pid/mem mprotect
-        (void)address; (void)size; (void)newProtect; (void)oldProtect;
+        (void)address;
+        (void)size;
+        (void)newProtect;
+        (void)oldProtect;
         return false;
     }
 }

@@ -24,10 +24,10 @@ namespace ElfBug
         explicit Process(pid_t pid);
         ~Process();
 
-        Process(const Process&) = delete;
-        Process& operator=(const Process&) = delete;
+        Process(const Process &) = delete;
+        Process & operator=(const Process &) = delete;
         Process(Process&& other) noexcept;
-        Process& operator=(Process&&) = delete;
+        Process & operator=(Process &&) = delete;
 
         bool MemRead(ptr address, void* buffer, ptr size, ptr* bytesRead = nullptr) const;
         bool MemWrite(ptr address, const void* buffer, ptr size, ptr* bytesWritten = nullptr) const;

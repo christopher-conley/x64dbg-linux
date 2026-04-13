@@ -46,7 +46,7 @@ namespace ElfBug
         BreakpointInternalInfo internal = {};
     };
 
-    using BreakpointCallback = std::function<void(const BreakpointInfo&)>;
+    using BreakpointCallback = std::function<void(const BreakpointInfo &)>;
     using StepCallback = std::function<void()>;
     using BreakpointKey = std::pair<BreakpointType, ptr>;
     using BreakpointMap = std::map<BreakpointKey, BreakpointInfo>;

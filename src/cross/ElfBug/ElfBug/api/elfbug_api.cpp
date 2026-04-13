@@ -74,7 +74,7 @@ struct [[maybe_unused]] ElfBugDebugger : ElfBug::Debugger
     const MemRegion* findRegion(const uint64_t addr) const
     {
         auto it = std::upper_bound(memoryMap.begin(), memoryMap.end(), addr,
-            [](const uint64_t a, const MemRegion& r) { return a < r.start; });
+        [](const uint64_t a, const MemRegion & r) { return a < r.start; });
         if(it != memoryMap.begin())
         {
             --it;
@@ -134,14 +134,22 @@ struct [[maybe_unused]] ElfBugDebugger : ElfBug::Debugger
 
         const auto native = mThread->registers.Native();
 
-        out->rax = native.rax; out->rbx = native.rbx;
-        out->rcx = native.rcx; out->rdx = native.rdx;
-        out->rbp = native.rbp; out->rsp = native.rsp;
-        out->rsi = native.rsi; out->rdi = native.rdi;
-        out->r8  = native.r8;  out->r9  = native.r9;
-        out->r10 = native.r10; out->r11 = native.r11;
-        out->r12 = native.r12; out->r13 = native.r13;
-        out->r14 = native.r14; out->r15 = native.r15;
+        out->rax = native.rax;
+        out->rbx = native.rbx;
+        out->rcx = native.rcx;
+        out->rdx = native.rdx;
+        out->rbp = native.rbp;
+        out->rsp = native.rsp;
+        out->rsi = native.rsi;
+        out->rdi = native.rdi;
+        out->r8  = native.r8;
+        out->r9  = native.r9;
+        out->r10 = native.r10;
+        out->r11 = native.r11;
+        out->r12 = native.r12;
+        out->r13 = native.r13;
+        out->r14 = native.r14;
+        out->r15 = native.r15;
         out->rip = native.rip;
         out->eflags = native.eflags;
         out->cs = static_cast<uint16_t>(native.cs);
@@ -236,122 +244,122 @@ protected:
 
 extern "C" {
 
-ElfBugDebugger* ElfBugCreate(const ElfBugCallbacks* callbacks)
-{
-    auto* dbg = new ElfBugDebugger();
-    if(callbacks)
-        dbg->cb = *callbacks;
-    return dbg;
-}
+    ElfBugDebugger* ElfBugCreate(const ElfBugCallbacks* callbacks)
+    {
+        auto* dbg = new ElfBugDebugger();
+        if(callbacks)
+            dbg->cb = *callbacks;
+        return dbg;
+    }
 
-void ElfBugDestroy(ElfBugDebugger* dbg)
-{
-    delete dbg;
-}
+    void ElfBugDestroy(ElfBugDebugger* dbg)
+    {
+        delete dbg;
+    }
 
-bool ElfBugInit(ElfBugDebugger* dbg, const char* path)
-{
-    return dbg->Init(path);
-}
+    bool ElfBugInit(ElfBugDebugger* dbg, const char* path)
+    {
+        return dbg->Init(path);
+    }
 
-void ElfBugStart(ElfBugDebugger* dbg)
-{
-    dbg->Start();
-}
+    void ElfBugStart(ElfBugDebugger* dbg)
+    {
+        dbg->Start();
+    }
 
-void ElfBugContinue(ElfBugDebugger* dbg)
-{
-    dbg->Continue();
-}
+    void ElfBugContinue(ElfBugDebugger* dbg)
+    {
+        dbg->Continue();
+    }
 
-void ElfBugStepInto(ElfBugDebugger* dbg)
-{
-    dbg->StepInto();
-}
+    void ElfBugStepInto(ElfBugDebugger* dbg)
+    {
+        dbg->StepInto();
+    }
 
-void ElfBugPause(ElfBugDebugger* dbg)
-{
-    dbg->Pause();
-}
+    void ElfBugPause(ElfBugDebugger* dbg)
+    {
+        dbg->Pause();
+    }
 
-bool ElfBugStop(ElfBugDebugger* dbg)
-{
-    return dbg->Stop();
-}
+    bool ElfBugStop(ElfBugDebugger* dbg)
+    {
+        return dbg->Stop();
+    }
 
-bool ElfBugGetRegisters(const ElfBugDebugger* dbg, ElfBugRegisters* regs)
-{
-    return dbg->readRegisters(regs);
-}
+    bool ElfBugGetRegisters(const ElfBugDebugger* dbg, ElfBugRegisters* regs)
+    {
+        return dbg->readRegisters(regs);
+    }
 
-pid_t ElfBugGetPid(const ElfBugDebugger* dbg)
-{
-    return dbg->activePid.load(std::memory_order_acquire);
-}
+    pid_t ElfBugGetPid(const ElfBugDebugger* dbg)
+    {
+        return dbg->activePid.load(std::memory_order_acquire);
+    }
 
-bool ElfBugMemRead(const ElfBugDebugger* dbg, const uint64_t addr, void* dest, const uint64_t size)
-{
-    return dbg->memRead(addr, dest, size);
-}
+    bool ElfBugMemRead(const ElfBugDebugger* dbg, const uint64_t addr, void* dest, const uint64_t size)
+    {
+        return dbg->memRead(addr, dest, size);
+    }
 
-bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base, uint64_t* size)
-{
-    if(!dbg->active.load(std::memory_order_acquire))
-        return false;
+    bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base, uint64_t* size)
+    {
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
 
-    std::lock_guard lock(dbg->mapMutex);
-    const auto* region = dbg->findRegion(addr);
-    if(!region)
-        return false;
+        std::lock_guard lock(dbg->mapMutex);
+        const auto* region = dbg->findRegion(addr);
+        if(!region)
+            return false;
 
-    *base = region->start;
-    *size = region->end - region->start;
-    return true;
-}
+        *base = region->start;
+        *size = region->end - region->start;
+        return true;
+    }
 
-bool ElfBugMemIsCodePtr(const ElfBugDebugger* dbg, const uint64_t addr)
-{
-    if(!dbg->active.load(std::memory_order_acquire))
-        return false;
+    bool ElfBugMemIsCodePtr(const ElfBugDebugger* dbg, const uint64_t addr)
+    {
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
 
-    std::lock_guard lock(dbg->mapMutex);
-    const auto* region = dbg->findRegion(addr);
-    return region && region->executable;
-}
+        std::lock_guard lock(dbg->mapMutex);
+        const auto* region = dbg->findRegion(addr);
+        return region && region->executable;
+    }
 
-bool ElfBugMemIsValidPtr(const ElfBugDebugger* dbg, const uint64_t addr)
-{
-    if(!dbg->active.load(std::memory_order_acquire))
-        return false;
+    bool ElfBugMemIsValidPtr(const ElfBugDebugger* dbg, const uint64_t addr)
+    {
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
 
-    std::lock_guard lock(dbg->mapMutex);
-    return dbg->findRegion(addr) != nullptr;
-}
+        std::lock_guard lock(dbg->mapMutex);
+        return dbg->findRegion(addr) != nullptr;
+    }
 
-bool ElfBugSetBreakpoint(ElfBugDebugger* dbg, uint64_t addr)
-{
-    if(!dbg->active.load(std::memory_order_acquire))
-        return false;
+    bool ElfBugSetBreakpoint(ElfBugDebugger* dbg, uint64_t addr)
+    {
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
 
-    std::lock_guard lock(dbg->bpQueueMutex);
-    dbg->pendingBpRequests.push_back({addr, true});
-    return true;
-}
+        std::lock_guard lock(dbg->bpQueueMutex);
+        dbg->pendingBpRequests.push_back({addr, true});
+        return true;
+    }
 
-bool ElfBugDeleteBreakpoint(ElfBugDebugger* dbg, const uint64_t addr)
-{
-    if(!dbg->active.load(std::memory_order_acquire))
-        return false;
+    bool ElfBugDeleteBreakpoint(ElfBugDebugger* dbg, const uint64_t addr)
+    {
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
 
-    std::lock_guard lock(dbg->bpQueueMutex);
-    dbg->pendingBpRequests.push_back({addr, false});
-    return true;
-}
+        std::lock_guard lock(dbg->bpQueueMutex);
+        dbg->pendingBpRequests.push_back({addr, false});
+        return true;
+    }
 
-bool ElfBugHasBreakpoint(const ElfBugDebugger* dbg, const uint64_t addr)
-{
-    std::lock_guard lock(dbg->bpDataMutex);
-    return dbg->breakpointAddrs.count(addr) > 0;
-}
+    bool ElfBugHasBreakpoint(const ElfBugDebugger* dbg, const uint64_t addr)
+    {
+        std::lock_guard lock(dbg->bpDataMutex);
+        return dbg->breakpointAddrs.count(addr) > 0;
+    }
 
 } // extern "C"
