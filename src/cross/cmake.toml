@@ -15,12 +15,11 @@ LIBPL_ENABLE_CLI = false
 LIBPL_ENABLE_TESTS = false
 LIBWOLV_ENABLE_TESTS = false
 
+[find-package.Threads]
+
 [subdir.widgets]
 
 [subdir.vendor]
-
-[subdir.ElfBug]
-condition = "linux"
 
 [template.qt_executable]
 type = "executable"
@@ -85,6 +84,16 @@ link-libraries = [
 private-include-directories = [
     "hex_viewer",
 ]
+
+[target.ElfBug]
+type = "static"
+condition = "linux"
+sources = ["ElfBug/**.cpp"]
+headers = ["ElfBug/**.h"]
+compile-features = ["cxx_std_17"]
+include-directories = ["ElfBug"]
+link-libraries = ["Threads::Threads"]
+
 
 [target.debugger]
 type = "qt_executable"

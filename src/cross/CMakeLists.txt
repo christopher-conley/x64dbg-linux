@@ -37,6 +37,9 @@ project(cross
 
 include("widgets/Qt.cmake")
 
+# Packages
+find_package(Threads REQUIRED)
+
 # Subdirectory: widgets
 set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
 if(CMAKE_FOLDER)
@@ -57,18 +60,6 @@ endif()
 add_subdirectory(vendor)
 set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
-	# Subdirectory: ElfBug
-	set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
-	if(CMAKE_FOLDER)
-		set(CMAKE_FOLDER "${CMAKE_FOLDER}/ElfBug")
-	else()
-		set(CMAKE_FOLDER ElfBug)
-	endif()
-	add_subdirectory(ElfBug)
-	set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
-
-endif()
 # Target: minidump
 set(minidump_SOURCES
 	cmake.toml
@@ -241,6 +232,50 @@ if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT hex_viewer)
 endif()
 
+# Target: ElfBug
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
+	set(ElfBug_SOURCES
+		"ElfBug/ElfBug/api/elfbug_api.cpp"
+		"ElfBug/ElfBug/api/elfbug_api.h"
+		"ElfBug/ElfBug/core/Debugger.Loop.Process.cpp"
+		"ElfBug/ElfBug/core/Debugger.Loop.Signal.cpp"
+		"ElfBug/ElfBug/core/Debugger.Loop.Thread.cpp"
+		"ElfBug/ElfBug/core/Debugger.Loop.cpp"
+		"ElfBug/ElfBug/core/Debugger.cpp"
+		"ElfBug/ElfBug/core/Debugger.h"
+		"ElfBug/ElfBug/process/Breakpoint.cpp"
+		"ElfBug/ElfBug/process/Memory.cpp"
+		"ElfBug/ElfBug/process/Process.cpp"
+		"ElfBug/ElfBug/process/Process.h"
+		"ElfBug/ElfBug/thread/HardwareBreakpoint.cpp"
+		"ElfBug/ElfBug/thread/Registers.cpp"
+		"ElfBug/ElfBug/thread/Registers.h"
+		"ElfBug/ElfBug/thread/Thread.cpp"
+		"ElfBug/ElfBug/thread/Thread.h"
+		"ElfBug/ElfBug/types/Breakpoint.h"
+		"ElfBug/ElfBug/types/ElfBug.h"
+		"ElfBug/ElfBug/types/Global.h"
+		cmake.toml
+	)
+
+	add_library(ElfBug STATIC)
+
+	target_sources(ElfBug PRIVATE ${ElfBug_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ElfBug_SOURCES})
+
+	target_compile_features(ElfBug PUBLIC
+		cxx_std_17
+	)
+
+	target_include_directories(ElfBug PUBLIC
+		ElfBug
+	)
+
+	target_link_libraries(ElfBug PUBLIC
+		Threads::Threads
+	)
+
+endif()
 # Target: debugger
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 	set(debugger_SOURCES
