@@ -85,6 +85,8 @@ set(minidump_SOURCES
 	"minidump/MiniHexDump.h"
 	"minidump/MiniMemoryMap.cpp"
 	"minidump/MiniMemoryMap.h"
+	"minidump/MiniThreads.cpp"
+	"minidump/MiniThreads.h"
 	"minidump/Navigation.cpp"
 	"minidump/Navigation.h"
 	"minidump/REToolSync.cpp"

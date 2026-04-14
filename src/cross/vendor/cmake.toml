@@ -19,8 +19,8 @@ git = "https://github.com/can1357/linux-pe"
 tag = "1fcb057963da3d25048bf1a331cd84aab9e09c99"
 
 [fetch-content.PatternLanguage]
-git = "https://github.com/WerWolv/PatternLanguage"
-tag = "3e98b047c52c07bb1816bd0936f561ce7797469d"
+git = "https://github.com/mrexodia/PatternLanguage"
+tag = "werror-fixes"
 
 [fetch-content.udmp-parser]
 git = "https://github.com/mrexodia/udmp-parser"
