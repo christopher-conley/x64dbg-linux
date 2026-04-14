@@ -47,12 +47,12 @@ FetchContent_Declare(linux-pe
 )
 FetchContent_MakeAvailable(linux-pe)
 
-message(STATUS "Fetching PatternLanguage (3e98b047c52c07bb1816bd0936f561ce7797469d)...")
+message(STATUS "Fetching PatternLanguage (werror-fixes)...")
 FetchContent_Declare(PatternLanguage
 	GIT_REPOSITORY
-		"https://github.com/WerWolv/PatternLanguage"
+		"https://github.com/mrexodia/PatternLanguage"
 	GIT_TAG
-		3e98b047c52c07bb1816bd0936f561ce7797469d
+		werror-fixes
 )
 FetchContent_MakeAvailable(PatternLanguage)
 

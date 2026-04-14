@@ -5,6 +5,7 @@
 #include <QDebug>
 
 #include "Types.h"
+#include "RegisterContext.h"
 
 #define MAX_SETTING_SIZE 4096
 
@@ -98,7 +99,7 @@ struct DBGFUNCTIONS
     TRACERECORDBYTETYPE(*GetTraceRecordByteType)(duint address);
     duint(*ModBaseFromAddr)(duint addr);
     bool (*ModNameFromAddr)(duint base, char* name, bool extension);
-    bool (*StringFormatInline)(char* dest, duint size, const char* format);
+    bool (*StringFormatInline)(const char* format, size_t size, char* dest);
     bool (*MemIsCodePage)(duint addr, bool refresh);
     void (*GetMnemonicBrief)(const char* mnem, size_t resultSize, char* result);
     bool (*ModRelocationAtAddr)(duint addr, DBGRELOCATIONINFO* relocation);
@@ -119,6 +120,9 @@ struct MemoryProvider
 };
 
 void DbgSetMemoryProvider(MemoryProvider* provider);
+
+using BreakpointQueryFunc = BPXTYPE(*)(duint addr);
+void DbgSetBreakpointQuery(BreakpointQueryFunc func);
 
 bool DbgIsDebugging();
 DBGFUNCTIONS* DbgFunctions();

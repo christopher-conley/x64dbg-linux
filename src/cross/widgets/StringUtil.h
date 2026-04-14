@@ -16,6 +16,12 @@ namespace Qt
 }
 #endif // QT_VERSION
 
+#if defined(_WIN64) || defined(__x86_64__)
+#define ArchValue(x32value, x64value) x64value
+#else
+#define ArchValue(x32value, x64value) x32value
+#endif
+
 inline QString ToPtrString(duint Address)
 {
     //

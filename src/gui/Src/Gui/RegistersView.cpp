@@ -1,17 +1,76 @@
 #include <QMessageBox>
-#include <QListWidget>
 #include <QToolTip>
+#include <QMouseEvent>
+#include <QContextMenuEvent>
+#include <QPainter>
+#include <QResizeEvent>
+#include <QPushButton>
 #include <stdint.h>
+#include <QListWidget>
 #include <QAccessibleEvent>
+#if !defined(_WIN32) && (defined(__x86_64__) || defined(__i386__))
+#include <cpuid.h>
+#include <x86intrin.h>
+#endif
+
 #include "RegistersView.h"
+#include "Configuration.h"
+#include "MiscUtil.h"
+#include "Disassembler/ZydisTokenizer.h"
+#include "Disassembler/QZydis.h"
+#ifdef X64DBG
 #include "CPUDisassembly.h"
 #include "CPUMultiDump.h"
-#include "Configuration.h"
 #include "WordEditDialog.h"
 #include "LineEditDialog.h"
 #include "SelectFields.h"
-#include "MiscUtil.h"
 #include "ldconvert.h"
+#endif
+
+class RegistersView::RegistersCanvas : public QWidget
+{
+    RegistersView* mView;
+public:
+    explicit RegistersCanvas(RegistersView* view) : QWidget(view), mView(view)
+    {
+        setMouseTracking(true);
+    }
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QPainter painter(this);
+        mView->paintRegisters(&painter, event->rect());
+    }
+
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        mView->setFocus();
+        mView->mousePressEvent(event);
+    }
+
+    void mouseMoveEvent(QMouseEvent* event) override
+    {
+        mView->mouseMoveEvent(event);
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent* event) override
+    {
+        mView->mouseDoubleClickEvent(event);
+    }
+
+    void contextMenuEvent(QContextMenuEvent* event) override
+    {
+        emit mView->customContextMenuRequested(mView->mapFromGlobal(event->globalPos()));
+        event->accept();
+    }
+};
+
+// Qt6 removed QFontMetrics::width() - provide file-local compat
+#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
+#define FONT_WIDTH(fm, s) (fm).horizontalAdvance(s)
+#else
+#define FONT_WIDTH(fm, s) (fm).width(s)
+#endif
 
 int RegistersView::getEstimateHeight()
 {
@@ -36,7 +95,7 @@ void RegistersView::InitMappings()
      *
      * (line , start, labelwidth, valuesize )
      */
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     mRegisterMapping.insert(CAX, "RAX");
     mRegisterPlaces.insert(CAX, Register_Position(offset++, 0, 6, sizeof(duint) * 2));
     mRegisterRelativePlaces.insert(CAX, Register_Relative_Position(UNKNOWN, CBX));
@@ -100,7 +159,7 @@ void RegistersView::InitMappings()
     mRegisterMapping.insert(EFLAGS, "RFLAGS");
     mRegisterPlaces.insert(EFLAGS, Register_Position(offset++, 0, 9, sizeof(duint) * 2));
     mRegisterRelativePlaces.insert(EFLAGS, Register_Relative_Position(CIP, ZF));
-#else //x32
+#else //x86-32
     mRegisterMapping.insert(CAX, "EAX");
     mRegisterPlaces.insert(CAX, Register_Position(offset++, 0, 6, sizeof(duint) * 2));
     mRegisterRelativePlaces.insert(CAX, Register_Relative_Position(UNKNOWN, CBX));
@@ -161,12 +220,13 @@ void RegistersView::InitMappings()
 
     mRegisterMapping.insert(CF, "CF");
     mRegisterPlaces.insert(CF, Register_Position(offset, 0, 3, 1));
-    mRegisterRelativePlaces.insert(CF, Register_Relative_Position(DF, TF, OF, LastError));
     mRegisterMapping.insert(TF, "TF");
     mRegisterPlaces.insert(TF, Register_Position(offset, 6, 3, 1));
-    mRegisterRelativePlaces.insert(TF, Register_Relative_Position(CF, IF, SF, LastError));
     mRegisterMapping.insert(IF, "IF");
     mRegisterPlaces.insert(IF, Register_Position(offset++, 12, 3, 1));
+#ifdef X64DBG
+    mRegisterRelativePlaces.insert(CF, Register_Relative_Position(DF, TF, OF, LastError));
+    mRegisterRelativePlaces.insert(TF, Register_Relative_Position(CF, IF, SF, LastError));
     mRegisterRelativePlaces.insert(IF, Register_Relative_Position(TF, LastError, DF, LastError));
 
     offset++;
@@ -188,6 +248,20 @@ void RegistersView::InitMappings()
     mRegisterMapping.insert(FS, "FS");
     mRegisterPlaces.insert(FS, Register_Position(offset++, 9, 3, 4));
     mRegisterRelativePlaces.insert(FS, Register_Relative_Position(GS, ES, LastStatus, DS));
+#else
+    mRegisterRelativePlaces.insert(CF, Register_Relative_Position(DF, TF, OF, GS));
+    mRegisterRelativePlaces.insert(TF, Register_Relative_Position(CF, IF, SF, GS));
+    mRegisterRelativePlaces.insert(IF, Register_Relative_Position(TF, GS, DF, GS));
+
+    offset++;
+
+    mRegisterMapping.insert(GS, "GS");
+    mRegisterPlaces.insert(GS, Register_Position(offset, 0, 3, 4));
+    mRegisterRelativePlaces.insert(GS, Register_Relative_Position(IF, FS, IF, ES));
+    mRegisterMapping.insert(FS, "FS");
+    mRegisterPlaces.insert(FS, Register_Position(offset++, 9, 3, 4));
+    mRegisterRelativePlaces.insert(FS, Register_Relative_Position(GS, ES, IF, DS));
+#endif
     mRegisterMapping.insert(ES, "ES");
     mRegisterPlaces.insert(ES, Register_Position(offset, 0, 3, 4));
     mRegisterRelativePlaces.insert(ES, Register_Relative_Position(FS, DS, GS, CS));
@@ -300,7 +374,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(x87TagWord, "x87TagWord");
-        mRegisterPlaces.insert(x87TagWord, Register_Position(offset++, 0, 11, sizeof(WORD) * 2));
+        mRegisterPlaces.insert(x87TagWord, Register_Position(offset++, 0, 11, sizeof(uint16_t) * 2));
 
         switch(mFpuMode)
         {
@@ -321,13 +395,13 @@ void RegistersView::InitMappings()
         int temp;
         QFontMetrics metrics(font());
         //13 = 20 - strlen("Nonzero")
-        temp = metrics.width(QApplication::translate("RegistersView_ConstantsOfRegisters", "Nonzero")) / mCharWidth + 13;
+        temp = FONT_WIDTH(metrics, QApplication::translate("RegistersView_ConstantsOfRegisters", "Nonzero")) / mCharWidth + 13;
         NextColumnPosition = std::max(NextColumnPosition, temp);
-        temp = metrics.width(QApplication::translate("RegistersView_ConstantsOfRegisters", "Zero")) / mCharWidth + 13;
+        temp = FONT_WIDTH(metrics, QApplication::translate("RegistersView_ConstantsOfRegisters", "Zero")) / mCharWidth + 13;
         NextColumnPosition = std::max(NextColumnPosition, temp);
-        temp = metrics.width(QApplication::translate("RegistersView_ConstantsOfRegisters", "Special")) / mCharWidth + 13;
+        temp = FONT_WIDTH(metrics, QApplication::translate("RegistersView_ConstantsOfRegisters", "Special")) / mCharWidth + 13;
         NextColumnPosition = std::max(NextColumnPosition, temp);
-        temp = metrics.width(QApplication::translate("RegistersView_ConstantsOfRegisters", "Empty")) / mCharWidth + 13;
+        temp = FONT_WIDTH(metrics, QApplication::translate("RegistersView_ConstantsOfRegisters", "Empty")) / mCharWidth + 13;
         NextColumnPosition = std::max(NextColumnPosition, temp);
         mRegisterMapping.insert(x87TW_0, "x87TW_0");
         mRegisterPlaces.insert(x87TW_0, Register_Position(offset, 0, 8, 10));
@@ -361,7 +435,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(x87StatusWord, "x87StatusWord");
-        mRegisterPlaces.insert(x87StatusWord, Register_Position(offset++, 0, 14, sizeof(WORD) * 2));
+        mRegisterPlaces.insert(x87StatusWord, Register_Position(offset++, 0, 14, sizeof(uint16_t) * 2));
         mRegisterRelativePlaces.insert(x87StatusWord, Register_Relative_Position(x87TW_7, x87SW_B));
 
         mRegisterMapping.insert(x87SW_B, "x87SW_B");
@@ -414,7 +488,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(x87ControlWord, "x87ControlWord");
-        mRegisterPlaces.insert(x87ControlWord, Register_Position(offset++, 0, 15, sizeof(WORD) * 2));
+        mRegisterPlaces.insert(x87ControlWord, Register_Position(offset++, 0, 15, sizeof(uint16_t) * 2));
         mRegisterRelativePlaces.insert(x87ControlWord, Register_Relative_Position(x87SW_TOP, x87CW_IC));
 
         mRegisterMapping.insert(x87CW_IC, "x87CW_IC");
@@ -450,7 +524,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(MxCsr, "MxCsr");
-        mRegisterPlaces.insert(MxCsr, Register_Position(offset++, 0, 6, sizeof(DWORD) * 2));
+        mRegisterPlaces.insert(MxCsr, Register_Position(offset++, 0, 6, sizeof(uint32_t) * 2));
         mRegisterRelativePlaces.insert(MxCsr, Register_Relative_Position(x87CW_RC, MxCsr_FZ));
 
         mRegisterMapping.insert(MxCsr_FZ, "MxCsr_FZ");
@@ -526,7 +600,7 @@ void RegistersView::InitMappings()
         mRegisterMapping.insert(XMM6, "XMM6");
         mRegisterPlaces.insert(XMM6, Register_Position(offset++, 0, 6, 16 * 2));
         mRegisterRelativePlaces.insert(XMM6, Register_Relative_Position(XMM5, XMM7));
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
         mRegisterMapping.insert(XMM7, "XMM7");
         mRegisterPlaces.insert(XMM7, Register_Position(offset++, 0, 6, 16 * 2));
         mRegisterRelativePlaces.insert(XMM7, Register_Relative_Position(XMM6, XMM8));
@@ -678,8 +752,6 @@ void RegistersView::InitMappings()
     mRegisterRelativePlaces.insert(DR7, Register_Relative_Position(DR6, UNKNOWN));
 
     mRowsNeeded = offset + 1;
-    //adjust the height of the area.
-    setFixedHeight(getEstimateHeight());
 }
 
 RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
@@ -693,7 +765,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
     value.regcontext.cbp = reg->regcontext.cbp;
     value.regcontext.csi = reg->regcontext.csi;
     value.regcontext.cdi = reg->regcontext.cdi;
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     value.regcontext.r8 = reg->regcontext.r8;
     value.regcontext.r9 = reg->regcontext.r9;
     value.regcontext.r10 = reg->regcontext.r10;
@@ -702,7 +774,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
     value.regcontext.r13 = reg->regcontext.r13;
     value.regcontext.r14 = reg->regcontext.r14;
     value.regcontext.r15 = reg->regcontext.r15;
-#endif // _WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
     value.regcontext.cip = reg->regcontext.cip;
     value.regcontext.eflags = reg->regcontext.eflags;
     value.regcontext.gs = reg->regcontext.gs;
@@ -727,7 +799,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
         value.regcontext.ZmmRegisters[i].Low = reg->regcontext.YmmRegisters[i];
         value.regcontext.ZmmRegisters[i].High = zeroYMM;
     }
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     // ZMM16-ZMM31
     memset(&value.regcontext.ZmmRegisters[16], 0, sizeof(ZMMREGISTER) * 16);
 #endif
@@ -759,7 +831,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
 #define MXCSRFLAG_FZ 0x8000
 #endif
 
-static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, DWORD MxCsr)
+static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, uint32_t MxCsr)
 {
     MxCsrFields->IE = ((MxCsr & MXCSRFLAG_IE) != 0);
     MxCsrFields->DE = ((MxCsr & MXCSRFLAG_DE) != 0);
@@ -790,7 +862,7 @@ static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, DWORD MxCsr)
 #define x87CONTROLWORD_FLAG_IC 0x1000
 #endif
 
-static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, WORD ControlWord)
+static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, uint16_t ControlWord)
 {
     x87ControlWordFields->IM = ((ControlWord & x87CONTROLWORD_FLAG_IM) != 0);
     x87ControlWordFields->DM = ((ControlWord & x87CONTROLWORD_FLAG_DM) != 0);
@@ -821,7 +893,7 @@ static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, 
 #define x87STATUSWORD_FLAG_B 0x8000
 #endif
 
-static void Getx87StatusWordFields(X87STATUSWORDFIELDS* x87StatusWordFields, WORD StatusWord)
+static void Getx87StatusWordFields(X87STATUSWORDFIELDS* x87StatusWordFields, uint16_t StatusWord)
 {
     x87StatusWordFields->I = ((StatusWord & x87STATUSWORD_FLAG_I) != 0);
     x87StatusWordFields->D = ((StatusWord & x87STATUSWORD_FLAG_D) != 0);
@@ -867,7 +939,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP_AVX51
     Getx87ControlWordFields(&(value.x87ControlWordFields), value.regcontext.x87fpu.ControlWord);
     Getx87StatusWordFields(&(value.x87StatusWordFields), value.regcontext.x87fpu.StatusWord);
 
-    DWORD x87r0_position = Getx87r0PositionInRegisterArea(value.x87StatusWordFields.TOP);
+    uint32_t x87r0_position = Getx87r0PositionInRegisterArea(value.x87StatusWordFields.TOP);
     for(int i = 0; i < 8; i++)
     {
         memcpy(value.x87FPURegisters[i].data, GetRegisterAreaOf87register(value.regcontext.RegisterArea, x87r0_position, i), 10);
@@ -875,6 +947,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP_AVX51
         value.x87FPURegisters[i].tag = (int)((value.regcontext.x87fpu.TagWord >> (i * 2)) & 0x3);
     }
 
+#ifdef X64DBG
     value.lastError.code = reg->lastError;
     char fmtString[64] = "";
     auto pStringFormatInline = DbgFunctions()->StringFormatInline; // When called before dbgfunctionsinit() this can be NULL!
@@ -895,6 +968,10 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP_AVX51
     {
         memset(value.lastStatus.name, 0, sizeof(value.lastStatus.name));
     }
+#else
+    memset(&value.lastError, 0, sizeof(value.lastError));
+    memset(&value.lastStatus, 0, sizeof(value.lastStatus));
+#endif
     return value;
 }
 
@@ -918,6 +995,8 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
 {
     setAccessibleName(tr("Registers"));
     mChangeViewButton = NULL;
+    mShowFpu = false;
+    mSelected = UNKNOWN;
     mFpuMode = 0;
     mXMMModeAuto = true;
     mAlwaysShowAVX512Registers = false;
@@ -990,7 +1069,7 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     mLABELDISPLAY.insert(CDI);
     mMODIFYDISPLAY.insert(CDI);
     mUNDODISPLAY.insert(CDI);
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     for(REGISTER_NAME i = R8; i <= R15; i = (REGISTER_NAME)(i + 1))
     {
         mINCREMENTDECREMET.insert(i);
@@ -1001,7 +1080,7 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
         mMODIFYDISPLAY.insert(i);
         mUNDODISPLAY.insert(i);
     }
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
 
     mGPR.insert(EFLAGS);
     mMODIFYDISPLAY.insert(EFLAGS);
@@ -1258,8 +1337,10 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     }
 
     //registers that should not be changed
+#ifdef X64DBG
     mNoChange.insert(LastError);
     mNoChange.insert(LastStatus);
+#endif
 
     mNoChange.insert(GS);
     mUSHORTDISPLAY.insert(GS);
@@ -1453,6 +1534,13 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     yTopSpacing = 4; //set top spacing (in pixels)
 
     this->setMouseTracking(true);
+    setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    mCanvas = new RegistersCanvas(this);
+    setWidget(mCanvas);
+    setWidgetResizable(false);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setMinimumSize(0, 0);
+    updateCanvasSize();
 }
 
 void RegistersView::refreshShortcutsSlot()
@@ -1471,12 +1559,18 @@ RegistersView::~RegistersView()
 
 static bool detectAVX512()
 {
+#ifdef _WIN32
     int EABCDX[4];
-    __cpuid(EABCDX, 7); // detect AVX-512
-    if(EABCDX[1] & (1 << 16))  // EBX.bit16=1, supports AVX-512
-        return true;
-    else
-        return false;
+    __cpuid(EABCDX, 7);
+    return (EABCDX[1] & (1 << 16)) != 0;
+#elif defined(__x86_64__) || defined(__i386__)
+    unsigned int eax, ebx, ecx, edx;
+    if(__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx))
+        return (ebx & (1 << 16)) != 0;
+    return false;
+#else
+    return false;
+#endif
 }
 
 bool RegistersView::isAVX512Supported()
@@ -1500,6 +1594,7 @@ void RegistersView::fontsUpdatedSlot()
 
     //reload layout because the layout is dependent on the font.
     InitMappings();
+    updateCanvasSize();
     reload();
 }
 
@@ -1508,15 +1603,11 @@ void RegistersView::shutdownSlot()
     isActive = false;
 }
 
-void RegistersView::displayCustomContextMenuSlot(QPoint pos)
-{
-    Q_UNUSED(pos);
-}
-
 void RegistersView::ShowFPU(bool set_showfpu)
 {
     mShowFpu = set_showfpu;
     InitMappings();
+    updateCanvasSize();
     reload();
 }
 
@@ -1721,6 +1812,7 @@ QString RegistersView::helpRegister(REGISTER_NAME reg)
                   "denormal operand condition.");
     case MxCsr_RC:
         return tr("Bits 13 and 14 of the MXCSR register (the rounding control [RC] field) control how the results of SIMD floating-point instructions are rounded.");
+#ifdef X64DBG
     case LastError:
     {
         char dat[1024];
@@ -1741,13 +1833,14 @@ QString RegistersView::helpRegister(REGISTER_NAME reg)
         else
             return tr("The NTSTATUS in the LastStatusValue field of the TEB.");
     }
-#ifdef _WIN64
+#endif
+#if defined(_WIN64) || defined(__x86_64__)
     case GS:
         return tr("The TEB of the current thread can be accessed as an offset of segment register GS (x64).\nThe TEB can be used to get a lot of information on the process without calling Win32 API.");
-#else //x86
+#else //x86-32
     case FS:
         return tr("The TEB of the current thread can be accessed as an offset of segment register FS (x86).\nThe TEB can be used to get a lot of information on the process without calling Win32 API.");
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
     case UNKNOWN:
     default:
         return {};
@@ -1818,7 +1911,32 @@ void RegistersView::mouseDoubleClickEvent(QMouseEvent* event)
     Q_UNUSED(event);
 }
 
-void RegistersView::paintEvent(QPaintEvent* event)
+void RegistersView::updateCanvasSize()
+{
+    if(!mCanvas)
+        return;
+
+    int contentHeight = getEstimateHeight() + yTopSpacing * 2;
+    int contentWidth = 0;
+    for(auto it = mRegisterPlaces.begin(); it != mRegisterPlaces.end(); ++it)
+    {
+        int right = mCharWidth * (1 + it.value().start + it.value().labelwidth + it.value().valuesize) + mCharWidth;
+        if(right > contentWidth)
+            contentWidth = right;
+    }
+
+    if(viewport())
+    {
+        if(contentWidth < viewport()->width())
+            contentWidth = viewport()->width();
+        if(contentHeight < viewport()->height())
+            contentHeight = viewport()->height();
+    }
+
+    mCanvas->resize(contentWidth, contentHeight);
+}
+
+void RegistersView::paintRegisters(QPainter* p, const QRect & clip)
 {
     if(mChangeViewButton != NULL)
     {
@@ -1828,12 +1946,10 @@ void RegistersView::paintEvent(QPaintEvent* event)
             mChangeViewButton->setText(tr("Show FPU"));
     }
 
-    QPainter painter(this->viewport());
-    painter.setClipRect(event->rect());
-    painter.setFont(font());
-    painter.fillRect(painter.viewport(), QBrush(ConfigColor("RegistersBackgroundColor")));
+    p->setClipRect(clip);
+    p->setFont(font());
+    p->fillRect(mCanvas ? mCanvas->rect() : clip, QBrush(ConfigColor("RegistersBackgroundColor")));
 
-    // Don't draw the registers if a program isn't actually running
     if(!isActive)
         return;
 
@@ -1841,8 +1957,19 @@ void RegistersView::paintEvent(QPaintEvent* event)
     for(auto itr = mRegisterMapping.begin(); itr != mRegisterMapping.end(); itr++)
     {
         // Paint register at given position
-        drawRegister(&painter, itr.key(), registerValue(&mRegDumpStruct, itr.key()));
+        drawRegister(p, itr.key(), registerValue(&mRegDumpStruct, itr.key()));
     }
+}
+
+void RegistersView::paintEvent(QPaintEvent* event)
+{
+    QScrollArea::paintEvent(event);
+}
+
+void RegistersView::resizeEvent(QResizeEvent* event)
+{
+    QScrollArea::resizeEvent(event);
+    updateCanvasSize();
 }
 
 void RegistersView::keyPressEvent(QKeyEvent* event)
@@ -1881,24 +2008,10 @@ void RegistersView::keyPressEvent(QKeyEvent* event)
 
 void RegistersView::wheelEvent(QWheelEvent* event)
 {
-    if(event->modifiers() == Qt::ControlModifier)  // Zoom
+    if(event->modifiers() == Qt::ControlModifier)
         Config()->zoomFont("Registers", event);
-}
-
-//QSize RegistersView::sizeHint() const
-//{
-//    // 32 character width
-//    return QSize(32 * mCharWidth, this->viewport()->height());
-//}
-
-void* RegistersView::operator new(size_t size)
-{
-    return _aligned_malloc(size, 16);
-}
-
-void RegistersView::operator delete(void* p)
-{
-    _aligned_free(p);
+    else
+        QScrollArea::wheelEvent(event);
 }
 
 /**
@@ -1921,7 +2034,7 @@ QString RegistersView::getRegisterLabel(REGISTER_NAME register_selected)
     bool hasLabel = DbgGetLabelAt(register_value, SEG_DEFAULT, label_text);
     bool hasModule = DbgGetModuleAt(register_value, module_text);
     bool hasStatusCode = register_selected == REGISTER_NAME::CAX && (register_value & ArchValue(0xF0000000, 0xFFFFFFFFF0000000)) == 0xC0000000;
-    hasStatusCode = hasStatusCode && DbgFunctions()->StringFormatInline(QString().sprintf("{ntstatus@%X}", register_value).toUtf8().constData(), sizeof(status_text), status_text);
+    hasStatusCode = hasStatusCode && DbgFunctions()->StringFormatInline(QString::asprintf("{ntstatus@%X}", register_value).toUtf8().constData(), sizeof(status_text), status_text);
 
     if(hasString && !mONLYMODULEANDLABELDISPLAY.contains(register_selected))
     {
@@ -1986,7 +2099,7 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
     else if(mUSHORTDISPLAY.contains(reg))
         valueText = QString("%1").arg((* ((const unsigned short*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
     else if(mDWORDDISPLAY.contains(reg))
-        valueText = QString("%1").arg((* ((const DWORD*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
+        valueText = QString("%1").arg((* ((const uint32_t*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
     else if(mBOOLDISPLAY.contains(reg))
         valueText = QString("%1").arg((* ((const bool*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
     else if(mFIELDVALUE.contains(reg))
@@ -2027,6 +2140,7 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
             valueText += QString(")");
         }
     }
+#ifdef X64DBG
     else if(reg == LastError)
     {
         LASTERROR* data = (LASTERROR*)value;
@@ -2045,13 +2159,14 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
             valueText = QString().sprintf("%08X", data->code);
         mRegisterPlaces[LastStatus].valuesize = valueText.length();
     }
+#endif
     else if(mFPUOpmask.contains(reg))
     {
         valueText = QString("%1").arg((* ((const quint64*) value)), 16, 16, QChar('0')).toUpper();
     }
     else
     {
-        SIZE_T size = GetSizeRegister(reg);
+        size_t size = GetSizeRegister(reg);
         bool bFpuRegistersLittleEndian = ConfigBool("Gui", "FpuRegistersLittleEndian");
         if(size != 0)
         {
@@ -2081,6 +2196,12 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
 
     return valueText;
 }
+
+typedef struct
+{
+    const char* string;
+    unsigned int value;
+} STRING_VALUE_TABLE_t;
 
 #define MxCsr_RC_NEAR 0
 #define MxCsr_RC_NEGATIVE 1
@@ -2329,10 +2450,10 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
                 regName[0] = 'Z';
             }
         }
-        int width = fontMetrics.width(regName);
+        int width = FONT_WIDTH(fontMetrics, regName);
 
         // set the color of the register label
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
         switch(reg)
         {
         case CCX: //arg1
@@ -2346,12 +2467,12 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
             p->setPen(ConfigColor("RegistersArgumentLabelColor"));
             break;
         default:
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
             p->setPen(ConfigColor("RegistersLabelColor"));
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
             break;
         }
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
 
         // draw name of value
         p->drawText(x, y, width, mRowHeight, Qt::AlignVCenter, regName);
@@ -2403,7 +2524,7 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
         QString valueText = GetRegStringValueFromValue(reg, value);
 
         //selection
-        width = fontMetrics.width(valueText);
+        width = FONT_WIDTH(fontMetrics, valueText);
         if(mSelected == reg)
         {
             p->fillRect(x, y, width, mRowHeight, QBrush(ConfigColor("RegistersSelectionColor")));
@@ -2432,7 +2553,7 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
             {
                 newText = QString("x87r%1 ").arg((mRegDumpStruct.x87StatusWordFields.TOP + (reg - x87st0)) & 7);
             }
-            width = fontMetrics.width(newText);
+            width = FONT_WIDTH(fontMetrics, newText);
             p->drawText(x, y, width, mRowHeight, Qt::AlignVCenter, newText);
 
             x += width;
@@ -2446,7 +2567,7 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
 
             newText += GetTagWordStateString(((X87FPUREGISTER*) registerValue(&mRegDumpStruct, reg))->tag) + QString(" ");
 
-            width = fontMetrics.width(newText);
+            width = FONT_WIDTH(fontMetrics, newText);
             p->drawText(x, y, width, mRowHeight, Qt::AlignVCenter, newText);
 
             x += width;
@@ -2459,7 +2580,7 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
                 p->setPen(ConfigColor("RegistersModifiedColor"));
 
             newText += ToLongDoubleString(((X87FPUREGISTER*) registerValue(&mRegDumpStruct, reg))->data);
-            width = fontMetrics.width(newText);
+            width = FONT_WIDTH(fontMetrics, newText);
             p->drawText(x, y, width, mRowHeight, Qt::AlignVCenter, newText);
         }
 
@@ -2473,7 +2594,7 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
             // are there additional informations?
             if(newText != "")
             {
-                width = fontMetrics.width(newText);
+                width = FONT_WIDTH(fontMetrics, newText);
                 p->setPen(ConfigColor("RegistersExtraInfoColor"));
                 p->drawText(x, y, width, mRowHeight, Qt::AlignVCenter, newText);
                 //p->drawText(x,mRowHeight*(mRegisterPlaces[reg].line+1),newText);
@@ -2485,13 +2606,13 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
 void RegistersView::appendRegister(QString & text, REGISTER_NAME reg, const char* name64, const char* name32)
 {
     QString symbol;
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     Q_UNUSED(name32);
     text.append(name64);
-#else //x86
+#else //x86-32
     Q_UNUSED(name64);
     text.append(name32);
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
     text.append(GetRegStringValueFromValue(reg, registerValue(&mRegDumpStruct, reg)));
     symbol = getRegisterLabel(reg);
     if(symbol != "")
@@ -2569,7 +2690,9 @@ void RegistersView::onSIMDMode()
 {
     Config()->setUint("Gui", "SIMDRegistersDisplayMode", dynamic_cast<QAction*>(sender())->data().toInt());
     emit refresh();
+#ifdef X64DBG
     GuiUpdateDisassemblyView(); // refresh display mode for data in disassembly
+#endif
 }
 
 // detect XMM/YMM/ZMM Mode
@@ -2612,7 +2735,7 @@ static bool detectAVX512Used(const REGISTERCONTEXT_AVX512* context)
         temp = _mm_or_ps(temp, _mm_load_ps((const float*)&context->Opmask[i * 2]));
     if(ptr[0] | ptr[1])
         return true;
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     for(int i = 16; i <= 31; i++)
     {
         __m128 temp2[2];
@@ -2625,7 +2748,7 @@ static bool detectAVX512Used(const REGISTERCONTEXT_AVX512* context)
     }
     if(ptr[0] | ptr[1])
         return true;
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
     return false;
 }
 
@@ -2642,7 +2765,9 @@ void RegistersView::onAlwaysShowAVX512Clicked()
     mAlwaysShowAVX512Registers = !mAlwaysShowAVX512Registers;
     if(mAlwaysShowAVX512Registers && !isAVX512Supported())
     {
+#ifdef X64DBG
         GuiAddLogMessage(tr("AVX-512 isn't supported on this computer.\n").toUtf8().constData());
+#endif
     }
     SIMDAlwaysShowAVX512->setChecked(mAlwaysShowAVX512Registers);
     autoUpdateXMMModesAndRefresh();
@@ -2686,7 +2811,7 @@ void RegistersView::onCopyAllAction()
     appendRegister(text, REGISTER_NAME::CSP, "RSP : ", "ESP : ");
     appendRegister(text, REGISTER_NAME::CSI, "RSI : ", "ESI : ");
     appendRegister(text, REGISTER_NAME::CDI, "RDI : ", "EDI : ");
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     appendRegister(text, REGISTER_NAME::R8, "R8  : ", "R8  : ");
     appendRegister(text, REGISTER_NAME::R9, "R9  : ", "R9  : ");
     appendRegister(text, REGISTER_NAME::R10, "R10 : ", "R10 : ");
@@ -2808,7 +2933,7 @@ void RegistersView::onCopyAllAction()
         appendRegister(text, REGISTER_NAME::XMM5, "XMM5  : ", "XMM5  : ");
         appendRegister(text, REGISTER_NAME::XMM6, "XMM6  : ", "XMM6  : ");
         appendRegister(text, REGISTER_NAME::XMM7, "XMM7  : ", "XMM7  : ");
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
         appendRegister(text, REGISTER_NAME::XMM8, "XMM8  : ", "XMM8  : ");
         appendRegister(text, REGISTER_NAME::XMM9, "XMM9  : ", "XMM9  : ");
         appendRegister(text, REGISTER_NAME::XMM10, "XMM10 : ", "XMM10 : ");
@@ -2866,19 +2991,22 @@ void RegistersView::debugStateChangedSlot(DBGSTATE state)
 
 void RegistersView::reload()
 {
-    this->viewport()->update();
+    if(mCanvas)
+        mCanvas->update();
+    else
+        viewport()->update();
 }
 
-SIZE_T RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
+size_t RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
 {
-    SIZE_T size;
+    size_t size;
 
     if(mUINTDISPLAY.contains(reg_name))
         size = sizeof(duint);
     else if(mUSHORTDISPLAY.contains(reg_name) || mFIELDVALUE.contains(reg_name))
         size = sizeof(unsigned short);
     else if(mDWORDDISPLAY.contains(reg_name))
-        size = sizeof(DWORD);
+        size = sizeof(uint32_t);
     else if(mBOOLDISPLAY.contains(reg_name))
         size = sizeof(bool);
     else if(mFPUx87_80BITSDISPLAY.contains(reg_name))
@@ -2901,10 +3029,12 @@ SIZE_T RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
             break;
         }
     }
+#ifdef X64DBG
     else if(reg_name == LastError)
         size = sizeof(DWORD);
     else if(reg_name == LastStatus)
         size = sizeof(NTSTATUS);
+#endif
     else if(mFPUOpmask.contains(reg_name))
         size = 8;
     else
@@ -2915,7 +3045,7 @@ SIZE_T RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
 
 int RegistersView::CompareRegisters(const REGISTER_NAME reg_name, REGDUMP_EXTENDED* regdump)
 {
-    SIZE_T size = GetSizeRegister(reg_name);
+    size_t size = GetSizeRegister(reg_name);
     if(size != 0)
     {
         char* reg1_data = registerValue(regdump, reg_name);
@@ -2957,7 +3087,7 @@ char* RegistersView::registerValue(const REGDUMP_EXTENDED* regd, const REGISTER_
         return (char*) &regd->regcontext.cip;
     case EFLAGS:
         return (char*) &regd->regcontext.eflags;
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     case R8:
         return (char*) &regd->regcontext.r8;
     case R9:
@@ -3009,10 +3139,12 @@ char* RegistersView::registerValue(const REGDUMP_EXTENDED* regd, const REGISTER_
     case SS:
         return (char*) &regd->regcontext.ss;
 
+#ifdef X64DBG
     case LastError:
         return (char*) &regd->lastError;
     case LastStatus:
         return (char*) &regd->lastStatus;
+#endif
 
     case DR0:
         return (char*) &regd->regcontext.dr0;
@@ -3194,7 +3326,7 @@ char* RegistersView::registerValue(const REGDUMP_EXTENDED* regd, const REGISTER_
         return (char*) &regd->regcontext.ZmmRegisters[6];
     case XMM7:
         return (char*) &regd->regcontext.ZmmRegisters[7];
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__)
     case XMM8:
         return (char*) &regd->regcontext.ZmmRegisters[8];
     case XMM9:
@@ -3243,7 +3375,7 @@ char* RegistersView::registerValue(const REGDUMP_EXTENDED* regd, const REGISTER_
         return (char*) &regd->regcontext.ZmmRegisters[30];
     case XMM31:
         return (char*) &regd->regcontext.ZmmRegisters[31];
-#endif //_WIN64
+#endif //defined(_WIN64) || defined(__x86_64__)
     case K0:
         return (char*) &regd->regcontext.Opmask[0];
     case K1:
@@ -3268,11 +3400,11 @@ char* RegistersView::registerValue(const REGDUMP_EXTENDED* regd, const REGISTER_
     return (char*) &null_value;
 }
 
-void RegistersView::setRegisters(REGDUMP* reg)
+void RegistersView::setRegisters(const REGDUMP* reg)
 {
+    isActive = true;
     auto converted = expandContext(reg);
-    // tests if new-register-value == old-register-value holds
-    if(mCip != reg->regcontext.cip) //CIP changed
+    if(mCip != reg->regcontext.cip)
     {
         mCipRegDumpStruct = mRegDumpStruct;
         mRegisterUpdates.clear();
@@ -3298,11 +3430,11 @@ void RegistersView::setRegisters(REGDUMP* reg)
     accessibilityValueChanged();
 }
 
-void RegistersView::setRegisters(REGDUMP_AVX512* reg)
+void RegistersView::setRegisters(const REGDUMP_AVX512* reg)
 {
+    isActive = true;
     auto converted = expandContext(reg);
-    // tests if new-register-value == old-register-value holds
-    if(mCip != reg->regcontext.cip) //CIP changed
+    if(mCip != reg->regcontext.cip)
     {
         mCipRegDumpStruct = mRegDumpStruct;
         mRegisterUpdates.clear();
@@ -3331,14 +3463,12 @@ void RegistersView::setRegisters(REGDUMP_AVX512* reg)
 // Scroll the viewport so that the register will be visible on the screen
 void RegistersView::ensureRegisterVisible(REGISTER_NAME reg)
 {
-    QScrollArea* upperScrollArea = (QScrollArea*)this->parentWidget()->parentWidget();
-
     int ySpace = yTopSpacing;
     if(mVScrollOffset != 0)
         ySpace = 0;
     int y = mRowHeight * (mRegisterPlaces[reg].line + mVScrollOffset) + ySpace;
 
-    upperScrollArea->ensureVisible(0, y);
+    ensureVisible(0, y);
 }
 
 void RegistersView::autoUpdateXMMModesAndRefresh()
@@ -3357,6 +3487,7 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
     if(mAVX512RegistersShown != old_AVX512RegistersShown)
         InitMappings();
 
+    updateCanvasSize();
     // force repaint
     emit refresh();
 }

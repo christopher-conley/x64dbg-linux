@@ -65,4 +65,17 @@ function(qt_executable tgt)
         add_executable(${tgt} ${ARGN})
     endif()
     target_link_libraries(${tgt} PRIVATE ${QT_LIBRARIES})
+
+    # Run windeployqt after build to copy Qt DLLs next to the executable
+    if(WIN32 AND TARGET ${QT_PACKAGE}::windeployqt)
+        add_custom_command(TARGET ${tgt} POST_BUILD
+            COMMAND ${QT_PACKAGE}::windeployqt
+                --no-translations
+                --no-compiler-runtime
+                --no-system-d3d-compiler
+                --no-opengl-sw
+                "$<TARGET_FILE:${tgt}>"
+            COMMENT "Running windeployqt on ${tgt}..."
+        )
+    endif()
 endfunction()

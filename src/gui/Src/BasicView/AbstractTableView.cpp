@@ -1416,7 +1416,8 @@ void AbstractTableView::accessibilitySelectionChanged()
             if(sel != -1)
             {
                 QAccessibleTableInterface* tableInterface = (QAccessibleTableInterface*)accessible->interface_cast(QAccessible::TableInterface);
-                assert(tableInterface);
+                if(!tableInterface) //TODO: register accessible table interface
+                    return;
                 QAccessibleInterface* cell = tableInterface->cellAt(sel + 1, accessibilitySelectedColumn);
                 if(cell)
                 {

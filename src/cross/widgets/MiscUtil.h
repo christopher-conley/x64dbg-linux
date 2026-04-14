@@ -3,6 +3,7 @@
 #include <QIcon>
 #include <functional>
 #include "Types.h"
+#include "StringUtil.h"
 
 class QWidget;
 class QByteArray;

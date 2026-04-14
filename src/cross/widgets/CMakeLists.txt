@@ -24,6 +24,7 @@ set(hook_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/StringUtil.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Types.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Imports.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/RegisterContext.h
 )
 
 set(widgets_SOURCES
@@ -82,6 +83,8 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Utils/RichTextPainter.cpp
     ${widgets_SOURCE_DIR}/Utils/RichTextPainter.h
     ${widgets_SOURCE_DIR}/Utils/VaHistory.h
+    ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
+    ${widgets_SOURCE_DIR}/Gui/RegistersView.h
 )
 
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR})

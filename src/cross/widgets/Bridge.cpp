@@ -1,12 +1,12 @@
-#include <cstdio>
 
+#include <atomic>
 #include <QGuiApplication>
 #include <QClipboard>
+#include <QThread>
+#include <QCoreApplication>
 
 #include "Bridge.h"
-
 #include "Types.h"
-#include "Bridge.h"
 #include <zydis_wrapper.h>
 
 struct InvalidMemoryProvider : MemoryProvider
@@ -32,11 +32,11 @@ struct InvalidMemoryProvider : MemoryProvider
     }
 } gInvalidMemoryProvider;
 
-static MemoryProvider* gMemory = &gInvalidMemoryProvider;
+static std::atomic<MemoryProvider*> gMemory{&gInvalidMemoryProvider};
 
 void DbgSetMemoryProvider(MemoryProvider* provider)
 {
-    gMemory = provider ? provider : &gInvalidMemoryProvider;
+    gMemory.store(provider ? provider : &gInvalidMemoryProvider);
 }
 
 // BRIDGE
@@ -80,14 +80,14 @@ void BridgeFree(void* ptr)
 
 bool DbgIsDebugging()
 {
-    return true;
+    return gMemory.load() != &gInvalidMemoryProvider;
 }
 
 DBGFUNCTIONS* DbgFunctions()
 {
-    static DBGFUNCTIONS* cache = []
+    static DBGFUNCTIONS f = []
     {
-        static DBGFUNCTIONS f;
+        DBGFUNCTIONS f{};
         f.GetTraceRecordHitCount = [](duint addr) -> duint
         {
             return 0;
@@ -104,13 +104,13 @@ DBGFUNCTIONS* DbgFunctions()
         {
             return false;
         };
-        f.StringFormatInline = [](char* dest, duint size, const char* format)
+        f.StringFormatInline = [](const char* format, size_t size, char* dest)
         {
             return false;
         };
         f.MemIsCodePage = [](duint addr, bool refresh)
         {
-            return gMemory->isCodePtr(addr);
+            return gMemory.load()->isCodePtr(addr);
         };
         f.GetMnemonicBrief = [](const char* mnem, size_t resultSize, char* result)
         {
@@ -142,9 +142,9 @@ DBGFUNCTIONS* DbgFunctions()
         {
             return false;
         };
-        return &f;
+        return f;
     }();
-    return cache;
+    return &f;
 }
 
 bool DbgGetLabelAt(duint addr, SEGTYPE seg, char* label)
@@ -167,14 +167,24 @@ bool DbgGetBookmarkAt(duint addr)
     return false;
 }
 
+static std::atomic<BreakpointQueryFunc> gBreakpointQuery{nullptr};
+
+void DbgSetBreakpointQuery(BreakpointQueryFunc func)
+{
+    gBreakpointQuery.store(func);
+}
+
 BPXTYPE DbgGetBpxTypeAt(duint addr)
 {
+    auto query = gBreakpointQuery.load();
+    if(query)
+        return query(addr);
     return bp_none;
 }
 
 bool DbgMemIsValidReadPtr(duint addr)
 {
-    return gMemory->isValidPtr(addr);
+    return gMemory.load()->isValidPtr(addr);
 }
 
 bool DbgGetStringAt(duint addr, char* str)
@@ -189,10 +199,8 @@ bool DbgEval(const char* expr, bool* success)
 
 duint DbgValFromString(const char* expr)
 {
-    duint result = 0;
-    if(!DbgEval(expr))
-        result = 0;
-    return result;
+    // Stub: no expression evaluator yet - always returns 0
+    return 0;
 }
 
 bool DbgCmdExec(const char* cmd)
@@ -221,7 +229,7 @@ duint DbgMemFindBaseAddr(duint addr, duint* size)
 {
     duint rangeBase = 0;
     duint rangeSize = 0;
-    if(!gMemory->getRange(addr, rangeBase, rangeSize))
+    if(!gMemory.load()->getRange(addr, rangeBase, rangeSize))
         return 0;
 
     if(size != nullptr)
@@ -232,7 +240,7 @@ duint DbgMemFindBaseAddr(duint addr, duint* size)
 
 bool DbgMemRead(duint addr, void* dest, size_t size)
 {
-    return gMemory->read(addr, dest, size);
+    return gMemory.load()->read(addr, dest, size);
 }
 
 FUNCTYPE DbgGetFunctionTypeAt(duint addr)
@@ -303,8 +311,15 @@ void DbgDelEncodeTypeSegment(duint start)
 
 void GuiExecuteOnGuiThreadEx(GuiCallback callback, void* data)
 {
-    // TODO: force schedule on the GUI thread
-    callback(data);
+    if(QThread::currentThread() == QCoreApplication::instance()->thread())
+    {
+        callback(data);
+        return;
+    }
+    QMetaObject::invokeMethod(QCoreApplication::instance(), [callback, data]()
+    {
+        callback(data);
+    }, Qt::QueuedConnection);
 }
 
 void GuiAddLogMessage(const char* msg)

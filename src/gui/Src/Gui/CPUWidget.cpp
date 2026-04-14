@@ -66,13 +66,8 @@ CPUWidget::CPUWidget(Architecture* architecture, QWidget* parent)
     ui->mBotLeftFrameLayout->addWidget(mDump);
 
     mGeneralRegs = new CPURegistersView(this);
-    mGeneralRegs->setFixedWidth(1000);
+    mGeneralRegs->setFrameShape(QFrame::NoFrame);
     mGeneralRegs->ShowFPU(true);
-
-    QScrollArea* upperScrollArea = new QScrollArea(this);
-    upperScrollArea->setFrameShape(QFrame::NoFrame);
-    upperScrollArea->setWidget(mGeneralRegs);
-    upperScrollArea->setWidgetResizable(true);
 
     QPushButton* button_changeview = new QPushButton("", this);
     connect(button_changeview, SIGNAL(clicked()), mGeneralRegs, SLOT(onChangeFPUViewAction()));
@@ -82,7 +77,7 @@ CPUWidget::CPUWidget(Architecture* architecture, QWidget* parent)
     connect(ui->mTopRightVSplitter, SIGNAL(splitterMoved(int, int)), this, SLOT(splitterMoved(int, int)));
 
     ui->mTopRightUpperFrameLayout->addWidget(button_changeview);
-    ui->mTopRightUpperFrameLayout->addWidget(upperScrollArea);
+    ui->mTopRightUpperFrameLayout->addWidget(mGeneralRegs);
     ui->mTopHSplitter->setCollapsible(1, true); // allow collapsing of the RegisterView
 
     ui->mTopRightLowerFrameLayout->addWidget(mArgumentWidget);
@@ -93,7 +88,7 @@ CPUWidget::CPUWidget(Architecture* architecture, QWidget* parent)
 
     mDisassembly->setAccessibleName(tr("Disassembly"));
     mStack->setAccessibleName(tr("Stack"));
-    upperScrollArea->setAccessibleName(tr("Registers"));
+    mGeneralRegs->setAccessibleName(tr("Registers"));
     mDump->setAccessibleName(tr("Dump"));
     mArgumentWidget->setAccessibleName(tr("Arguments"));
     mSideBar->setAccessibleName(tr("Sidebar"));

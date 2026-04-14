@@ -166,6 +166,124 @@ struct DmpFileParser : FileParser
         return regions;
     }
 
+    std::vector<ThreadInfo> Threads() const override
+    {
+        std::vector<ThreadInfo> result;
+        for(const auto & [id, thread] : mDmp.GetThreads())
+        {
+            ThreadInfo info;
+            info.threadId = thread.ThreadId;
+            info.teb = thread.Teb;
+            memset(&info.registers, 0, sizeof(info.registers));
+
+            std::visit([&](auto && ctx)
+            {
+                using T = std::decay_t<decltype(ctx)>;
+                if constexpr(std::is_same_v<T, udmpparser::Context64_t>)
+                {
+                    info.is64 = true;
+                    info.cip = ctx.Rip;
+                    auto & r = info.registers.regcontext;
+                    r.cax = ctx.Rax;
+                    r.ccx = ctx.Rcx;
+                    r.cdx = ctx.Rdx;
+                    r.cbx = ctx.Rbx;
+                    r.csp = ctx.Rsp;
+                    r.cbp = ctx.Rbp;
+                    r.csi = ctx.Rsi;
+                    r.cdi = ctx.Rdi;
+                    r.r8 = ctx.R8;
+                    r.r9 = ctx.R9;
+                    r.r10 = ctx.R10;
+                    r.r11 = ctx.R11;
+                    r.r12 = ctx.R12;
+                    r.r13 = ctx.R13;
+                    r.r14 = ctx.R14;
+                    r.r15 = ctx.R15;
+                    r.cip = ctx.Rip;
+                    r.eflags = ctx.EFlags;
+                    r.cs = ctx.SegCs;
+                    r.ds = ctx.SegDs;
+                    r.es = ctx.SegEs;
+                    r.fs = ctx.SegFs;
+                    r.gs = ctx.SegGs;
+                    r.ss = ctx.SegSs;
+                    r.dr0 = ctx.Dr0;
+                    r.dr1 = ctx.Dr1;
+                    r.dr2 = ctx.Dr2;
+                    r.dr3 = ctx.Dr3;
+                    r.dr6 = ctx.Dr6;
+                    r.dr7 = ctx.Dr7;
+                    r.MxCsr = ctx.MxCsr;
+                    // XMM registers
+                    auto copyXmm = [](ZMMREGISTER & dst, const udmpparser::uint128_t & src)
+                    {
+                        dst.Low.Low.Low = src.Low;
+                        dst.Low.Low.High = src.High;
+                    };
+                    copyXmm(r.ZmmRegisters[0], ctx.Xmm0);
+                    copyXmm(r.ZmmRegisters[1], ctx.Xmm1);
+                    copyXmm(r.ZmmRegisters[2], ctx.Xmm2);
+                    copyXmm(r.ZmmRegisters[3], ctx.Xmm3);
+                    copyXmm(r.ZmmRegisters[4], ctx.Xmm4);
+                    copyXmm(r.ZmmRegisters[5], ctx.Xmm5);
+                    copyXmm(r.ZmmRegisters[6], ctx.Xmm6);
+                    copyXmm(r.ZmmRegisters[7], ctx.Xmm7);
+                    copyXmm(r.ZmmRegisters[8], ctx.Xmm8);
+                    copyXmm(r.ZmmRegisters[9], ctx.Xmm9);
+                    copyXmm(r.ZmmRegisters[10], ctx.Xmm10);
+                    copyXmm(r.ZmmRegisters[11], ctx.Xmm11);
+                    copyXmm(r.ZmmRegisters[12], ctx.Xmm12);
+                    copyXmm(r.ZmmRegisters[13], ctx.Xmm13);
+                    copyXmm(r.ZmmRegisters[14], ctx.Xmm14);
+                    copyXmm(r.ZmmRegisters[15], ctx.Xmm15);
+                    // x87 FPU
+                    r.x87fpu.ControlWord = ctx.ControlWord;
+                    r.x87fpu.StatusWord = ctx.StatusWord;
+                    r.x87fpu.TagWord = ctx.TagWord;
+                    r.x87fpu.ErrorOffset = ctx.ErrorOffset;
+                    r.x87fpu.ErrorSelector = ctx.ErrorSelector;
+                    r.x87fpu.DataOffset = ctx.DataOffset;
+                    r.x87fpu.DataSelector = ctx.DataSelector;
+                    // Copy x87 register area from FloatRegisters
+                    static_assert(sizeof(ctx.FloatRegisters) >= 80);
+                    memcpy(r.RegisterArea, ctx.FloatRegisters.data(), 80);
+                }
+                else if constexpr(std::is_same_v<T, udmpparser::Context32_t>)
+                {
+                    info.is64 = false;
+                    info.cip = ctx.Eip;
+                    auto & r = info.registers.regcontext;
+                    r.cax = ctx.Eax;
+                    r.ccx = ctx.Ecx;
+                    r.cdx = ctx.Edx;
+                    r.cbx = ctx.Ebx;
+                    r.csp = ctx.Esp;
+                    r.cbp = ctx.Ebp;
+                    r.csi = ctx.Esi;
+                    r.cdi = ctx.Edi;
+                    r.cip = ctx.Eip;
+                    r.eflags = ctx.EFlags;
+                    r.cs = ctx.SegCs;
+                    r.ds = ctx.SegDs;
+                    r.es = ctx.SegEs;
+                    r.fs = ctx.SegFs;
+                    r.gs = ctx.SegGs;
+                    r.ss = ctx.SegSs;
+                    r.dr0 = ctx.Dr0;
+                    r.dr1 = ctx.Dr1;
+                    r.dr2 = ctx.Dr2;
+                    r.dr3 = ctx.Dr3;
+                    r.dr6 = ctx.Dr6;
+                    r.dr7 = ctx.Dr7;
+                }
+            }, thread.Context);
+
+            result.push_back(std::move(info));
+        }
+        return result;
+    }
+
     uint64_t entryPoint() const override
     {
         return mEntryPoint;
@@ -346,6 +464,11 @@ struct PeFileParser : FileParser, MemoryProvider
             region.Info = section.name;
         }
         return regions;
+    }
+
+    std::vector<ThreadInfo> Threads() const override
+    {
+        return {}; // PE files have no thread info
     }
 
     uint64_t entryPoint() const override

@@ -143,6 +143,9 @@ Configuration::Configuration(const ConfigurationPalette & p) : QObject(), noMore
     defaultColors.insert("RegistersHighlightWriteColor", QColor("#B00000"));
     defaultColors.insert("RegistersHighlightReadWriteColor", QColor("#808000"));
 
+    defaultColors.insert("TraceNewValueColor", QColor("#FF0000"));
+    defaultColors.insert("TraceNewValueBackgroundColor", Qt::transparent);
+
     defaultColors.insert("InstructionHighlightColor", white);
     defaultColors.insert("InstructionHighlightBackgroundColor", QColor("#CC0000"));
     defaultColors.insert("InstructionCommaColor", black);
@@ -311,6 +314,7 @@ Configuration::Configuration(const ConfigurationPalette & p) : QObject(), noMore
     disassemblyBool.insert("PermanentHighlightingMode", false);
     disassemblyBool.insert("NoBranchDisasmPreview", false);
     disassemblyBool.insert("NoCurrentModuleText", false);
+    disassemblyBool.insert("UseRunTrace", false);
     defaultBools.insert("Disassembler", disassemblyBool);
 
     QMap<QString, bool> engineBool;

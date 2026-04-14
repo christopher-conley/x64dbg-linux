@@ -68,6 +68,7 @@ void MainWindow::loadFile(const QString & path)
     mMemoryMap->loadFileParser(parser);
     mHexDump->loadFileParser(parser);
     mDisassembly->loadFileParser(parser);
+    mThreads->loadThreads(parser->Threads());
 
     // Disassemble at the entry point
     auto entryPoint = parser->entryPoint();
@@ -128,6 +129,9 @@ void MainWindow::setupWidgets()
 
     mDisassembly = new MiniDisassembly(mNavigation, GlobalArchitecture(), this);
     ui->tabWidget->addTab(mDisassembly, "Disassembly");
+
+    mThreads = new MiniThreads(this);
+    ui->tabWidget->addTab(mThreads, "Threads");
 }
 
 void MainWindow::setupToolSync()

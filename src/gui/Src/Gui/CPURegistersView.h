@@ -1,6 +1,18 @@
 #pragma once
 
 #include "RegistersView.h"
+#include "CommonActions.h"
+
+class CPUWidget;
+class CPUMultiDump;
+
+typedef struct
+{
+    const char* string;
+    unsigned int value;
+} STRING_VALUE_TABLE_t;
+
+#define SIZE_TABLE(table) (sizeof(table) / sizeof(*table))
 
 class CPURegistersView : public RegistersView
 {

@@ -8,6 +8,7 @@
 #include "MiniMemoryMap.h"
 #include "MiniDisassembly.h"
 #include "MiniHexDump.h"
+#include "MiniThreads.h"
 #include "REToolSync.h"
 
 QT_BEGIN_NAMESPACE
@@ -41,6 +42,7 @@ private:
     MiniMemoryMap* mMemoryMap = nullptr;
     MiniHexDump* mHexDump = nullptr;
     MiniDisassembly* mDisassembly = nullptr;
+    MiniThreads* mThreads = nullptr;
     REToolSync* mToolSync = nullptr;
     Navigation* mNavigation = nullptr;
 };

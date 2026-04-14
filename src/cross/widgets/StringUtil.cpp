@@ -8,9 +8,11 @@
 
 QString ToLongDoubleString(const void* buffer)
 {
-    char str[32];
-    //ld2str(buffer, str);
-    return str;
+    const auto* bytes = static_cast<const uint8_t*>(buffer);
+    QString result;
+    for(int i = 9; i >= 0; i--)
+        result += QString("%1").arg(bytes[i], 2, 16, QChar('0'));
+    return result.toUpper();
 }
 
 QString EscapeCh(QChar ch)
