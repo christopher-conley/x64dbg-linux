@@ -388,7 +388,8 @@ PatternStatus PatternRun(const PatternRunArgs* args)
     {
         filename = api::Source::DefaultSource;
     }
-    if(!runtime.executeString(args->source, filename))
+    auto evaluationResult = runtime.executeString(args->source, filename);
+    if(!runtime.arePatternsValid())
     {
         auto compileErrors = runtime.getCompileErrors();
         if(!compileErrors.empty())
@@ -427,10 +428,15 @@ PatternStatus PatternRun(const PatternRunArgs* args)
         }
         else
         {
-            auto error = runtime.getEvalError().value();
+            auto error = runtime.getEvalError();
+            if(!error)
+            {
+                error = pl::core::err::PatternLanguageError("unknown error", 0, 0);
+            }
+
             if(args->eval_error == nullptr)
             {
-                fmt::print("Pattern Error: {}:{} -> {}\n", error.line, error.column, error.message);
+                fmt::print("Pattern Error: {}:{} -> {}\n", error->line, error->column, error->message);
             }
             else
             {
@@ -438,11 +444,11 @@ PatternStatus PatternRun(const PatternRunArgs* args)
                 {
                     .location = {
                         .file = filename,
-                        .line = error.line,
-                        .column = error.column,
+                        .line = error->line,
+                        .column = error->column,
                         .length = 0,
                     },
-                    .pretty = error.message.c_str(),
+                    .pretty = error->message.c_str(),
                 };
                 args->eval_error(args->userdata, &cerror);
             }

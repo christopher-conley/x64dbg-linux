@@ -56,6 +56,10 @@ FetchContent_Declare(PatternLanguage
 )
 FetchContent_MakeAvailable(PatternLanguage)
 
+set_target_properties(libpl PROPERTIES
+    UNITY_BUILD ON
+)
+
 message(STATUS "Fetching udmp-parser (bc5952eda39ba0b1a07fc57f57d166292f1e9563)...")
 FetchContent_Declare(udmp-parser
 	GIT_REPOSITORY

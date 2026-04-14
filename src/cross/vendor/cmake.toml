@@ -21,6 +21,11 @@ tag = "1fcb057963da3d25048bf1a331cd84aab9e09c99"
 [fetch-content.PatternLanguage]
 git = "https://github.com/mrexodia/PatternLanguage"
 tag = "werror-fixes"
+cmake-after = """
+set_target_properties(libpl PROPERTIES
+    UNITY_BUILD ON
+)
+"""
 
 [fetch-content.udmp-parser]
 git = "https://github.com/mrexodia/udmp-parser"
