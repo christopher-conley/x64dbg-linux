@@ -3,6 +3,27 @@
 #include "AccessibleRegistersView.h"
 #include "StringUtil.h"
 
+static QRect widgetGlobalRect(const QWidget* widget)
+{
+    if(!widget)
+        return QRect();
+    return QRect(widget->mapToGlobal(QPoint(0, 0)), widget->size());
+}
+
+static QRect registersViewportGlobalRect(const RegistersView* view)
+{
+    return widgetGlobalRect(view ? view->viewport() : nullptr);
+}
+
+static bool isFullLineRegister(RegistersView::REGISTER_NAME reg)
+{
+    return (reg >= RegistersView::CAX && reg <= RegistersView::EFLAGS)
+           || (reg >= RegistersView::MM0 && reg <= RegistersView::MM7)
+           || (reg >= RegistersView::DR0 && reg <= RegistersView::DR7)
+           || (reg >= RegistersView::K0 && reg <= RegistersView::K7)
+           || (reg >= RegistersView::XMM0 && reg <= ArchValue(RegistersView::XMM7, RegistersView::XMM31));
+}
+
 AccessibleRegistersViewItem::AccessibleRegistersViewItem(AccessibleRegistersView* parent, RegistersView::REGISTER_NAME id) : mParent(parent), id(id)
 {
 }
@@ -14,9 +35,14 @@ QString AccessibleRegistersViewItem::text(QAccessible::Text t) const
     {
     case QAccessible::Name:
     case QAccessible::Value:
+    {
+        const auto it = w->mRegisterMapping.constFind(id);
+        if(it == w->mRegisterMapping.cend())
+            return QString();
         if(w->mLABELDISPLAY.contains(id))
-            return QString(w->mRegisterMapping[id]) + " = " + w->GetRegStringValueFromValue(id, w->registerValue(&w->mRegDumpStruct, id)) + ' ' + w->getRegisterLabel(id);
-        return QString(w->mRegisterMapping[id]) + " = " + w->GetRegStringValueFromValue(id, w->registerValue(&w->mRegDumpStruct, id));
+            return QString(it.value()) + " = " + w->GetRegStringValueFromValue(id, w->registerValue(&w->mRegDumpStruct, id)) + ' ' + w->getRegisterLabel(id);
+        return QString(it.value()) + " = " + w->GetRegStringValueFromValue(id, w->registerValue(&w->mRegDumpStruct, id));
+    }
     case QAccessible::Help:
         return w->helpRegister(id);
     default:
@@ -70,10 +96,12 @@ QAccessible::State AccessibleRegistersViewItem::state() const
 {
     QAccessible::State state;
     const RegistersView* parent = mParent->m_registersView;
-    state.focusable = parent->isActive;
+    const bool visible = parent->mRegisterPlaces.contains(id);
+    state.focusable = parent->isActive && visible;
     state.active = parent->isActive;
-    state.selectable = parent->isActive;
-    if(parent->mSelected == id)
+    state.selectable = parent->isActive && visible;
+    state.invisible = !visible;
+    if(visible && parent->mSelected == id)
     {
         state.selected = true;
         if(parent->hasFocus())
@@ -98,40 +126,40 @@ void AccessibleRegistersViewItem::setText(QAccessible::Text t, const QString & t
 
 QRect AccessibleRegistersViewItem::rect() const
 {
-    QRect rect;
     const RegistersView* parent = mParent->m_registersView;
-    const auto & it = parent->mRegisterPlaces.constFind(id);
+    const QWidget* contentWidget = parent ? parent->widget() : nullptr;
+    if(!parent || !contentWidget)
+        return QRect();
+
+    const auto it = parent->mRegisterPlaces.constFind(id);
     if(it == parent->mRegisterPlaces.cend())
+        return QRect();
+
+    int ySpace = parent->yTopSpacing;
+    if(parent->mVScrollOffset != 0)
+        ySpace = 0;
+    const int top = parent->mRowHeight * (it.value().line + parent->mVScrollOffset) + ySpace;
+
+    int left = 0;
+    int right = 0;
+    if(isFullLineRegister(it.key()))
     {
-        return rect;
-    }
-    int top, bottom, left, right;
-    top = it.value().line * parent->mRowHeight + parent->yTopSpacing;
-    bottom = top + parent->mRowHeight;
-    // These registers occupy a whole line
-    if(it.key() >= RegistersView::CAX && it.key() <= RegistersView::EFLAGS
-            || it.key() >= RegistersView::MM0 && it.key() <= RegistersView::MM7
-            || it.key() >= RegistersView::DR0 && it.key() <= RegistersView::DR7
-            || it.key() >= RegistersView::K0 && it.key() <= RegistersView::K7
-            || it.key() >= RegistersView::XMM0 && it.key() <= ArchValue(RegistersView::XMM7, RegistersView::XMM31))
-    {
-        const QWidget* upperScrollArea = (const QWidget*)parent->parentWidget()->parentWidget();
-        left = 0;
-        right = upperScrollArea->width();
+        right = contentWidget->width();
     }
     else
     {
         left = (1 + it.value().start) * parent->mCharWidth;
         right = left + ((it.value().labelwidth + it.value().valuesize) * parent->mCharWidth);
     }
-    const QPoint TL = parent->mapToGlobal(QPoint(left, top));
-    const QPoint BR = parent->mapToGlobal(QPoint(right, bottom));
-    return QRect(TL, BR);
+
+    QRect itemRect(QPoint(left, top), QSize(right - left, parent->mRowHeight));
+    QRect globalRect(contentWidget->mapToGlobal(itemRect.topLeft()), itemRect.size());
+    return globalRect.intersected(registersViewportGlobalRect(parent));
 }
 
 bool AccessibleRegistersViewItem::isValid() const
 {
-    return mParent->m_registersView->isActive;
+    return mParent->m_registersView->isActive && mParent->m_registersView->mRegisterPlaces.contains(id);
 }
 
 AccessibleRegistersView::AccessibleRegistersView(QWidget* w) : QAccessibleWidget(w, QAccessible::List, dynamic_cast<RegistersView*>(w)->accessibleName())
@@ -154,8 +182,14 @@ AccessibleRegistersView::~AccessibleRegistersView()
 
 int AccessibleRegistersView::childCount() const
 {
-    // TODO: interact with showFPU
-    return m_registersView->mAVX512RegistersShown ? RegistersView::REGISTER_NAME::UNKNOWN : ArchValue(RegistersView::REGISTER_NAME::XMM7, RegistersView::REGISTER_NAME::XMM16);
+    int maxRegister = -1;
+    for(auto it = m_registersView->mRegisterPlaces.cbegin(); it != m_registersView->mRegisterPlaces.cend(); ++it)
+    {
+        const int reg = static_cast<int>(it.key());
+        if(reg > maxRegister)
+            maxRegister = reg;
+    }
+    return maxRegister + 1;
 }
 
 QAccessibleInterface* AccessibleRegistersView::child(int index) const
@@ -175,8 +209,16 @@ QAccessibleInterface* AccessibleRegistersView::child(int index) const
 
 QAccessibleInterface* AccessibleRegistersView::childAt(int x, int y) const
 {
-    RegistersView::REGISTER_NAME clickedReg;
-    QPoint local = m_registersView->mapFromGlobal(QPoint(x, y));
+    const QWidget* contentWidget = m_registersView ? m_registersView->widget() : nullptr;
+    if(!m_registersView || !contentWidget)
+        return nullptr;
+
+    const QPoint globalPos(x, y);
+    if(!registersViewportGlobalRect(m_registersView).contains(globalPos))
+        return nullptr;
+
+    RegistersView::REGISTER_NAME clickedReg = RegistersView::UNKNOWN;
+    QPoint local = contentWidget->mapFromGlobal(globalPos);
     if(m_registersView->identifyRegister((local.y() - m_registersView->yTopSpacing) / (double)m_registersView->mRowHeight, local.x() / (double)m_registersView->mCharWidth, &clickedReg))
         if(clickedReg < RegistersView::UNKNOWN)
             return child(static_cast<int>(clickedReg));
@@ -225,15 +267,6 @@ QAccessible::State AccessibleRegistersView::state() const
 
 QRect AccessibleRegistersView::rect() const
 {
-    QRect rect;
-    const QScrollArea* upperScrollArea = (const QScrollArea*)m_registersView->parentWidget()->parentWidget();
-    int top, bottom, left, right;
-    top = 0;
-    bottom = upperScrollArea->height();
-    left = 0;
-    right = upperScrollArea->width();
-    const QPoint TL = upperScrollArea->mapToGlobal(QPoint(left, top));
-    const QPoint BR = upperScrollArea->mapToGlobal(QPoint(right, bottom));
-    return QRect(TL, BR);
+    return widgetGlobalRect(m_registersView);
 }
 #endif

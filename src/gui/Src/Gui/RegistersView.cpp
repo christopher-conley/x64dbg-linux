@@ -1525,8 +1525,8 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     connect(wCM_ChangeFPUView, SIGNAL(triggered()), this, SLOT(onChangeFPUViewAction()));
     connect(Config(), SIGNAL(shortcutsUpdated()), this, SLOT(refreshShortcutsSlot()));
 
-    memset(&mRegDumpStruct, 0, sizeof(REGDUMP));
-    memset(&mCipRegDumpStruct, 0, sizeof(REGDUMP));
+    memset(&mRegDumpStruct, 0, sizeof(mRegDumpStruct));
+    memset(&mCipRegDumpStruct, 0, sizeof(mCipRegDumpStruct));
     mCip = 0;
     mRegisterUpdates.clear();
 
