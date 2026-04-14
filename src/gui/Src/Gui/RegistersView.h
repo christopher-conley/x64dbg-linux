@@ -16,9 +16,6 @@ class CPUMultiDump;
 #endif
 
 class QPushButton;
-#ifndef _WIN32
-class RegistersCanvas;
-#endif
 
 #ifdef _WIN32
 typedef struct
@@ -154,10 +151,8 @@ public:
     explicit RegistersView(QWidget* parent);
     ~RegistersView();
 
-#ifndef _WIN32
     QSize minimumSizeHint() const override { return QSize(0, 0); }
     QSize sizeHint() const override { return QSize(200, 400); }
-#endif
 
     static void* operator new(size_t size);
     static void operator delete(void* p);
@@ -183,19 +178,21 @@ signals:
     void refresh();
 
 protected:
+    class RegistersCanvas;
 #ifdef _WIN32
     QAction* setupAction(const QIcon & icon, const QString & text);
     QAction* setupAction(const QString & text);
 #endif
     // events
     virtual void mousePressEvent(QMouseEvent* event) override;
-#ifdef _WIN32
     virtual void mouseDoubleClickEvent(QMouseEvent* event) override;
-#endif
     virtual void mouseMoveEvent(QMouseEvent* event) override;
     virtual void paintEvent(QPaintEvent* event) override;
+    virtual void resizeEvent(QResizeEvent* event) override;
     virtual void keyPressEvent(QKeyEvent* event) override;
     virtual void wheelEvent(QWheelEvent* event) override;
+
+    void paintRegisters(QPainter* p, const QRect & clip);
 
     // use-in-class-only methods
     void drawRegister(QPainter* p, REGISTER_NAME reg, char* value);
@@ -296,11 +293,8 @@ protected:
     bool mAVX512RegistersShown;
     void autoUpdateXMMModesAndRefresh();
     dsint mCip;
-#ifndef _WIN32
-    friend class RegistersCanvas;
     RegistersCanvas* mCanvas = nullptr;
     void updateCanvasSize();
-#endif
 #ifdef _WIN32
     std::vector<std::pair<const char*, uint8_t>> mHighlightRegs;
     QAction* mDisplaySTX;

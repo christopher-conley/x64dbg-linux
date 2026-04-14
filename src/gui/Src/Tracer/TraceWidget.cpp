@@ -47,16 +47,8 @@ TraceWidget::TraceWidget(Architecture* architecture, const QString & fileName, Q
     //disasm
     ui->mTopLeftUpperRightFrameLayout->addWidget(mTraceBrowser);
     //registers
-    mGeneralRegs->setFixedWidth(1000);
+    mGeneralRegs->setFrameShape(QFrame::NoFrame);
     mGeneralRegs->ShowFPU(true);
-
-    QScrollArea* upperScrollArea = new QScrollArea(this);
-    upperScrollArea->setFrameShape(QFrame::NoFrame);
-    upperScrollArea->setWidget(mGeneralRegs);
-    upperScrollArea->setWidgetResizable(true);
-
-    //upperScrollArea->horizontalScrollBar()->setStyleSheet(ConfigHScrollBarStyle());
-    //upperScrollArea->verticalScrollBar()->setStyleSheet(ConfigVScrollBarStyle());
 
     QPushButton* button_changeview = new QPushButton("", this);
     button_changeview->setStyleSheet("Text-align:left;padding: 4px;padding-left: 10px;");
@@ -69,7 +61,7 @@ TraceWidget::TraceWidget(Architecture* architecture, const QString & fileName, Q
     mGeneralRegs->SetChangeButton(button_changeview);
 
     ui->mTopRightUpperFrameLayout->addWidget(button_changeview);
-    ui->mTopRightUpperFrameLayout->addWidget(upperScrollArea);
+    ui->mTopRightUpperFrameLayout->addWidget(mGeneralRegs);
     ui->mTopHSplitter->setCollapsible(1, true); // allow collapsing the RegisterView
 
     //info
@@ -97,7 +89,7 @@ TraceWidget::TraceWidget(Architecture* architecture, const QString & fileName, Q
     ui->mTopLeftVSplitter->setSizes(QList<int>({1000, 1}));
 
     mTraceBrowser->setAccessibleName(tr("Disassembly"));
-    upperScrollArea->setAccessibleName(tr("Registers"));
+    mGeneralRegs->setAccessibleName(tr("Registers"));
     if(mDump != nullptr)
     {
         mDump->setAccessibleName(tr("Dump"));

@@ -1,7 +1,9 @@
 #include <QMessageBox>
 #include <QToolTip>
 #include <QMouseEvent>
+#include <QContextMenuEvent>
 #include <QPainter>
+#include <QResizeEvent>
 #include <QPushButton>
 #include <stdint.h>
 #include <new>
@@ -27,8 +29,7 @@
 #include "ldconvert.h"
 #endif
 
-#ifndef _WIN32
-class RegistersCanvas : public QWidget
+class RegistersView::RegistersCanvas : public QWidget
 {
     RegistersView* mView;
 public:
@@ -39,24 +40,34 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override
     {
-        if(mView->mChangeViewButton)
-            mView->mChangeViewButton->setText(mView->mShowFpu ? RegistersView::tr("Hide FPU") : RegistersView::tr("Show FPU"));
-
         QPainter painter(this);
-        painter.setClipRect(event->rect());
-        painter.setFont(mView->font());
-        painter.fillRect(rect(), QBrush(ConfigColor("RegistersBackgroundColor")));
-
-        if(!mView->isActive)
-            return;
-
-        for(auto itr = mView->mRegisterMapping.begin(); itr != mView->mRegisterMapping.end(); itr++)
-            mView->drawRegister(&painter, itr.key(), mView->registerValue(&mView->mRegDumpStruct, itr.key()));
+        mView->paintRegisters(&painter, event->rect());
     }
-    void mousePressEvent(QMouseEvent* event) override { mView->mousePressEvent(event); }
-    void mouseMoveEvent(QMouseEvent* event) override { mView->mouseMoveEvent(event); }
-};
+
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        mView->setFocus();
+        mView->mousePressEvent(event);
+    }
+
+    void mouseMoveEvent(QMouseEvent* event) override
+    {
+        mView->mouseMoveEvent(event);
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent* event) override
+    {
+        mView->mouseDoubleClickEvent(event);
+    }
+
+#ifdef _WIN32
+    void contextMenuEvent(QContextMenuEvent* event) override
+    {
+        mView->displayCustomContextMenuSlot(mView->mapFromGlobal(event->globalPos()));
+        event->accept();
+    }
 #endif
+};
 
 // Qt6 removed QFontMetrics::width() - provide file-local compat
 #if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
@@ -745,8 +756,6 @@ void RegistersView::InitMappings()
     mRegisterRelativePlaces.insert(DR7, Register_Relative_Position(DR6, UNKNOWN));
 
     mRowsNeeded = offset + 1;
-    //adjust the height of the area.
-    setFixedHeight(getEstimateHeight());
 }
 
 RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
@@ -992,6 +1001,8 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
 {
     setAccessibleName(tr("Registers"));
     mChangeViewButton = NULL;
+    mShowFpu = false;
+    mSelected = UNKNOWN;
     mFpuMode = 0;
     mXMMModeAuto = true;
     mAlwaysShowAVX512Registers = false;
@@ -1531,13 +1542,13 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     yTopSpacing = 4; //set top spacing (in pixels)
 
     this->setMouseTracking(true);
-#ifndef _WIN32
+    setAlignment(Qt::AlignLeft | Qt::AlignTop);
     mCanvas = new RegistersCanvas(this);
     setWidget(mCanvas);
     setWidgetResizable(false);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setMinimumSize(0, 0);
-#endif
+    updateCanvasSize();
 }
 
 void RegistersView::refreshShortcutsSlot()
@@ -1593,9 +1604,7 @@ void RegistersView::fontsUpdatedSlot()
 
     //reload layout because the layout is dependent on the font.
     InitMappings();
-#ifndef _WIN32
     updateCanvasSize();
-#endif
     reload();
 }
 
@@ -1615,9 +1624,7 @@ void RegistersView::ShowFPU(bool set_showfpu)
 {
     mShowFpu = set_showfpu;
     InitMappings();
-#ifndef _WIN32
     updateCanvasSize();
-#endif
     reload();
 }
 
@@ -1916,37 +1923,38 @@ void RegistersView::mouseMoveEvent(QMouseEvent* event)
     QScrollArea::mouseMoveEvent(event);
 }
 
-#ifdef _WIN32
 void RegistersView::mouseDoubleClickEvent(QMouseEvent* event)
 {
     Q_UNUSED(event);
 }
-#endif
 
-#ifndef _WIN32
 void RegistersView::updateCanvasSize()
 {
     if(!mCanvas)
         return;
+
     int contentHeight = getEstimateHeight() + yTopSpacing * 2;
-    int maxWidth = 0;
+    int contentWidth = 0;
     for(auto it = mRegisterPlaces.begin(); it != mRegisterPlaces.end(); ++it)
     {
         int right = mCharWidth * (1 + it.value().start + it.value().labelwidth + it.value().valuesize) + mCharWidth;
-        if(right > maxWidth)
-            maxWidth = right;
+        if(right > contentWidth)
+            contentWidth = right;
     }
-    mCanvas->resize(maxWidth, contentHeight);
-}
-#endif
 
-void RegistersView::paintEvent(QPaintEvent* event)
+    if(viewport())
+    {
+        if(contentWidth < viewport()->width())
+            contentWidth = viewport()->width();
+        if(contentHeight < viewport()->height())
+            contentHeight = viewport()->height();
+    }
+
+    mCanvas->resize(contentWidth, contentHeight);
+}
+
+void RegistersView::paintRegisters(QPainter* p, const QRect & clip)
 {
-#ifndef _WIN32
-    // On Linux, the canvas widget handles painting
-    QScrollArea::paintEvent(event);
-    return;
-#endif
     if(mChangeViewButton != NULL)
     {
         if(mShowFpu)
@@ -1955,10 +1963,9 @@ void RegistersView::paintEvent(QPaintEvent* event)
             mChangeViewButton->setText(tr("Show FPU"));
     }
 
-    QPainter painter(this->viewport());
-    painter.setClipRect(event->rect());
-    painter.setFont(font());
-    painter.fillRect(painter.viewport(), QBrush(ConfigColor("RegistersBackgroundColor")));
+    p->setClipRect(clip);
+    p->setFont(font());
+    p->fillRect(mCanvas ? mCanvas->rect() : clip, QBrush(ConfigColor("RegistersBackgroundColor")));
 
     if(!isActive)
         return;
@@ -1967,8 +1974,19 @@ void RegistersView::paintEvent(QPaintEvent* event)
     for(auto itr = mRegisterMapping.begin(); itr != mRegisterMapping.end(); itr++)
     {
         // Paint register at given position
-        drawRegister(&painter, itr.key(), registerValue(&mRegDumpStruct, itr.key()));
+        drawRegister(p, itr.key(), registerValue(&mRegDumpStruct, itr.key()));
     }
+}
+
+void RegistersView::paintEvent(QPaintEvent* event)
+{
+    QScrollArea::paintEvent(event);
+}
+
+void RegistersView::resizeEvent(QResizeEvent* event)
+{
+    QScrollArea::resizeEvent(event);
+    updateCanvasSize();
 }
 
 void RegistersView::keyPressEvent(QKeyEvent* event)
@@ -2009,10 +2027,8 @@ void RegistersView::wheelEvent(QWheelEvent* event)
 {
     if(event->modifiers() == Qt::ControlModifier)
         Config()->zoomFont("Registers", event);
-#ifndef _WIN32
     else
         QScrollArea::wheelEvent(event);
-#endif
 }
 
 #ifdef _WIN32
@@ -3031,7 +3047,10 @@ void RegistersView::debugStateChangedSlot(DBGSTATE state)
 
 void RegistersView::reload()
 {
-    this->viewport()->update();
+    if(mCanvas)
+        mCanvas->update();
+    else
+        viewport()->update();
 }
 
 size_t RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
@@ -3505,13 +3524,7 @@ void RegistersView::ensureRegisterVisible(REGISTER_NAME reg)
         ySpace = 0;
     int y = mRowHeight * (mRegisterPlaces[reg].line + mVScrollOffset) + ySpace;
 
-#ifdef _WIN32
-    QScrollArea* upperScrollArea = (QScrollArea*)this->parentWidget()->parentWidget();
-    upperScrollArea->ensureVisible(0, y);
-#else
-    // On Linux, RegistersView is the QScrollArea itself
     ensureVisible(0, y);
-#endif
 }
 
 void RegistersView::autoUpdateXMMModesAndRefresh()
@@ -3530,9 +3543,7 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
     if(mAVX512RegistersShown != old_AVX512RegistersShown)
         InitMappings();
 
-#ifndef _WIN32
     updateCanvasSize();
-#endif
     // force repaint
     emit refresh();
 }
