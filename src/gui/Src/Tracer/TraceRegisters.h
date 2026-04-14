@@ -10,7 +10,7 @@ class TraceRegisters : public RegistersView
 public:
     TraceRegisters(TraceWidget* parent = nullptr);
 
-    void setRegisters(REGDUMP* registers);
+    void setRegisters(REGDUMP* registers, const REGDUMP* previousRegisters = nullptr);
     void setActive(bool isActive);
 
 public slots:

@@ -41,9 +41,14 @@ TraceRegisters::TraceRegisters(TraceWidget* parent) : RegistersView(parent)
     refreshShortcutsSlot();
 }
 
-void TraceRegisters::setRegisters(REGDUMP* registers)
+void TraceRegisters::setRegisters(REGDUMP* registers, const REGDUMP* previousRegisters)
 {
-    this->RegistersView::setRegisters(registers); // TODO: AVX512
+    // TODO: AVX512. TraceFileReader currently exposes REGDUMP, not REGDUMP_AVX512.
+    // Prime the diff baseline so the base class compares against the previous trace row
+    // instead of the previously displayed live-debugging state.
+    mCipRegDumpStruct = expandContext(previousRegisters ? previousRegisters : registers);
+    mCip = registers->regcontext.cip;
+    this->RegistersView::setRegisters(registers);
 }
 
 void TraceRegisters::setActive(bool isActive)

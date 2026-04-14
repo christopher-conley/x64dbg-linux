@@ -112,12 +112,19 @@ TraceWidget::~TraceWidget()
 void TraceWidget::traceSelectionChanged(TRACEINDEX selection)
 {
     REGDUMP registers;
+    REGDUMP previousRegisters;
+    const REGDUMP* previousRegistersPtr = nullptr;
     if(mTraceFile != nullptr)
     {
         if(selection < mTraceFile->Length())
         {
             // update registers view
             registers = mTraceFile->Registers(selection);
+            if(selection > 0)
+            {
+                previousRegisters = mTraceFile->Registers(selection - 1);
+                previousRegistersPtr = &previousRegisters;
+            }
             mInfo->update(selection, mTraceFile, registers);
             // update dump view
             if(mDump != nullptr)
@@ -133,7 +140,7 @@ void TraceWidget::traceSelectionChanged(TRACEINDEX selection)
     }
     else
         memset(&registers, 0, sizeof(registers));
-    mGeneralRegs->setRegisters(&registers);
+    mGeneralRegs->setRegisters(&registers, previousRegistersPtr);
 }
 
 void TraceWidget::xrefSlot(duint addr)
