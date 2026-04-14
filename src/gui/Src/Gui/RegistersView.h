@@ -4,33 +4,9 @@
 #include <QSet>
 #include <QMap>
 #include "Bridge.h"
-#ifdef _WIN32
-#include "CommonActions.h"
-#else
 #include "../Utils/ActionHelpers.h"
-#endif
-
-#ifdef _WIN32
-class CPUWidget;
-class CPUMultiDump;
-#endif
 
 class QPushButton;
-
-#ifdef _WIN32
-typedef struct
-{
-    const char* string;
-    unsigned int value;
-} STRING_VALUE_TABLE_t;
-
-#define SIZE_TABLE(table) (sizeof(table) / sizeof(*table))
-
-namespace Ui
-{
-    class RegistersView;
-}
-#endif
 
 class RegistersView : public QScrollArea, public ActionHelper<RegistersView>
 {
@@ -105,7 +81,7 @@ protected:
         }
     };
 
-    struct REGDUMP_EXTENDED
+    struct alignas(16) REGDUMP_EXTENDED
     {
         REGISTERCONTEXT_AVX512 regcontext;
         FLAGS flags;
@@ -154,8 +130,6 @@ public:
     QSize minimumSizeHint() const override { return QSize(0, 0); }
     QSize sizeHint() const override { return QSize(200, 400); }
 
-    static void* operator new(size_t size);
-    static void operator delete(void* p);
     int getEstimateHeight();
 
     static bool isAVX512Supported();
@@ -165,9 +139,6 @@ public:
 
 public slots:
     virtual void refreshShortcutsSlot();
-#ifdef _WIN32
-    virtual void displayCustomContextMenuSlot(QPoint pos);
-#endif
     virtual void debugStateChangedSlot(DBGSTATE state);
     void reload();
     void ShowFPU(bool set_showfpu);
@@ -179,10 +150,8 @@ signals:
 
 protected:
     class RegistersCanvas;
-#ifdef _WIN32
     QAction* setupAction(const QIcon & icon, const QString & text);
     QAction* setupAction(const QString & text);
-#endif
     // events
     virtual void mousePressEvent(QMouseEvent* event) override;
     virtual void mouseDoubleClickEvent(QMouseEvent* event) override;
@@ -222,7 +191,6 @@ protected slots:
     QString GetStatusWordTOPStateString(unsigned short state);
     void appendRegister(QString & text, REGISTER_NAME reg, const char* name64, const char* name32);
 
-#ifdef _WIN32
     void onCopyToClipboardAction();
     void onCopyFloatingPointToClipboardAction();
     void onCopySymbolToClipboardAction();
@@ -232,7 +200,6 @@ protected slots:
     void onAlwaysShowAVX512Clicked();
     void onFpuMode();
     void onCopyAllAction();
-#endif
 protected:
     bool isActive;
     QPushButton* mChangeViewButton;
@@ -295,7 +262,6 @@ protected:
     dsint mCip;
     RegistersCanvas* mCanvas = nullptr;
     void updateCanvasSize();
-#ifdef _WIN32
     std::vector<std::pair<const char*, uint8_t>> mHighlightRegs;
     QAction* mDisplaySTX;
     QAction* mDisplayx87rX;
@@ -325,8 +291,4 @@ protected:
     void accessibilityValueChanged();
     friend class AccessibleRegistersView;
     friend class AccessibleRegistersViewItem;
-#else
-    void accessibilitySelectionChanged() {}
-    void accessibilityValueChanged() {}
-#endif
 };

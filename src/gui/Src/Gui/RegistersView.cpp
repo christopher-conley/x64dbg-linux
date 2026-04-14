@@ -6,12 +6,8 @@
 #include <QResizeEvent>
 #include <QPushButton>
 #include <stdint.h>
-#include <new>
-#include <cstdlib>
-#ifdef _WIN32
 #include <QListWidget>
 #include <QAccessibleEvent>
-#endif
 #if !defined(_WIN32) && (defined(__x86_64__) || defined(__i386__))
 #include <cpuid.h>
 #include <x86intrin.h>
@@ -20,7 +16,9 @@
 #include "RegistersView.h"
 #include "Configuration.h"
 #include "MiscUtil.h"
-#ifdef _WIN32
+#include "Disassembler/ZydisTokenizer.h"
+#include "Disassembler/QZydis.h"
+#ifdef X64DBG
 #include "CPUDisassembly.h"
 #include "CPUMultiDump.h"
 #include "WordEditDialog.h"
@@ -60,13 +58,11 @@ protected:
         mView->mouseDoubleClickEvent(event);
     }
 
-#ifdef _WIN32
     void contextMenuEvent(QContextMenuEvent* event) override
     {
-        mView->displayCustomContextMenuSlot(mView->mapFromGlobal(event->globalPos()));
+        emit mView->customContextMenuRequested(mView->mapFromGlobal(event->globalPos()));
         event->accept();
     }
-#endif
 };
 
 // Qt6 removed QFontMetrics::width() - provide file-local compat
@@ -228,7 +224,7 @@ void RegistersView::InitMappings()
     mRegisterPlaces.insert(TF, Register_Position(offset, 6, 3, 1));
     mRegisterMapping.insert(IF, "IF");
     mRegisterPlaces.insert(IF, Register_Position(offset++, 12, 3, 1));
-#ifdef _WIN32
+#ifdef X64DBG
     mRegisterRelativePlaces.insert(CF, Register_Relative_Position(DF, TF, OF, LastError));
     mRegisterRelativePlaces.insert(TF, Register_Relative_Position(CF, IF, SF, LastError));
     mRegisterRelativePlaces.insert(IF, Register_Relative_Position(TF, LastError, DF, LastError));
@@ -378,7 +374,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(x87TagWord, "x87TagWord");
-        mRegisterPlaces.insert(x87TagWord, Register_Position(offset++, 0, 11, sizeof(WORD) * 2));
+        mRegisterPlaces.insert(x87TagWord, Register_Position(offset++, 0, 11, sizeof(uint16_t) * 2));
 
         switch(mFpuMode)
         {
@@ -439,7 +435,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(x87StatusWord, "x87StatusWord");
-        mRegisterPlaces.insert(x87StatusWord, Register_Position(offset++, 0, 14, sizeof(WORD) * 2));
+        mRegisterPlaces.insert(x87StatusWord, Register_Position(offset++, 0, 14, sizeof(uint16_t) * 2));
         mRegisterRelativePlaces.insert(x87StatusWord, Register_Relative_Position(x87TW_7, x87SW_B));
 
         mRegisterMapping.insert(x87SW_B, "x87SW_B");
@@ -492,7 +488,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(x87ControlWord, "x87ControlWord");
-        mRegisterPlaces.insert(x87ControlWord, Register_Position(offset++, 0, 15, sizeof(WORD) * 2));
+        mRegisterPlaces.insert(x87ControlWord, Register_Position(offset++, 0, 15, sizeof(uint16_t) * 2));
         mRegisterRelativePlaces.insert(x87ControlWord, Register_Relative_Position(x87SW_TOP, x87CW_IC));
 
         mRegisterMapping.insert(x87CW_IC, "x87CW_IC");
@@ -528,7 +524,7 @@ void RegistersView::InitMappings()
         offset++;
 
         mRegisterMapping.insert(MxCsr, "MxCsr");
-        mRegisterPlaces.insert(MxCsr, Register_Position(offset++, 0, 6, sizeof(DWORD) * 2));
+        mRegisterPlaces.insert(MxCsr, Register_Position(offset++, 0, 6, sizeof(uint32_t) * 2));
         mRegisterRelativePlaces.insert(MxCsr, Register_Relative_Position(x87CW_RC, MxCsr_FZ));
 
         mRegisterMapping.insert(MxCsr_FZ, "MxCsr_FZ");
@@ -835,7 +831,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP* reg)
 #define MXCSRFLAG_FZ 0x8000
 #endif
 
-static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, DWORD MxCsr)
+static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, uint32_t MxCsr)
 {
     MxCsrFields->IE = ((MxCsr & MXCSRFLAG_IE) != 0);
     MxCsrFields->DE = ((MxCsr & MXCSRFLAG_DE) != 0);
@@ -866,7 +862,7 @@ static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, DWORD MxCsr)
 #define x87CONTROLWORD_FLAG_IC 0x1000
 #endif
 
-static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, WORD ControlWord)
+static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, uint16_t ControlWord)
 {
     x87ControlWordFields->IM = ((ControlWord & x87CONTROLWORD_FLAG_IM) != 0);
     x87ControlWordFields->DM = ((ControlWord & x87CONTROLWORD_FLAG_DM) != 0);
@@ -897,7 +893,7 @@ static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, 
 #define x87STATUSWORD_FLAG_B 0x8000
 #endif
 
-static void Getx87StatusWordFields(X87STATUSWORDFIELDS* x87StatusWordFields, WORD StatusWord)
+static void Getx87StatusWordFields(X87STATUSWORDFIELDS* x87StatusWordFields, uint16_t StatusWord)
 {
     x87StatusWordFields->I = ((StatusWord & x87STATUSWORD_FLAG_I) != 0);
     x87StatusWordFields->D = ((StatusWord & x87STATUSWORD_FLAG_D) != 0);
@@ -943,7 +939,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP_AVX51
     Getx87ControlWordFields(&(value.x87ControlWordFields), value.regcontext.x87fpu.ControlWord);
     Getx87StatusWordFields(&(value.x87StatusWordFields), value.regcontext.x87fpu.StatusWord);
 
-    DWORD x87r0_position = Getx87r0PositionInRegisterArea(value.x87StatusWordFields.TOP);
+    uint32_t x87r0_position = Getx87r0PositionInRegisterArea(value.x87StatusWordFields.TOP);
     for(int i = 0; i < 8; i++)
     {
         memcpy(value.x87FPURegisters[i].data, GetRegisterAreaOf87register(value.regcontext.RegisterArea, x87r0_position, i), 10);
@@ -951,7 +947,7 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP_AVX51
         value.x87FPURegisters[i].tag = (int)((value.regcontext.x87fpu.TagWord >> (i * 2)) & 0x3);
     }
 
-#ifdef _WIN32
+#ifdef X64DBG
     value.lastError.code = reg->lastError;
     char fmtString[64] = "";
     auto pStringFormatInline = DbgFunctions()->StringFormatInline; // When called before dbgfunctionsinit() this can be NULL!
@@ -979,7 +975,6 @@ RegistersView::REGDUMP_EXTENDED RegistersView::expandContext(const REGDUMP_AVX51
     return value;
 }
 
-#ifdef _WIN32
 QAction* RegistersView::setupAction(const QIcon & icon, const QString & text)
 {
     QAction* action = new QAction(icon, text, this);
@@ -995,7 +990,6 @@ QAction* RegistersView::setupAction(const QString & text)
     addAction(action);
     return action;
 }
-#endif
 
 RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOffset(0)
 {
@@ -1343,7 +1337,7 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     }
 
     //registers that should not be changed
-#ifdef _WIN32
+#ifdef X64DBG
     mNoChange.insert(LastError);
     mNoChange.insert(LastStatus);
 #endif
@@ -1417,7 +1411,6 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
 
     InitMappings();
 
-#ifdef _WIN32
     // Context Menu
     this->setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -1531,7 +1524,6 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
     connect(wCM_CopyAll, SIGNAL(triggered()), this, SLOT(onCopyAllAction()));
     connect(wCM_ChangeFPUView, SIGNAL(triggered()), this, SLOT(onChangeFPUViewAction()));
     connect(Config(), SIGNAL(shortcutsUpdated()), this, SLOT(refreshShortcutsSlot()));
-#endif // _WIN32
 
     memset(&mRegDumpStruct, 0, sizeof(REGDUMP));
     memset(&mCipRegDumpStruct, 0, sizeof(REGDUMP));
@@ -1553,11 +1545,9 @@ RegistersView::RegistersView(QWidget* parent) : QScrollArea(parent), mVScrollOff
 
 void RegistersView::refreshShortcutsSlot()
 {
-#ifdef _WIN32
     wCM_CopyToClipboard->setShortcut(ConfigShortcut("ActionCopy"));
     wCM_CopySymbolToClipboard->setShortcut(ConfigShortcut("ActionCopySymbol"));
     wCM_CopyAll->setShortcut(ConfigShortcut("ActionCopyAllRegisters"));
-#endif
 }
 
 /**
@@ -1612,13 +1602,6 @@ void RegistersView::shutdownSlot()
 {
     isActive = false;
 }
-
-#ifdef _WIN32
-void RegistersView::displayCustomContextMenuSlot(QPoint pos)
-{
-    Q_UNUSED(pos);
-}
-#endif
 
 void RegistersView::ShowFPU(bool set_showfpu)
 {
@@ -1829,7 +1812,7 @@ QString RegistersView::helpRegister(REGISTER_NAME reg)
                   "denormal operand condition.");
     case MxCsr_RC:
         return tr("Bits 13 and 14 of the MXCSR register (the rounding control [RC] field) control how the results of SIMD floating-point instructions are rounded.");
-#ifdef _WIN32
+#ifdef X64DBG
     case LastError:
     {
         char dat[1024];
@@ -2031,31 +2014,6 @@ void RegistersView::wheelEvent(QWheelEvent* event)
         QScrollArea::wheelEvent(event);
 }
 
-#ifdef _WIN32
-void* RegistersView::operator new(size_t size)
-{
-    return _aligned_malloc(size, 16);
-}
-
-void RegistersView::operator delete(void* p)
-{
-    _aligned_free(p);
-}
-#else
-void* RegistersView::operator new(size_t size)
-{
-    void* p = aligned_alloc(16, (size + 15) & ~(size_t)15);
-    if(!p)
-        throw std::bad_alloc();
-    return p;
-}
-
-void RegistersView::operator delete(void* p)
-{
-    free(p);
-}
-#endif
-
 /**
  * @brief                   Get the label associated with the register
  * @param register_selected the register
@@ -2141,7 +2099,7 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
     else if(mUSHORTDISPLAY.contains(reg))
         valueText = QString("%1").arg((* ((const unsigned short*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
     else if(mDWORDDISPLAY.contains(reg))
-        valueText = QString("%1").arg((* ((const DWORD*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
+        valueText = QString("%1").arg((* ((const uint32_t*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
     else if(mBOOLDISPLAY.contains(reg))
         valueText = QString("%1").arg((* ((const bool*) value)), mRegisterPlaces[reg].valuesize, 16, QChar('0')).toUpper();
     else if(mFIELDVALUE.contains(reg))
@@ -2182,7 +2140,7 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
             valueText += QString(")");
         }
     }
-#ifdef _WIN32
+#ifdef X64DBG
     else if(reg == LastError)
     {
         LASTERROR* data = (LASTERROR*)value;
@@ -2239,13 +2197,11 @@ QString RegistersView::GetRegStringValueFromValue(REGISTER_NAME reg, const char*
     return valueText;
 }
 
-#ifndef _WIN32
 typedef struct
 {
     const char* string;
     unsigned int value;
 } STRING_VALUE_TABLE_t;
-#endif
 
 #define MxCsr_RC_NEAR 0
 #define MxCsr_RC_NEGATIVE 1
@@ -2521,7 +2477,6 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
         // draw name of value
         p->drawText(x, y, width, mRowHeight, Qt::AlignVCenter, regName);
 
-#ifdef _WIN32
         //highlight the register based on access
         uint8_t highlight = 0;
         for(const auto & reg : mHighlightRegs)
@@ -2555,7 +2510,6 @@ void RegistersView::drawRegister(QPainter* p, REGISTER_NAME reg, char* value)
                 p->drawLine(x + 1, y + mRowHeight - 1, x + mCharWidth * regName.length() - 1, y + mRowHeight - 1);
             }
         }
-#endif
 
         x += (mRegisterPlaces[reg].labelwidth) * mCharWidth;
         //p->drawText(offset,mRowHeight*(mRegisterPlaces[reg].line+1),mRegisterMapping[reg]);
@@ -2669,7 +2623,6 @@ void RegistersView::appendRegister(QString & text, REGISTER_NAME reg, const char
     text.append("\r\n");
 }
 
-#ifdef _WIN32
 void RegistersView::setupSIMDModeMenu()
 {
     const QAction* selectedAction = nullptr;
@@ -2727,21 +2680,20 @@ void RegistersView::setupSIMDModeMenu()
     SIMDUQWord->setChecked(SIMDUQWord == selectedAction);
     SIMDHQWord->setChecked(SIMDHQWord == selectedAction);
 }
-#endif
 
 void RegistersView::onChangeFPUViewAction()
 {
     ShowFPU(!mShowFpu);
 }
 
-#ifdef _WIN32
 void RegistersView::onSIMDMode()
 {
     Config()->setUint("Gui", "SIMDRegistersDisplayMode", dynamic_cast<QAction*>(sender())->data().toInt());
     emit refresh();
+#ifdef X64DBG
     GuiUpdateDisassemblyView(); // refresh display mode for data in disassembly
-}
 #endif
+}
 
 // detect XMM/YMM/ZMM Mode
 static int detectXMMMode(const ZMMREGISTER* ZmmRegisters)
@@ -2800,7 +2752,6 @@ static bool detectAVX512Used(const REGISTERCONTEXT_AVX512* context)
     return false;
 }
 
-#ifdef _WIN32
 void RegistersView::onXMMSizeAutoClicked()
 {
     mXMMModeAuto = !mXMMModeAuto;
@@ -2808,31 +2759,27 @@ void RegistersView::onXMMSizeAutoClicked()
     mXMMMode = mXMMModeAuto ? detectXMMMode(mRegDumpStruct.regcontext.ZmmRegisters) : (mXMMModeYMMOnly ? 1 : 2);
     emit refresh();
 }
-#endif
 
-#ifdef _WIN32
 void RegistersView::onAlwaysShowAVX512Clicked()
 {
     mAlwaysShowAVX512Registers = !mAlwaysShowAVX512Registers;
     if(mAlwaysShowAVX512Registers && !isAVX512Supported())
     {
+#ifdef X64DBG
         GuiAddLogMessage(tr("AVX-512 isn't supported on this computer.\n").toUtf8().constData());
+#endif
     }
     SIMDAlwaysShowAVX512->setChecked(mAlwaysShowAVX512Registers);
     autoUpdateXMMModesAndRefresh();
 }
-#endif
 
-#ifdef _WIN32
 void RegistersView::onFpuMode()
 {
     mFpuMode = (char)(dynamic_cast<QAction*>(sender())->data().toInt());
     InitMappings();
     emit refresh();
 }
-#endif
 
-#ifdef _WIN32
 void RegistersView::onCopyToClipboardAction()
 {
     Bridge::CopyToClipboard(GetRegStringValueFromValue(mSelected, registerValue(&mRegDumpStruct, mSelected)));
@@ -2852,9 +2799,7 @@ void RegistersView::onCopySymbolToClipboardAction()
             Bridge::CopyToClipboard(symbol);
     }
 }
-#endif
 
-#ifdef _WIN32
 void RegistersView::onCopyAllAction()
 {
     QString text;
@@ -3038,7 +2983,6 @@ void RegistersView::onCopyAllAction()
 
     Bridge::CopyToClipboard(text);
 }
-#endif
 
 void RegistersView::debugStateChangedSlot(DBGSTATE state)
 {
@@ -3062,7 +3006,7 @@ size_t RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
     else if(mUSHORTDISPLAY.contains(reg_name) || mFIELDVALUE.contains(reg_name))
         size = sizeof(unsigned short);
     else if(mDWORDDISPLAY.contains(reg_name))
-        size = sizeof(DWORD);
+        size = sizeof(uint32_t);
     else if(mBOOLDISPLAY.contains(reg_name))
         size = sizeof(bool);
     else if(mFPUx87_80BITSDISPLAY.contains(reg_name))
@@ -3085,7 +3029,7 @@ size_t RegistersView::GetSizeRegister(const REGISTER_NAME reg_name)
             break;
         }
     }
-#ifdef _WIN32
+#ifdef X64DBG
     else if(reg_name == LastError)
         size = sizeof(DWORD);
     else if(reg_name == LastStatus)
@@ -3195,7 +3139,7 @@ char* RegistersView::registerValue(const REGDUMP_EXTENDED* regd, const REGISTER_
     case SS:
         return (char*) &regd->regcontext.ss;
 
-#ifdef _WIN32
+#ifdef X64DBG
     case LastError:
         return (char*) &regd->lastError;
     case LastStatus:
@@ -3548,7 +3492,6 @@ void RegistersView::autoUpdateXMMModesAndRefresh()
     emit refresh();
 }
 
-#ifdef _WIN32
 // Send focused accessibility event
 void RegistersView::accessibilitySelectionChanged()
 {
@@ -3593,4 +3536,3 @@ void RegistersView::accessibilityValueChanged()
         }
     }
 }
-#endif

@@ -83,6 +83,8 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Utils/RichTextPainter.cpp
     ${widgets_SOURCE_DIR}/Utils/RichTextPainter.h
     ${widgets_SOURCE_DIR}/Utils/VaHistory.h
+    ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
+    ${widgets_SOURCE_DIR}/Gui/RegistersView.h
 )
 
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -98,13 +100,6 @@ target_include_directories(x64dbg_widgets PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${widgets_SOURCE_DIR}
 )
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(x64dbg_widgets PRIVATE
-        ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
-        ${widgets_SOURCE_DIR}/Gui/RegistersView.h
-    )
-endif()
 
 source_group(TREE ${widgets_SOURCE_DIR} FILES ${widgets_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX hook FILES ${hook_SOURCES})
