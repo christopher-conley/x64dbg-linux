@@ -11,8 +11,6 @@
 #include <set>
 #include <vector>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/uio.h>
 
 struct ElfBugDebugger : ElfBug::Debugger
 {
@@ -185,6 +183,10 @@ protected:
         {
             std::lock_guard lock(bpDataMutex);
             breakpointAddrs.clear();
+        }
+        {
+            std::lock_guard lock(bpQueueMutex);
+            pendingBpRequests.clear();
         }
         if(cb.onExitProcess)
             cb.onExitProcess(exitCode, cb.userdata);

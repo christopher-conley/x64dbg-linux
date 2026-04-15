@@ -8,10 +8,15 @@
 
 namespace ElfBug
 {
+    void Debugger::beginPause()
+    {
+        std::lock_guard lock(mPauseMutex);
+        mPaused.store(true, std::memory_order_release);
+    }
+
     bool Debugger::pauseAndResume(const pid_t pid)
     {
         std::unique_lock lock(mPauseMutex);
-        mPaused.store(true, std::memory_order_release);
 
         while(mPaused.load(std::memory_order_acquire) && mIsRunning.load(std::memory_order_acquire))
         {
@@ -35,13 +40,22 @@ namespace ElfBug
             mPendingSignal = 0;
             if(ptrace(PTRACE_CONT, pid, nullptr,
                       reinterpret_cast<void*>(static_cast<uintptr_t>(sig))) == -1)
-                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+            {
+                if(errno != ESRCH)
+                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+            }
         }
         return true;
     }
 
     void Debugger::debugLoop()
     {
+        if(!launchChild())
+        {
+            mIsRunning.store(false, std::memory_order_release);
+            return;
+        }
+
         int status = 0;
         pid_t pid = waitpid(mMainPid, &status, __WALL);
         if(pid == -1)
@@ -77,6 +91,7 @@ namespace ElfBug
         if(mThread)
         {
             mThread->registers.Read();
+            beginPause();
             cbSystemBreakpoint();
         }
 

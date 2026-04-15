@@ -28,6 +28,7 @@ endif()
 option(LIBPL_ENABLE_CLI "" OFF)
 option(LIBPL_ENABLE_TESTS "" OFF)
 option(LIBWOLV_ENABLE_TESTS "" OFF)
+option(ELFBUG_BUILD_TESTS "" OFF)
 
 project(cross
 	LANGUAGES
@@ -37,9 +38,32 @@ project(cross
 
 include("widgets/Qt.cmake")
 
+if(ELFBUG_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    enable_testing()
+endif()
+
 # Packages
 find_package(Threads REQUIRED)
 
+include(FetchContent)
+
+# Fix warnings about DOWNLOAD_EXTRACT_TIMESTAMP
+if(POLICY CMP0135)
+	cmake_policy(SET CMP0135 NEW)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	message(STATUS "Fetching Catch2 (v3.14.0)...")
+	FetchContent_Declare(Catch2
+		GIT_REPOSITORY
+			"https://github.com/catchorg/Catch2"
+		GIT_TAG
+			v3.14.0
+		GIT_SHALLOW
+			ON
+	)
+	FetchContent_MakeAvailable(Catch2)
+
+endif()
 # Subdirectory: widgets
 set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
 if(CMAKE_FOLDER)
@@ -312,6 +336,263 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
 	if(NOT CMKR_VS_STARTUP_PROJECT)
 		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT debugger)
+	endif()
+
+endif()
+# Target: ElfBug_tests
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(ElfBug_tests_SOURCES
+		"ElfBug/tests/SymbolHelper.h"
+		"ElfBug/tests/TestHarness.h"
+		"ElfBug/tests/tests.cpp"
+		cmake.toml
+	)
+
+	add_executable(ElfBug_tests)
+
+	target_sources(ElfBug_tests PRIVATE ${ElfBug_tests_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ElfBug_tests_SOURCES})
+
+	target_compile_definitions(ElfBug_tests PRIVATE
+		"ELFBUG_TESTS_TARGETS_DIR=\"${CMAKE_BINARY_DIR}/tests/targets\""
+	)
+
+	target_include_directories(ElfBug_tests PRIVATE
+		"ElfBug/tests"
+	)
+
+	target_link_libraries(ElfBug_tests PRIVATE
+		ElfBug
+		Catch2::Catch2WithMain
+	)
+
+	set_target_properties(ElfBug_tests PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ElfBug_tests)
+	endif()
+
+	set(CMKR_TARGET ElfBug_tests)
+	list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
+	include(Catch)
+	catch_discover_tests(ElfBug_tests)
+
+endif()
+# Target: elfbug_fixture_end_immediately
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(elfbug_fixture_end_immediately_SOURCES
+		"ElfBug/tests/targets/end_immediately.cpp"
+		cmake.toml
+	)
+
+	add_executable(elfbug_fixture_end_immediately)
+
+	target_sources(elfbug_fixture_end_immediately PRIVATE ${elfbug_fixture_end_immediately_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${elfbug_fixture_end_immediately_SOURCES})
+
+	target_compile_options(elfbug_fixture_end_immediately PRIVATE
+		-g
+		-O0
+		-pie
+	)
+
+	target_link_options(elfbug_fixture_end_immediately PRIVATE
+		-pie
+	)
+
+	set_target_properties(elfbug_fixture_end_immediately PROPERTIES
+		OUTPUT_NAME
+			end_immediately
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests/targets"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT elfbug_fixture_end_immediately)
+	endif()
+
+endif()
+# Target: elfbug_fixture_run_endlessly
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(elfbug_fixture_run_endlessly_SOURCES
+		"ElfBug/tests/targets/run_endlessly.cpp"
+		cmake.toml
+	)
+
+	add_executable(elfbug_fixture_run_endlessly)
+
+	target_sources(elfbug_fixture_run_endlessly PRIVATE ${elfbug_fixture_run_endlessly_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${elfbug_fixture_run_endlessly_SOURCES})
+
+	target_compile_options(elfbug_fixture_run_endlessly PRIVATE
+		-g
+		-O0
+		-pie
+	)
+
+	target_link_options(elfbug_fixture_run_endlessly PRIVATE
+		-pie
+	)
+
+	set_target_properties(elfbug_fixture_run_endlessly PROPERTIES
+		OUTPUT_NAME
+			run_endlessly
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests/targets"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT elfbug_fixture_run_endlessly)
+	endif()
+
+endif()
+# Target: elfbug_fixture_hello_elfbug
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(elfbug_fixture_hello_elfbug_SOURCES
+		"ElfBug/tests/targets/hello_elfbug.cpp"
+		cmake.toml
+	)
+
+	add_executable(elfbug_fixture_hello_elfbug)
+
+	target_sources(elfbug_fixture_hello_elfbug PRIVATE ${elfbug_fixture_hello_elfbug_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${elfbug_fixture_hello_elfbug_SOURCES})
+
+	target_compile_options(elfbug_fixture_hello_elfbug PRIVATE
+		-g
+		-O0
+		-pie
+	)
+
+	target_link_options(elfbug_fixture_hello_elfbug PRIVATE
+		-pie
+	)
+
+	set_target_properties(elfbug_fixture_hello_elfbug PROPERTIES
+		OUTPUT_NAME
+			hello_elfbug
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests/targets"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT elfbug_fixture_hello_elfbug)
+	endif()
+
+endif()
+# Target: elfbug_fixture_segfault
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(elfbug_fixture_segfault_SOURCES
+		"ElfBug/tests/targets/segfault.cpp"
+		cmake.toml
+	)
+
+	add_executable(elfbug_fixture_segfault)
+
+	target_sources(elfbug_fixture_segfault PRIVATE ${elfbug_fixture_segfault_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${elfbug_fixture_segfault_SOURCES})
+
+	target_compile_options(elfbug_fixture_segfault PRIVATE
+		-g
+		-O0
+		-pie
+	)
+
+	target_link_options(elfbug_fixture_segfault PRIVATE
+		-pie
+	)
+
+	set_target_properties(elfbug_fixture_segfault PROPERTIES
+		OUTPUT_NAME
+			segfault
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests/targets"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT elfbug_fixture_segfault)
+	endif()
+
+endif()
+# Target: elfbug_fixture_exit_code_42
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(elfbug_fixture_exit_code_42_SOURCES
+		"ElfBug/tests/targets/exit_code_42.cpp"
+		cmake.toml
+	)
+
+	add_executable(elfbug_fixture_exit_code_42)
+
+	target_sources(elfbug_fixture_exit_code_42 PRIVATE ${elfbug_fixture_exit_code_42_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${elfbug_fixture_exit_code_42_SOURCES})
+
+	target_compile_options(elfbug_fixture_exit_code_42 PRIVATE
+		-g
+		-O0
+		-pie
+	)
+
+	target_link_options(elfbug_fixture_exit_code_42 PRIVATE
+		-pie
+	)
+
+	set_target_properties(elfbug_fixture_exit_code_42 PROPERTIES
+		OUTPUT_NAME
+			exit_code_42
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests/targets"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT elfbug_fixture_exit_code_42)
+	endif()
+
+endif()
+# Target: elfbug_fixture_multi_threaded
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	set(elfbug_fixture_multi_threaded_SOURCES
+		"ElfBug/tests/targets/multi_threaded.cpp"
+		cmake.toml
+	)
+
+	add_executable(elfbug_fixture_multi_threaded)
+
+	target_sources(elfbug_fixture_multi_threaded PRIVATE ${elfbug_fixture_multi_threaded_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${elfbug_fixture_multi_threaded_SOURCES})
+
+	target_compile_options(elfbug_fixture_multi_threaded PRIVATE
+		-g
+		-O0
+		-pie
+	)
+
+	target_link_options(elfbug_fixture_multi_threaded PRIVATE
+		-pie
+	)
+
+	target_link_libraries(elfbug_fixture_multi_threaded PRIVATE
+		pthread
+	)
+
+	set_target_properties(elfbug_fixture_multi_threaded PROPERTIES
+		OUTPUT_NAME
+			multi_threaded
+		RUNTIME_OUTPUT_DIRECTORY
+			"${CMAKE_BINARY_DIR}/tests/targets"
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT elfbug_fixture_multi_threaded)
 	endif()
 
 endif()

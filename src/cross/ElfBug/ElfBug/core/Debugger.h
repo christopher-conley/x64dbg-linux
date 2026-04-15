@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include <ElfBug/types/ElfBug.h>
 #include <ElfBug/types/Global.h>
 #include <ElfBug/process/Process.h>
@@ -53,9 +54,11 @@ namespace ElfBug
 
     private:
         void debugLoop();
+        bool launchChild();
         void handleSignal(pid_t pid, int status);
         void handleSigtrap(pid_t pid, int status);
         bool pauseAndResume(pid_t pid);
+        void beginPause();
         void createProcessEvent(pid_t pid);
         void exitProcessEvent(pid_t pid, int exitCode);
         void createThreadEvent(pid_t tid);
@@ -71,5 +74,10 @@ namespace ElfBug
         int mPendingSignal = 0;
         std::mutex mPauseMutex;
         std::condition_variable mPauseCv;
+
+        std::string mFilePath;
+        std::vector<std::string> mArgv;
+        std::string mCwd;
+        bool mHasLaunchArgs = false;
     };
 }

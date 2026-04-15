@@ -22,6 +22,36 @@ namespace ElfBug
 
     bool Debugger::Init(const char* szFilePath, const char* const* argv, const char* szCurrentDirectory)
     {
+        if(!szFilePath)
+            return false;
+
+        if(access(szFilePath, X_OK) != 0)
+        {
+            cbInternalError("cannot execute '" + std::string(szFilePath) + "': " + std::string(strerror(errno)));
+            return false;
+        }
+
+        mFilePath = szFilePath;
+        mCwd = szCurrentDirectory ? szCurrentDirectory : "";
+        mArgv.clear();
+        if(argv)
+        {
+            for(const char* const* p = argv; *p != nullptr; ++p)
+                mArgv.emplace_back(*p);
+        }
+        mHasLaunchArgs = true;
+        mIsAttached = false;
+        return true;
+    }
+
+    bool Debugger::launchChild()
+    {
+        if(!mHasLaunchArgs)
+        {
+            cbInternalError("launchChild called without Init");
+            return false;
+        }
+
         int pipeFds[2];
         if(pipe2(pipeFds, O_CLOEXEC) == -1)
         {
@@ -51,9 +81,9 @@ namespace ElfBug
             if(setpgid(0, 0) < 0)
                 childError("setpgid failed");
 
-            if(szCurrentDirectory)
+            if(!mCwd.empty())
             {
-                if(chdir(szCurrentDirectory) == -1)
+                if(chdir(mCwd.c_str()) == -1)
                     childError("chdir failed");
             }
 
@@ -63,12 +93,19 @@ namespace ElfBug
             if(ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1)
                 childError("PTRACE_TRACEME failed");
 
-            if(argv)
-                execv(szFilePath, const_cast<char* const*>(argv));
+            std::vector<char*> argvPtrs;
+            if(!mArgv.empty())
+            {
+                argvPtrs.reserve(mArgv.size() + 1);
+                for(auto & s : mArgv)
+                    argvPtrs.push_back(s.data());
+                argvPtrs.push_back(nullptr);
+                execv(mFilePath.c_str(), argvPtrs.data());
+            }
             else
             {
-                const char* defaultArgv[] = { szFilePath, nullptr };
-                execv(szFilePath, const_cast<char* const*>(defaultArgv));
+                char* defaultArgv[] = { const_cast<char*>(mFilePath.c_str()), nullptr };
+                execv(mFilePath.c_str(), defaultArgv);
             }
 
             childError("execv failed");
@@ -88,14 +125,13 @@ namespace ElfBug
         }
 
         mMainPid = pid;
-        mIsAttached = false;
         return true;
     }
 
-    bool Debugger::Attach(const pid_t processId)
+    bool Debugger::Attach(pid_t)
     {
         // TODO: implement ptrace attach
-        (void)processId;
+        cbInternalError("Attach not implemented");
         return false;
     }
 
@@ -138,7 +174,8 @@ namespace ElfBug
         if(mMainPid <= 0)
             return false;
 
-        mIsRunning.store(false, std::memory_order_release);
+        //this SHOULD Be enabled, TODO: invesitgate this
+       // mIsRunning.store(false, std::memory_order_release);
         {
             std::lock_guard lock(mPauseMutex);
             mPaused.store(false, std::memory_order_release);

@@ -36,6 +36,7 @@ namespace ElfBug
                 if(mThread)
                 {
                     mThread->registers.Read();
+                    beginPause();
                     cbPaused();
 
                     if(!pauseAndResume(pid))
@@ -61,8 +62,20 @@ namespace ElfBug
             siginfo_t sigInfo;
             if(ptrace(PTRACE_GETSIGINFO, pid, nullptr, &sigInfo) != -1)
                 faultAddr = reinterpret_cast<ptr>(sigInfo.si_addr);
-            cbExceptionEvent(sig, faultAddr);
-            ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void*>(static_cast<uintptr_t>(sig)));
+            if(mThread)
+            {
+                mThread->registers.Read();
+                mPendingSignal = sig;
+                beginPause();
+                cbExceptionEvent(sig, faultAddr);
+                if(!pauseAndResume(pid))
+                    break;
+            }
+            else
+            {
+                cbExceptionEvent(sig, faultAddr);
+                ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void*>(static_cast<uintptr_t>(sig)));
+            }
             break;
         }
         }
@@ -82,7 +95,10 @@ namespace ElfBug
                 if(mThread)
                 {
                     mThread->registers.Read();
+                    beginPause();
                     cbSystemBreakpoint();
+                    if(!pauseAndResume(pid))
+                        break;
                 }
                 break;
             }
@@ -104,7 +120,6 @@ namespace ElfBug
 
         case PTRACE_EVENT_EXIT:
         {
-            exitThreadEvent(pid);
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
@@ -124,6 +139,7 @@ namespace ElfBug
             if(mThread->isSingleStepping())
             {
                 mThread->clearSingleStep();
+                beginPause();
                 cbStep();
                 if(!pauseAndResume(pid))
                     break;
@@ -144,6 +160,8 @@ namespace ElfBug
                     const auto & info = it->second;
                     const bool singleshot = info.singleshot;
 
+                    beginPause();
+
                     const auto cbIt = mProcess->breakpointCallbacks.find(key);
                     if(cbIt != mProcess->breakpointCallbacks.end())
                         cbIt->second(info);
@@ -159,15 +177,32 @@ namespace ElfBug
                         mProcess->DeleteBreakpoint(bpAddr);
                         mThread->StepInto();
                         int stepStatus = 0;
-                        waitpid(pid, &stepStatus, __WALL);
+                        pid_t waited = -1;
+                        do
+                        {
+                            waited = waitpid(pid, &stepStatus, __WALL);
+                        } while(waited == -1 && errno == EINTR);
+                        if(waited == -1)
+                        {
+                            cbInternalError("waitpid(step) failed: " + std::string(strerror(errno)));
+                            break;
+                        }
                         mThread->clearSingleStep();
 
                         if(WIFEXITED(stepStatus) || WIFSIGNALED(stepStatus))
                         {
-                            exitProcessEvent(mMainPid, WIFEXITED(stepStatus)
+                            const int code = WIFEXITED(stepStatus)
                                              ? WEXITSTATUS(stepStatus)
-                                             : -WTERMSIG(stepStatus));
-                            mIsRunning.store(false, std::memory_order_release);
+                                             : -WTERMSIG(stepStatus);
+                            if(pid == mMainPid)
+                            {
+                                exitProcessEvent(mMainPid, code);
+                                mIsRunning.store(false, std::memory_order_release);
+                            }
+                            else
+                            {
+                                exitThreadEvent(pid);
+                            }
                             break;
                         }
 
