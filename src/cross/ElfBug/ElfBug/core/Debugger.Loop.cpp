@@ -35,7 +35,8 @@ namespace ElfBug
         {
             mStepPending.store(false, std::memory_order_release);
             // TODO: mPendingSignal is dropped here, decide the policy
-            mThread->StepInto();
+            if(!mThread->StepInto())
+                cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(errno)));
         }
         else
         {

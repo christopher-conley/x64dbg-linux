@@ -428,3 +428,49 @@ TEST_CASE("Step fires cbStep on single instruction", "[step]")
     REQUIRE(exit_ev.exitCode == 0);
     REQUIRE(dbg.count(EventType::Step) >= 1);
 }
+
+TEST_CASE("Pause after process exit is a no-op", "[control]")
+{
+    using namespace ElfBug::test;
+    RecordingDebugger dbg;
+    REQUIRE(dbg.Init(FIXTURE("end_immediately").c_str()));
+    dbg.StartOnThread();
+    dbg.WaitForSystemBreakpoint();
+    dbg.Continue();
+    const auto exit_ev = dbg.WaitForExit();
+    dbg.JoinThread();
+
+    REQUIRE(exit_ev.exitCode == 0);
+
+    dbg.Pause();
+
+    REQUIRE(dbg.count(EventType::InternalError) == 0);
+    REQUIRE(dbg.count(EventType::Paused) == 0);
+}
+
+TEST_CASE("Reuse Debugger instance after exit", "[init]")
+{
+    using namespace ElfBug::test;
+    RecordingDebugger dbg;
+
+    REQUIRE(dbg.Init(FIXTURE("end_immediately").c_str()));
+    dbg.StartOnThread();
+    dbg.WaitForSystemBreakpoint();
+    dbg.Continue();
+    auto exit_ev = dbg.WaitForExit();
+    dbg.JoinThread();
+    REQUIRE(exit_ev.exitCode == 0);
+
+    REQUIRE(dbg.Init(FIXTURE("exit_code_42").c_str()));
+    dbg.StartOnThread();
+    dbg.WaitForSystemBreakpoint();
+    dbg.Continue();
+    exit_ev = dbg.WaitForExit();
+    dbg.JoinThread();
+    REQUIRE(exit_ev.exitCode == 42);
+
+    REQUIRE(dbg.count(EventType::CreateProcess) == 2);
+    REQUIRE(dbg.count(EventType::ExitProcess) == 2);
+    REQUIRE(dbg.count(EventType::SystemBreakpoint) == 2);
+    REQUIRE(dbg.count(EventType::InternalError) == 0);
+}

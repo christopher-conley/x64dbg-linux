@@ -15,8 +15,8 @@ namespace ElfBug
 
         explicit Thread(pid_t tid);
 
-        void StepInto();
-        void StepInto(const StepCallback & cbStep);
+        bool StepInto();
+        bool StepInto(const StepCallback & cbStep);
 
         [[nodiscard]] bool isSingleStepping() const { return mIsSingleStepping; }
         void clearSingleStep() { mIsSingleStepping = false; }

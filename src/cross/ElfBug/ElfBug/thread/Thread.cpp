@@ -9,15 +9,17 @@ namespace ElfBug
     {
     }
 
-    void Thread::StepInto()
+    bool Thread::StepInto()
     {
+        if(ptrace(PTRACE_SINGLESTEP, tid, nullptr, nullptr) == -1)
+            return false;
         mIsSingleStepping = true;
-        ptrace(PTRACE_SINGLESTEP, tid, nullptr, nullptr);
+        return true;
     }
 
-    void Thread::StepInto(const StepCallback & cbStep)
+    bool Thread::StepInto(const StepCallback & cbStep)
     {
         mStepCallback = cbStep;
-        StepInto();
+        return StepInto();
     }
 }

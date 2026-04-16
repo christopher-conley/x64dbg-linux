@@ -91,6 +91,7 @@ namespace ElfBug
         {
         case PTRACE_EVENT_EXEC:
         {
+            // TODO: re-exec handling - clear breakpoints, refresh memory map, fire callback
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
@@ -170,7 +171,13 @@ namespace ElfBug
                     else
                     {
                         mProcess->DeleteBreakpoint(bpAddr);
-                        mThread->StepInto();
+                        if(!mThread->StepInto())
+                        {
+                            cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(errno)));
+                            if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+                            break;
+                        }
                         int stepStatus = 0;
                         pid_t waited = -1;
                         do
