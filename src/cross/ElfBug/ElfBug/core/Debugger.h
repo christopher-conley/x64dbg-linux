@@ -61,7 +61,7 @@ namespace ElfBug
         void handleSigtrap(pid_t pid, int status);
         bool pauseAndResume(pid_t pid);
         void beginPause();
-        void createProcessEvent(pid_t pid);
+        void createProcessEvent(pid_t pid, Arch arch);
         void exitProcessEvent(pid_t pid, int exitCode);
         void createThreadEvent(pid_t tid);
         void exitThreadEvent(pid_t tid);

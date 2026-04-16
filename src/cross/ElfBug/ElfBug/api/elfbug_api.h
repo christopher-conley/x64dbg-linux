@@ -15,6 +15,13 @@ extern "C" {
 
 typedef struct ElfBugDebugger ElfBugDebugger;
 
+typedef enum
+{
+    ElfBugArch_Unknown = 0,
+    ElfBugArch_X86_64 = 1,
+    ElfBugArch_I386 = 2,
+} ElfBugArch;
+
 typedef struct
 {
     uint64_t rax, rbx, rcx, rdx;
@@ -61,6 +68,7 @@ ELFBUG_EXPORT bool ElfBugStop(ElfBugDebugger* dbg);              // Thread-safe
 
 ELFBUG_EXPORT bool ElfBugGetRegisters(const ElfBugDebugger* dbg, ElfBugRegisters* regs);
 ELFBUG_EXPORT pid_t ElfBugGetPid(const ElfBugDebugger* dbg);
+ELFBUG_EXPORT ElfBugArch ElfBugGetArch(const ElfBugDebugger* dbg);
 
 ELFBUG_EXPORT bool ElfBugMemRead(const ElfBugDebugger* dbg, uint64_t addr, void* dest, uint64_t size);
 ELFBUG_EXPORT bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, uint64_t addr, uint64_t* base, uint64_t* size);

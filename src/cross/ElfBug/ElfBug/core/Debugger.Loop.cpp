@@ -1,6 +1,8 @@
 #include <ElfBug/core/Debugger.h>
+#include <ElfBug/process/ProcessArch.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
+#include <csignal>
 #include <cerrno>
 #include <cstring>
 #include <chrono>
@@ -104,7 +106,21 @@ namespace ElfBug
             return;
         }
 
-        createProcessEvent(mainPid);
+        const Arch detectedArch = detectArchFromProcExe(mainPid);
+        if(detectedArch != Arch::X86_64)
+        {
+            const char* archName = detectedArch == Arch::I386 ? "i386" : "unknown";
+            cbInternalError("unsupported tracee architecture (" + std::string(archName) +
+                            "); only x86_64 is supported");
+            kill(mainPid, SIGKILL);
+            waitpid(mainPid, nullptr, __WALL);
+            mMainPid.store(0, std::memory_order_release);
+            mIsRunning.store(false, std::memory_order_release);
+            cbExitProcessEvent(-1);
+            return;
+        }
+
+        createProcessEvent(mainPid, detectedArch);
 
         if(mThread)
         {

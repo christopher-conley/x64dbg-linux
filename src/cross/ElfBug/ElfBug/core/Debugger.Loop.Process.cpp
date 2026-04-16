@@ -2,13 +2,14 @@
 
 namespace ElfBug
 {
-    void Debugger::createProcessEvent(pid_t pid)
+    void Debugger::createProcessEvent(pid_t pid, const Arch arch)
     {
         auto [it, inserted] = mProcesses.try_emplace(pid, pid);
 
         {
             std::unique_lock lock(mProcessMutex);
             mProcess = &it->second;
+            mProcess->arch = arch;
             mProcess->threads.emplace(pid, std::make_unique<Thread>(pid));
             mThread = mProcess->threads.at(pid).get();
         }

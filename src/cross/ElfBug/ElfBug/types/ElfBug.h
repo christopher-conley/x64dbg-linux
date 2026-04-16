@@ -9,8 +9,14 @@ namespace ElfBug
     typedef uint32_t uint32;
     typedef uint64_t uint64;
 
-    // x64 only (for now)
     typedef uint64 ptr;
 
 #define ElfBugArchValue(x32value, x64value) (x64value)
+
+    enum class Arch : uint32_t
+    {
+        Unknown = 0,
+        X86_64 = 1,
+        I386 = 2,
+    };
 }
