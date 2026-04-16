@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <atomic>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <string>
 #include <unordered_map>
@@ -51,6 +52,7 @@ namespace ElfBug
         Process* mProcess = nullptr;
         Thread* mThread = nullptr;
         std::unordered_map<pid_t, Process> mProcesses;
+        mutable std::shared_mutex mProcessMutex;
 
     private:
         void debugLoop();

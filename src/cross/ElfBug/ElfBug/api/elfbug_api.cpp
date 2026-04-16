@@ -9,6 +9,7 @@
 #include <cstring>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <vector>
 #include <fcntl.h>
 
@@ -119,8 +120,9 @@ struct ElfBugDebugger : ElfBug::Debugger
         }
     }
 
-    bool memRead(uint64_t addr, void* dest, uint64_t size) const
+    bool memRead(const uint64_t addr, void* dest, const uint64_t size) const
     {
+        std::shared_lock lock(mProcessMutex);
         if(!active.load(std::memory_order_acquire) || !mProcess)
         {
             memset(dest, 0, size);
@@ -131,6 +133,7 @@ struct ElfBugDebugger : ElfBug::Debugger
 
     bool readRegisters(ElfBugRegisters* out) const
     {
+        std::shared_lock lock(mProcessMutex);
         if(!active.load(std::memory_order_acquire) || !mThread)
             return false;
 

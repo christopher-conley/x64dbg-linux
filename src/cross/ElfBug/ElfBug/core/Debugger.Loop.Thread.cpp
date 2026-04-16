@@ -18,6 +18,7 @@ namespace ElfBug
 
         cbExitThreadEvent(tid);
 
+        std::unique_lock lock(mProcessMutex);
         if(mThread && mThread->tid == tid)
             mThread = nullptr;
 
