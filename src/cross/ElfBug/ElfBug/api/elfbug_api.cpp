@@ -121,7 +121,7 @@ struct ElfBugDebugger : ElfBug::Debugger
 
     bool memRead(uint64_t addr, void* dest, uint64_t size) const
     {
-        if(!mProcess)
+        if(!active.load(std::memory_order_acquire) || !mProcess)
         {
             memset(dest, 0, size);
             return false;
@@ -131,7 +131,7 @@ struct ElfBugDebugger : ElfBug::Debugger
 
     bool readRegisters(ElfBugRegisters* out) const
     {
-        if(!mThread)
+        if(!active.load(std::memory_order_acquire) || !mThread)
             return false;
 
         const auto native = mThread->registers.Native();

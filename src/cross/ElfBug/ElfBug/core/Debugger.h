@@ -66,7 +66,6 @@ namespace ElfBug
 
         // Tracer-thread only; caller threads must not write.
         std::atomic<bool> mIsRunning{false};
-        bool mSystemBreakpointHit = false;
         std::atomic<bool> mPaused{false};
         std::atomic<bool> mStepPending{false};
         std::atomic<bool> mPauseRequested{false};

@@ -9,17 +9,12 @@ namespace ElfBug
     {
     }
 
-    bool Thread::StepInto()
+    bool Thread::StepInto(const int signal)
     {
-        if(ptrace(PTRACE_SINGLESTEP, tid, nullptr, nullptr) == -1)
+        if(ptrace(PTRACE_SINGLESTEP, tid, nullptr,
+                  reinterpret_cast<void*>(static_cast<uintptr_t>(signal))) == -1)
             return false;
         mIsSingleStepping = true;
         return true;
-    }
-
-    bool Thread::StepInto(const StepCallback & cbStep)
-    {
-        mStepCallback = cbStep;
-        return StepInto();
     }
 }

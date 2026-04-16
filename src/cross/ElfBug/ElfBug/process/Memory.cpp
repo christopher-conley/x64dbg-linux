@@ -79,7 +79,7 @@ namespace ElfBug
         return MemRead(address, &byte, 1);
     }
 
-    bool Process::MemProtect(const ptr address, const ptr size, uint32 newProtect, uint32* oldProtect)
+    bool Process::MemProtect(ptr address, ptr size, uint32 newProtect, const uint32* oldProtect)
     {
         // TODO: implement via ptrace or /proc/pid/mem mprotect
         (void)address;
