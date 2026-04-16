@@ -8,7 +8,6 @@ namespace ElfBug
             return;
 
         mProcess->threads.emplace(tid, std::make_unique<Thread>(tid));
-        mThread = mProcess->threads.at(tid).get();
         cbCreateThreadEvent(tid);
     }
 

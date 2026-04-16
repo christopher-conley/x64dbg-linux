@@ -20,11 +20,11 @@ namespace ElfBug
         cbExitProcessEvent(exitCode);
         mProcesses.erase(pid);
 
-        if(pid == mMainPid)
+        if(pid == mMainPid.load(std::memory_order_relaxed))
         {
             mProcess = nullptr;
             mThread = nullptr;
-            mMainPid = 0;
+            mMainPid.store(0, std::memory_order_release);
         }
     }
 }

@@ -27,7 +27,7 @@ namespace ElfBug
 
         Process(const Process &) = delete;
         Process & operator=(const Process &) = delete;
-        Process(Process && other) noexcept;
+        Process(Process &&) = delete;
         Process & operator=(Process &&) = delete;
 
         bool MemRead(ptr address, void* buffer, ptr size, ptr* bytesRead = nullptr) const;

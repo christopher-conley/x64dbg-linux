@@ -111,8 +111,13 @@ namespace ElfBug
         {
             unsigned long newTid = 0;
             if(ptrace(PTRACE_GETEVENTMSG, pid, nullptr, &newTid) == -1)
+            {
                 cbInternalError("PTRACE_GETEVENTMSG failed: " + std::string(strerror(errno)));
-            createThreadEvent(static_cast<pid_t>(newTid));
+            }
+            else
+            {
+                createThreadEvent(static_cast<pid_t>(newTid));
+            }
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
@@ -195,9 +200,9 @@ namespace ElfBug
                             const int code = WIFEXITED(stepStatus)
                                              ? WEXITSTATUS(stepStatus)
                                              : -WTERMSIG(stepStatus);
-                            if(pid == mMainPid)
+                            if(pid == mMainPid.load(std::memory_order_relaxed))
                             {
-                                exitProcessEvent(mMainPid, code);
+                                exitProcessEvent(pid, code);
                                 mIsRunning.store(false, std::memory_order_release);
                             }
                             else

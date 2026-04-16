@@ -70,7 +70,7 @@ namespace ElfBug
         std::atomic<bool> mPaused{false};
         std::atomic<bool> mStepPending{false};
         std::atomic<bool> mPauseRequested{false};
-        pid_t mMainPid = 0;
+        std::atomic<pid_t> mMainPid{0};
         int mPendingSignal = 0;
         std::mutex mPauseMutex;
         std::condition_variable mPauseCv;

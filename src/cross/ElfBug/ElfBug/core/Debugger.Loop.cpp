@@ -58,8 +58,10 @@ namespace ElfBug
             return;
         }
 
+        const pid_t mainPid = mMainPid.load(std::memory_order_relaxed);
+
         int status = 0;
-        pid_t pid = waitpid(mMainPid, &status, __WALL);
+        pid_t pid = waitpid(mainPid, &status, __WALL);
         if(pid == -1)
         {
             cbInternalError("initial waitpid() failed: " + std::string(strerror(errno)));
@@ -76,7 +78,7 @@ namespace ElfBug
             return;
         }
 
-        if(ptrace(PTRACE_SETOPTIONS, mMainPid, nullptr,
+        if(ptrace(PTRACE_SETOPTIONS, mainPid, nullptr,
                   PTRACE_O_TRACESYSGOOD |
                   PTRACE_O_TRACECLONE |
                   PTRACE_O_TRACEEXEC |
@@ -87,7 +89,7 @@ namespace ElfBug
             return;
         }
 
-        createProcessEvent(mMainPid);
+        createProcessEvent(mainPid);
 
         mSystemBreakpointHit = true;
         if(mThread)
@@ -97,7 +99,7 @@ namespace ElfBug
             cbSystemBreakpoint();
         }
 
-        if(!pauseAndResume(mMainPid))
+        if(!pauseAndResume(mainPid))
             return;
 
         while(mIsRunning)
@@ -115,7 +117,7 @@ namespace ElfBug
 
             if(WIFEXITED(status))
             {
-                if(pid == mMainPid)
+                if(pid == mMainPid.load(std::memory_order_relaxed))
                 {
                     exitProcessEvent(pid, WEXITSTATUS(status));
                     mIsRunning.store(false, std::memory_order_release);
@@ -127,7 +129,7 @@ namespace ElfBug
 
             if(WIFSIGNALED(status))
             {
-                if(pid == mMainPid)
+                if(pid == mMainPid.load(std::memory_order_relaxed))
                 {
                     exitProcessEvent(pid, -WTERMSIG(status));
                     mIsRunning.store(false, std::memory_order_release);

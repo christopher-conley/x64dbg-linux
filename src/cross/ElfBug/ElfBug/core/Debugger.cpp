@@ -13,10 +13,11 @@ namespace ElfBug
 
     Debugger::~Debugger()
     {
-        if(mMainPid > 0)
+        const pid_t pid = mMainPid.load(std::memory_order_acquire);
+        if(pid > 0)
         {
-            kill(mMainPid, SIGKILL);
-            waitpid(mMainPid, nullptr, __WALL);
+            kill(pid, SIGKILL);
+            waitpid(pid, nullptr, __WALL);
         }
     }
 
@@ -123,7 +124,7 @@ namespace ElfBug
             return false;
         }
 
-        mMainPid = pid;
+        mMainPid.store(pid, std::memory_order_release);
         return true;
     }
 
@@ -161,16 +162,18 @@ namespace ElfBug
 
     void Debugger::Pause()
     {
-        if(mMainPid > 0)
+        const pid_t pid = mMainPid.load(std::memory_order_acquire);
+        if(pid > 0)
         {
             mPauseRequested.store(true, std::memory_order_release);
-            kill(mMainPid, SIGSTOP);
+            kill(pid, SIGSTOP);
         }
     }
 
     bool Debugger::Stop()
     {
-        if(mMainPid <= 0)
+        const pid_t pid = mMainPid.load(std::memory_order_acquire);
+        if(pid <= 0)
             return false;
 
         {
@@ -179,7 +182,7 @@ namespace ElfBug
         }
         mPauseCv.notify_one();
 
-        return kill(mMainPid, SIGKILL) == 0;
+        return kill(pid, SIGKILL) == 0;
     }
 
     void Debugger::Detach()
