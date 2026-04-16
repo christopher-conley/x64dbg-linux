@@ -7355,7 +7355,7 @@ typedef enum ZydisEncodableEncoding_
      * Maximum value of this enum.
      */
     ZYDIS_ENCODABLE_ENCODING_MAX_VALUE              = (ZYDIS_ENCODABLE_ENCODING_MVEX |
-            (ZYDIS_ENCODABLE_ENCODING_MVEX - 1)),
+        (ZYDIS_ENCODABLE_ENCODING_MVEX - 1)),
     /**
      * The minimum number of bits required to represent all values of this enum.
      */

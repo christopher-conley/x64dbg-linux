@@ -45,7 +45,7 @@ void ThreadView::setupContextMenu()
     QAction* mSetPriorityNormal = makeCommandAction(new QAction(DIcon("thread-priority-normal"), tr("Normal"), this), "setprioritythread $, Normal");
     QAction* mSetPriorityTimeCritical = makeCommandAction(new QAction(DIcon("thread-priority-timecritical"), tr("Time Critical"), this), "setprioritythread $, TimeCritical");
     MenuBuilder* mSetPriority = new MenuBuilder(this, [this, mSetPriorityIdle, mSetPriorityAboveNormal, mSetPriorityBelowNormal,
-                  mSetPriorityHighest, mSetPriorityLowest, mSetPriorityNormal, mSetPriorityTimeCritical](QMenu*)
+        mSetPriorityHighest, mSetPriorityLowest, mSetPriorityNormal, mSetPriorityTimeCritical](QMenu*)
     {
         QString priority = getCellContent(getInitialSelection(), 6);
         QAction* selectedaction = nullptr;

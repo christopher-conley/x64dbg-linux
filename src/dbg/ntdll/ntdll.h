@@ -7263,7 +7263,7 @@ NtAdjustGroupsToken(
     _In_ HANDLE TokenHandle,
     _In_ BOOLEAN ResetToDefault,
     _In_opt_ PTOKEN_GROUPS NewState,
-    _In_range_( >=, sizeof(TOKEN_GROUPS)) ULONG BufferLength,
+    _In_range_(>=, sizeof(TOKEN_GROUPS)) ULONG BufferLength,
     _Out_writes_bytes_to_opt_(BufferLength, *ReturnLength) PTOKEN_GROUPS PreviousState,
     _Out_ PULONG ReturnLength
 );
@@ -8943,7 +8943,7 @@ RtlDecompressFragment(
     _In_ ULONG UncompressedFragmentSize,
     _In_reads_bytes_(CompressedBufferSize) PUCHAR CompressedBuffer,
     _In_ ULONG CompressedBufferSize,
-    _In_range_( <, CompressedBufferSize) ULONG FragmentOffset,
+    _In_range_(<, CompressedBufferSize) ULONG FragmentOffset,
     _Out_ PULONG FinalUncompressedSize,
     _In_ PVOID WorkSpace
 );
@@ -8958,7 +8958,7 @@ RtlDecompressFragmentEx(
     _In_ ULONG UncompressedFragmentSize,
     _In_reads_bytes_(CompressedBufferSize) PUCHAR CompressedBuffer,
     _In_ ULONG CompressedBufferSize,
-    _In_range_( <, CompressedBufferSize) ULONG FragmentOffset,
+    _In_range_(<, CompressedBufferSize) ULONG FragmentOffset,
     _In_ ULONG UncompressedChunkSize,
     _Out_ PULONG FinalUncompressedSize,
     _In_ PVOID WorkSpace
@@ -9007,9 +9007,9 @@ RtlCompressChunks(
     _In_reads_bytes_(UncompressedBufferSize) PUCHAR UncompressedBuffer,
     _In_ ULONG UncompressedBufferSize,
     _Out_writes_bytes_(CompressedBufferSize) PUCHAR CompressedBuffer,
-    _In_range_( >=, (UncompressedBufferSize - (UncompressedBufferSize / 16))) ULONG CompressedBufferSize,
+    _In_range_(>=, (UncompressedBufferSize - (UncompressedBufferSize / 16))) ULONG CompressedBufferSize,
     _Inout_updates_bytes_(CompressedDataInfoLength) PCOMPRESSED_DATA_INFO CompressedDataInfo,
-    _In_range_( >, sizeof(COMPRESSED_DATA_INFO)) ULONG CompressedDataInfoLength,
+    _In_range_(>, sizeof(COMPRESSED_DATA_INFO)) ULONG CompressedDataInfoLength,
     _In_ PVOID WorkSpace
 );
 
@@ -9243,7 +9243,7 @@ RtlUniform(
     _Inout_ PULONG Seed
 );
 
-_Ret_range_( <=, MAXLONG)
+_Ret_range_(<=, MAXLONG)
 NTSYSAPI
 ULONG
 NTAPI
@@ -9251,7 +9251,7 @@ RtlRandom(
     _Inout_ PULONG Seed
 );
 
-_Ret_range_( <=, MAXLONG)
+_Ret_range_(<=, MAXLONG)
 NTSYSAPI
 ULONG
 NTAPI

@@ -145,9 +145,9 @@ bool SymbolSourceDIA::loadSymbolsAsync()
 #undef filter
 
         if(sym.type == DiaSymbolType::PUBLIC ||
-        sym.type == DiaSymbolType::FUNCTION ||
-        sym.type == DiaSymbolType::LABEL ||
-        sym.type == DiaSymbolType::DATA) //TODO: properly handle import thunks + empty names + line symbols
+                sym.type == DiaSymbolType::FUNCTION ||
+                sym.type == DiaSymbolType::LABEL ||
+                sym.type == DiaSymbolType::DATA) //TODO: properly handle import thunks + empty names + line symbols
         {
             _symData.emplace_back();
             SymbolInfo & symInfo = _symData.back();
@@ -458,7 +458,8 @@ bool SymbolSourceDIA::findSymbolExactOrLower(duint rva, SymbolInfo & symInfo)
             return it;
         // right now 'it' points to the first element bigger than rva
         return it == _symAddrMap.begin() ? _symAddrMap.end() : --it;
-    }();
+    }
+    ();
 
     if(it != _symAddrMap.end())
     {

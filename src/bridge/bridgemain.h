@@ -1418,6 +1418,7 @@ BRIDGE_IMPEXP bool DbgTypeVisit(const TYPEVISITDATA* data);
 
 // clang-format on
 
+// *INDENT-OFF*
 #define GUIMSG_ENUM(msg, param1, param2) msg,
 
 typedef enum
@@ -1426,6 +1427,7 @@ typedef enum
 } GUIMSG;
 
 #undef GUIMSG_ENUM
+// *INDENT-ON*
 
 //GUI Typedefs
 typedef void (*GUICALLBACK)();

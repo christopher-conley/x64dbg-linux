@@ -147,7 +147,8 @@ duint RemoteTable::sliderMovedHook(QScrollBar::SliderAction action, duint value,
         default:
             return "<unknown>";
         }
-    }();
+    }
+    ();
     //qDebug() << "sliderMovedHook" << actionName << "value" << value << "delta" << delta;
     return AbstractStdTable::sliderMovedHook(action, value, delta);
 }

@@ -269,7 +269,8 @@ void CPUInfoBox::disasmSelectionChanged(duint parVA)
                 default:
                     return "";
                 }
-            }(arg.segment);
+            }
+            (arg.segment);
 
             if(bUpper)
                 sizeName = sizeName.toUpper();

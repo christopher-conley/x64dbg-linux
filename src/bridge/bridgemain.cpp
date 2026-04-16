@@ -198,7 +198,8 @@ BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config)
         default:
             return L"TitanEngine.dll";
         }
-    }();
+    }
+    ();
 
     auto loadIfExists = [&](const wchar_t* szDll)
     {
