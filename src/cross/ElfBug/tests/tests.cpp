@@ -156,7 +156,8 @@ TEST_CASE("Software breakpoint: persistent hits twice", "[breakpoint]")
 
     std::promise<ResolvedBreakpoint> bpPromise;
     auto bpFuture = bpPromise.get_future();
-    dbg.OnSystemBreakpoint([&] {
+    dbg.OnSystemBreakpoint([&]
+    {
         ResolvedBreakpoint bp;
         const auto resolved = ResolveRuntimeAddress(path, dbg.process()->pid, "hit_me");
         if(resolved)
@@ -207,7 +208,8 @@ TEST_CASE("Software breakpoint patches and restores instruction byte", "[breakpo
 
     std::promise<BreakpointPatchRoundTrip> bpPromise;
     auto bpFuture = bpPromise.get_future();
-    dbg.OnSystemBreakpoint([&] {
+    dbg.OnSystemBreakpoint([&]
+    {
         BreakpointPatchRoundTrip bp;
         const auto resolved = ResolveRuntimeAddress(path, dbg.process()->pid, "hit_me");
         if(resolved)
@@ -252,7 +254,8 @@ TEST_CASE("Software breakpoint: singleshot hits once", "[breakpoint]")
 
     std::promise<ResolvedBreakpoint> bpPromise;
     auto bpFuture = bpPromise.get_future();
-    dbg.OnSystemBreakpoint([&] {
+    dbg.OnSystemBreakpoint([&]
+    {
         ResolvedBreakpoint bp;
         const auto resolved = ResolveRuntimeAddress(path, dbg.process()->pid, "hit_me");
         if(resolved)

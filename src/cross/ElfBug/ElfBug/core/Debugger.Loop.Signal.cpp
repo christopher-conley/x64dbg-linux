@@ -183,7 +183,8 @@ namespace ElfBug
                         do
                         {
                             waited = waitpid(pid, &stepStatus, __WALL);
-                        } while(waited == -1 && errno == EINTR);
+                        }
+                        while(waited == -1 && errno == EINTR);
                         if(waited == -1)
                         {
                             cbInternalError("waitpid(step) failed: " + std::string(strerror(errno)));

@@ -119,7 +119,8 @@ namespace ElfBug
         do
         {
             n = read(pipeFds[0], errBuf, sizeof(errBuf) - 1);
-        } while(n == -1 && errno == EINTR);
+        }
+        while(n == -1 && errno == EINTR);
         close(pipeFds[0]);
 
         if(n == -1)

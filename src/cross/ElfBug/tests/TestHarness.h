@@ -87,7 +87,8 @@ namespace ElfBug::test
         }
 
         // /proc/<pid>/stat state char: R/S = scheduled, t/T = ptrace-stopped.
-        bool WaitForRunning(const std::chrono::milliseconds timeout = std::chrono::seconds(5)) const {
+        bool WaitForRunning(const std::chrono::milliseconds timeout = std::chrono::seconds(5)) const
+        {
             const pid_t pid = mProcess ? mProcess->pid : 0;
             if(pid <= 0) return false;
             const auto start = std::chrono::steady_clock::now();
@@ -112,8 +113,8 @@ namespace ElfBug::test
         Event WaitFor(EventType type, std::chrono::milliseconds timeout = std::chrono::seconds(5))
         {
             return waitForPredicate(
-                [type](const Event & e) { return e.type == type; },
-                timeout, "WaitFor timeout");
+            [type](const Event & e) { return e.type == type; },
+            timeout, "WaitFor timeout");
         }
 
         Event WaitForSystemBreakpoint()    { return WaitFor(EventType::SystemBreakpoint); }
@@ -125,15 +126,15 @@ namespace ElfBug::test
         Event WaitForException(int sig, const std::chrono::milliseconds timeout = std::chrono::seconds(5))
         {
             return waitForPredicate(
-                [sig](const Event & e) { return e.type == EventType::Exception && e.signal == sig; },
-                timeout, "WaitForException timeout");
+            [sig](const Event & e) { return e.type == EventType::Exception && e.signal == sig; },
+            timeout, "WaitForException timeout");
         }
 
         Event WaitForBreakpointAt(ptr addr, const std::chrono::milliseconds timeout = std::chrono::seconds(5))
         {
             return waitForPredicate(
-                [addr](const Event & e) { return e.type == EventType::Breakpoint && e.address == addr; },
-                timeout, "WaitForBreakpointAt timeout");
+            [addr](const Event & e) { return e.type == EventType::Breakpoint && e.address == addr; },
+            timeout, "WaitForBreakpointAt timeout");
         }
 
     protected:
