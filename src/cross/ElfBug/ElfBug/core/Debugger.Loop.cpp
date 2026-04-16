@@ -1,7 +1,6 @@
 #include <ElfBug/core/Debugger.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
-#include <unistd.h>
 #include <cerrno>
 #include <cstring>
 #include <chrono>
@@ -37,7 +36,19 @@ namespace ElfBug
             const int sig = mPendingSignal;
             mPendingSignal = 0;
             if(!mThread->StepInto(sig))
-                cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(errno)));
+            {
+                const int stepErrno = errno;
+                if(stepErrno != ESRCH)
+                {
+                    cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(stepErrno)));
+                    if(ptrace(PTRACE_CONT, pid, nullptr,
+                              reinterpret_cast<void*>(static_cast<uintptr_t>(sig))) == -1)
+                    {
+                        if(errno != ESRCH)
+                            cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+                    }
+                }
+            }
         }
         else
         {

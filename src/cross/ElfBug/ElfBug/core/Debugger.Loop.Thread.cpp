@@ -7,7 +7,10 @@ namespace ElfBug
         if(!mProcess)
             return;
 
-        mProcess->threads.emplace(tid, std::make_unique<Thread>(tid));
+        {
+            std::unique_lock lock(mProcessMutex);
+            mProcess->threads.emplace(tid, std::make_unique<Thread>(tid));
+        }
         cbCreateThreadEvent(tid);
     }
 

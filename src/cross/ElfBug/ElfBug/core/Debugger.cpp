@@ -29,6 +29,11 @@ namespace ElfBug
         mArgv.clear();
         mCwd.clear();
 
+        mPaused.store(false, std::memory_order_release);
+        mStepPending.store(false, std::memory_order_release);
+        mPauseRequested.store(false, std::memory_order_release);
+        mPendingSignal = 0;
+
         if(!szFilePath)
             return false;
 
