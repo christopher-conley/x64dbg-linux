@@ -3,9 +3,11 @@
 #include <sys/types.h>
 #include <atomic>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include <ElfBug/types/ElfBug.h>
 #include <ElfBug/types/Global.h>
 #include <ElfBug/process/Process.h>
@@ -50,26 +52,33 @@ namespace ElfBug
         Process* mProcess = nullptr;
         Thread* mThread = nullptr;
         std::unordered_map<pid_t, Process> mProcesses;
+        mutable std::shared_mutex mProcessMutex;
 
     private:
         void debugLoop();
+        bool launchChild();
         void handleSignal(pid_t pid, int status);
         void handleSigtrap(pid_t pid, int status);
         bool pauseAndResume(pid_t pid);
+        void beginPause();
         void createProcessEvent(pid_t pid);
         void exitProcessEvent(pid_t pid, int exitCode);
         void createThreadEvent(pid_t tid);
         void exitThreadEvent(pid_t tid);
 
+        // Tracer-thread only; caller threads must not write.
         std::atomic<bool> mIsRunning{false};
-        bool mIsAttached = false;
-        bool mSystemBreakpointHit = false;
         std::atomic<bool> mPaused{false};
         std::atomic<bool> mStepPending{false};
         std::atomic<bool> mPauseRequested{false};
-        pid_t mMainPid = 0;
+        std::atomic<pid_t> mMainPid{0};
         int mPendingSignal = 0;
         std::mutex mPauseMutex;
         std::condition_variable mPauseCv;
+
+        std::string mFilePath;
+        std::vector<std::string> mArgv;
+        std::string mCwd;
+        bool mHasLaunchArgs = false;
     };
 }

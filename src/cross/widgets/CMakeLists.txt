@@ -85,6 +85,8 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Utils/VaHistory.h
     ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
     ${widgets_SOURCE_DIR}/Gui/RegistersView.h
+    ${widgets_SOURCE_DIR}/Accessible/AccessibleRegistersView.cpp
+    ${widgets_SOURCE_DIR}/Accessible/AccessibleRegistersView.h
 )
 
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR})

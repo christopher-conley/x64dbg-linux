@@ -18,13 +18,15 @@ namespace ElfBug
     void Debugger::exitProcessEvent(const pid_t pid, const int exitCode)
     {
         cbExitProcessEvent(exitCode);
+
+        std::unique_lock lock(mProcessMutex);
         mProcesses.erase(pid);
 
-        if(pid == mMainPid)
+        if(pid == mMainPid.load(std::memory_order_relaxed))
         {
             mProcess = nullptr;
             mThread = nullptr;
-            mMainPid = 0;
+            mMainPid.store(0, std::memory_order_release);
         }
     }
 }

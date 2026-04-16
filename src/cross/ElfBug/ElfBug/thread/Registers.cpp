@@ -4,6 +4,10 @@
 
 namespace ElfBug
 {
+    static_assert(sizeof(ptr) == sizeof(decltype(user_regs_struct{} .rax)),
+                  "ptr and user_regs_struct register fields must have matching size "
+                  "for the reinterpret_cast accessors below to be safe");
+
     Registers::Registers(const pid_t tid)
         : mTid(tid)
     {

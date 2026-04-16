@@ -27,13 +27,13 @@ namespace ElfBug
 
         Process(const Process &) = delete;
         Process & operator=(const Process &) = delete;
-        Process(Process && other) noexcept;
+        Process(Process &&) = delete;
         Process & operator=(Process &&) = delete;
 
         bool MemRead(ptr address, void* buffer, ptr size, ptr* bytesRead = nullptr) const;
         bool MemWrite(ptr address, const void* buffer, ptr size, ptr* bytesWritten = nullptr) const;
         bool MemIsValidPtr(ptr address) const;
-        bool MemProtect(ptr address, ptr size, uint32 newProtect, uint32* oldProtect = nullptr);
+        bool MemProtect(ptr address, ptr size, uint32 newProtect, const uint32* oldProtect = nullptr);
 
         bool SetBreakpoint(ptr address, bool singleshot = false, SoftwareType type = SoftwareType::ShortInt3);
         bool SetBreakpoint(ptr address, const BreakpointCallback & cbBreakpoint, bool singleshot = false, SoftwareType type = SoftwareType::ShortInt3);

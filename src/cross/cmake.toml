@@ -6,14 +6,21 @@ cmkr-include = "../../cmake/cmkr.cmake"
 [project]
 name = "cross"
 include-after = ["widgets/Qt.cmake"]
+cmake-after = """
+if(ELFBUG_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    enable_testing()
+endif()
+"""
 
 [conditions]
 linux = "CMAKE_SYSTEM_NAME STREQUAL \"Linux\""
+elfbug-tests = "CMAKE_SYSTEM_NAME STREQUAL \"Linux\" AND ELFBUG_BUILD_TESTS"
 
 [options]
 LIBPL_ENABLE_CLI = false
 LIBPL_ENABLE_TESTS = false
 LIBWOLV_ENABLE_TESTS = false
+ELFBUG_BUILD_TESTS = false
 
 [find-package.Threads]
 
@@ -88,12 +95,11 @@ private-include-directories = [
 [target.ElfBug]
 type = "static"
 condition = "linux"
-sources = ["ElfBug/**.cpp"]
-headers = ["ElfBug/**.h"]
+sources = ["ElfBug/ElfBug/**.cpp"]
+headers = ["ElfBug/ElfBug/**.h"]
 compile-features = ["cxx_std_17"]
 include-directories = ["ElfBug"]
 link-libraries = ["Threads::Threads"]
-
 
 [target.debugger]
 type = "qt_executable"
@@ -113,3 +119,6 @@ link-libraries = [
     "x64dbg::widgets",
     "::ElfBug",
 ]
+
+[subdir."ElfBug/tests"]
+condition = "elfbug-tests"

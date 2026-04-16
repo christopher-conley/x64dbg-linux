@@ -8,10 +8,17 @@
 
 namespace ElfBug
 {
+    // Publishes mPaused=true under the mutex before the event callback fires,
+    // so a concurrent Continue()/Stop() can't race past and strand pauseAndResume().
+    void Debugger::beginPause()
+    {
+        std::lock_guard lock(mPauseMutex);
+        mPaused.store(true, std::memory_order_release);
+    }
+
     bool Debugger::pauseAndResume(const pid_t pid)
     {
         std::unique_lock lock(mPauseMutex);
-        mPaused.store(true, std::memory_order_release);
 
         while(mPaused.load(std::memory_order_acquire) && mIsRunning.load(std::memory_order_acquire))
         {
@@ -27,7 +34,10 @@ namespace ElfBug
         if(mStepPending.load(std::memory_order_acquire) && mThread)
         {
             mStepPending.store(false, std::memory_order_release);
-            mThread->StepInto();
+            const int sig = mPendingSignal;
+            mPendingSignal = 0;
+            if(!mThread->StepInto(sig))
+                cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(errno)));
         }
         else
         {
@@ -35,15 +45,26 @@ namespace ElfBug
             mPendingSignal = 0;
             if(ptrace(PTRACE_CONT, pid, nullptr,
                       reinterpret_cast<void*>(static_cast<uintptr_t>(sig))) == -1)
-                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+            {
+                if(errno != ESRCH)
+                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+            }
         }
         return true;
     }
 
     void Debugger::debugLoop()
     {
+        if(!launchChild())
+        {
+            mIsRunning.store(false, std::memory_order_release);
+            return;
+        }
+
+        const pid_t mainPid = mMainPid.load(std::memory_order_relaxed);
+
         int status = 0;
-        pid_t pid = waitpid(mMainPid, &status, __WALL);
+        pid_t pid = waitpid(mainPid, &status, __WALL);
         if(pid == -1)
         {
             cbInternalError("initial waitpid() failed: " + std::string(strerror(errno)));
@@ -60,27 +81,28 @@ namespace ElfBug
             return;
         }
 
-        if(ptrace(PTRACE_SETOPTIONS, mMainPid, nullptr,
+        if(ptrace(PTRACE_SETOPTIONS, mainPid, nullptr,
                   PTRACE_O_TRACESYSGOOD |
                   PTRACE_O_TRACECLONE |
                   PTRACE_O_TRACEEXEC |
-                  PTRACE_O_TRACEEXIT) == -1)
+                  PTRACE_O_TRACEEXIT |
+                  PTRACE_O_EXITKILL) == -1)
         {
             cbInternalError("PTRACE_SETOPTIONS failed: " + std::string(strerror(errno)));
             mIsRunning.store(false, std::memory_order_release);
             return;
         }
 
-        createProcessEvent(mMainPid);
+        createProcessEvent(mainPid);
 
-        mSystemBreakpointHit = true;
         if(mThread)
         {
             mThread->registers.Read();
+            beginPause();
             cbSystemBreakpoint();
         }
 
-        if(!pauseAndResume(mMainPid))
+        if(!pauseAndResume(mainPid))
             return;
 
         while(mIsRunning)
@@ -98,7 +120,7 @@ namespace ElfBug
 
             if(WIFEXITED(status))
             {
-                if(pid == mMainPid)
+                if(pid == mMainPid.load(std::memory_order_relaxed))
                 {
                     exitProcessEvent(pid, WEXITSTATUS(status));
                     mIsRunning.store(false, std::memory_order_release);
@@ -110,7 +132,7 @@ namespace ElfBug
 
             if(WIFSIGNALED(status))
             {
-                if(pid == mMainPid)
+                if(pid == mMainPid.load(std::memory_order_relaxed))
                 {
                     exitProcessEvent(pid, -WTERMSIG(status));
                     mIsRunning.store(false, std::memory_order_release);

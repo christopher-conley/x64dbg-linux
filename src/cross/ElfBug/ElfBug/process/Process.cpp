@@ -10,19 +10,6 @@ namespace ElfBug
     {
     }
 
-    Process::Process(Process && other) noexcept
-        : pid(other.pid)
-        , threads(std::move(other.threads))
-        , breakpoints(std::move(other.breakpoints))
-        , breakpointCallbacks(std::move(other.breakpointCallbacks))
-        , softwareBreakpointReferences(std::move(other.softwareBreakpointReferences))
-        , memoryBreakpointRanges(std::move(other.memoryBreakpointRanges))
-        , memoryBreakpointPages(std::move(other.memoryBreakpointPages))
-        , mMemFd(other.mMemFd)
-    {
-        other.mMemFd = -1;
-    }
-
     Process::~Process()
     {
         if(mMemFd != -1)

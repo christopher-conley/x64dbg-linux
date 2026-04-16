@@ -36,6 +36,7 @@ namespace ElfBug
                 if(mThread)
                 {
                     mThread->registers.Read();
+                    beginPause();
                     cbPaused();
 
                     if(!pauseAndResume(pid))
@@ -61,8 +62,22 @@ namespace ElfBug
             siginfo_t sigInfo;
             if(ptrace(PTRACE_GETSIGINFO, pid, nullptr, &sigInfo) != -1)
                 faultAddr = reinterpret_cast<ptr>(sigInfo.si_addr);
-            cbExceptionEvent(sig, faultAddr);
-            ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void*>(static_cast<uintptr_t>(sig)));
+            if(mThread)
+            {
+                mThread->registers.Read();
+                mPendingSignal = sig;
+                beginPause();
+                cbExceptionEvent(sig, faultAddr);
+                if(!pauseAndResume(pid))
+                    break;
+            }
+            else
+            {
+                cbExceptionEvent(sig, faultAddr);
+                if(ptrace(PTRACE_CONT, pid, nullptr,
+                          reinterpret_cast<void*>(static_cast<uintptr_t>(sig))) == -1)
+                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+            }
             break;
         }
         }
@@ -76,16 +91,7 @@ namespace ElfBug
         {
         case PTRACE_EVENT_EXEC:
         {
-            if(!mSystemBreakpointHit)
-            {
-                mSystemBreakpointHit = true;
-                if(mThread)
-                {
-                    mThread->registers.Read();
-                    cbSystemBreakpoint();
-                }
-                break;
-            }
+            // TODO: re-exec handling - clear breakpoints, refresh memory map, fire callback
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
@@ -95,8 +101,13 @@ namespace ElfBug
         {
             unsigned long newTid = 0;
             if(ptrace(PTRACE_GETEVENTMSG, pid, nullptr, &newTid) == -1)
+            {
                 cbInternalError("PTRACE_GETEVENTMSG failed: " + std::string(strerror(errno)));
-            createThreadEvent(static_cast<pid_t>(newTid));
+            }
+            else
+            {
+                createThreadEvent(static_cast<pid_t>(newTid));
+            }
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
@@ -104,7 +115,7 @@ namespace ElfBug
 
         case PTRACE_EVENT_EXIT:
         {
-            exitThreadEvent(pid);
+            // Notification only; exit is emitted via WIFEXITED/WIFSIGNALED in debugLoop.
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
@@ -124,6 +135,7 @@ namespace ElfBug
             if(mThread->isSingleStepping())
             {
                 mThread->clearSingleStep();
+                beginPause();
                 cbStep();
                 if(!pauseAndResume(pid))
                     break;
@@ -144,6 +156,8 @@ namespace ElfBug
                     const auto & info = it->second;
                     const bool singleshot = info.singleshot;
 
+                    beginPause();
+
                     const auto cbIt = mProcess->breakpointCallbacks.find(key);
                     if(cbIt != mProcess->breakpointCallbacks.end())
                         cbIt->second(info);
@@ -157,17 +171,41 @@ namespace ElfBug
                     else
                     {
                         mProcess->DeleteBreakpoint(bpAddr);
-                        mThread->StepInto();
+                        if(!mThread->StepInto())
+                        {
+                            cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(errno)));
+                            if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+                                cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
+                            break;
+                        }
                         int stepStatus = 0;
-                        waitpid(pid, &stepStatus, __WALL);
+                        pid_t waited = -1;
+                        do
+                        {
+                            waited = waitpid(pid, &stepStatus, __WALL);
+                        }
+                        while(waited == -1 && errno == EINTR);
+                        if(waited == -1)
+                        {
+                            cbInternalError("waitpid(step) failed: " + std::string(strerror(errno)));
+                            break;
+                        }
                         mThread->clearSingleStep();
 
                         if(WIFEXITED(stepStatus) || WIFSIGNALED(stepStatus))
                         {
-                            exitProcessEvent(mMainPid, WIFEXITED(stepStatus)
+                            const int code = WIFEXITED(stepStatus)
                                              ? WEXITSTATUS(stepStatus)
-                                             : -WTERMSIG(stepStatus));
-                            mIsRunning.store(false, std::memory_order_release);
+                                             : -WTERMSIG(stepStatus);
+                            if(pid == mMainPid.load(std::memory_order_relaxed))
+                            {
+                                exitProcessEvent(pid, code);
+                                mIsRunning.store(false, std::memory_order_release);
+                            }
+                            else
+                            {
+                                exitThreadEvent(pid);
+                            }
                             break;
                         }
 

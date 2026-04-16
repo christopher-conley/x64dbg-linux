@@ -9,10 +9,9 @@
 #include <cstring>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <vector>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/uio.h>
 
 struct ElfBugDebugger : ElfBug::Debugger
 {
@@ -55,7 +54,11 @@ struct ElfBugDebugger : ElfBug::Debugger
         snprintf(path, sizeof(path), "/proc/%d/maps", mProcess->pid);
         FILE* f = fopen(path, "r");
         if(!f)
+        {
+            std::lock_guard lock(mapMutex);
+            memoryMap.clear();
             return;
+        }
 
         char line[512];
         while(fgets(line, sizeof(line), f))
@@ -117,9 +120,10 @@ struct ElfBugDebugger : ElfBug::Debugger
         }
     }
 
-    bool memRead(uint64_t addr, void* dest, uint64_t size) const
+    bool memRead(const uint64_t addr, void* dest, const uint64_t size) const
     {
-        if(!mProcess)
+        std::shared_lock lock(mProcessMutex);
+        if(!active.load(std::memory_order_acquire) || !mProcess)
         {
             memset(dest, 0, size);
             return false;
@@ -129,7 +133,8 @@ struct ElfBugDebugger : ElfBug::Debugger
 
     bool readRegisters(ElfBugRegisters* out) const
     {
-        if(!mThread)
+        std::shared_lock lock(mProcessMutex);
+        if(!active.load(std::memory_order_acquire) || !mThread)
             return false;
 
         const auto native = mThread->registers.Native();
@@ -167,9 +172,9 @@ protected:
     void cbCreateProcessEvent(const pid_t pid, const ElfBug::ptr ep) override
     {
         activePid.store(pid, std::memory_order_release);
-        active.store(true, std::memory_order_release);
         entryPoint = ep;
         refreshMemoryMap();
+        active.store(true, std::memory_order_release);
         if(cb.onCreateProcess)
             cb.onCreateProcess(pid, ep, cb.userdata);
     }
@@ -185,6 +190,10 @@ protected:
         {
             std::lock_guard lock(bpDataMutex);
             breakpointAddrs.clear();
+        }
+        {
+            std::lock_guard lock(bpQueueMutex);
+            pendingBpRequests.clear();
         }
         if(cb.onExitProcess)
             cb.onExitProcess(exitCode, cb.userdata);

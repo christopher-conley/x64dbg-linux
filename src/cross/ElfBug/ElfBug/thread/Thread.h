@@ -15,8 +15,7 @@ namespace ElfBug
 
         explicit Thread(pid_t tid);
 
-        void StepInto();
-        void StepInto(const StepCallback & cbStep);
+        bool StepInto(int signal = 0);
 
         [[nodiscard]] bool isSingleStepping() const { return mIsSingleStepping; }
         void clearSingleStep() { mIsSingleStepping = false; }
@@ -29,7 +28,5 @@ namespace ElfBug
 
     private:
         bool mIsSingleStepping = false;
-        bool mIsInternalStepping = false;
-        StepCallback mStepCallback;
     };
 }

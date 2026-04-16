@@ -4,6 +4,7 @@
 #include <sys/personality.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 #include <csignal>
 #include <cstring>
 
@@ -13,15 +14,49 @@ namespace ElfBug
 
     Debugger::~Debugger()
     {
-        if(mMainPid > 0)
+        const pid_t pid = mMainPid.load(std::memory_order_acquire);
+        if(pid > 0)
         {
-            kill(mMainPid, SIGKILL);
-            waitpid(mMainPid, nullptr, __WALL);
+            kill(pid, SIGKILL);
+            waitpid(pid, nullptr, __WALL);
         }
     }
 
     bool Debugger::Init(const char* szFilePath, const char* const* argv, const char* szCurrentDirectory)
     {
+        mHasLaunchArgs = false;
+        mFilePath.clear();
+        mArgv.clear();
+        mCwd.clear();
+
+        if(!szFilePath)
+            return false;
+
+        if(!szCurrentDirectory && access(szFilePath, X_OK) != 0)
+        {
+            cbInternalError("cannot execute '" + std::string(szFilePath) + "': " + std::string(strerror(errno)));
+            return false;
+        }
+
+        mFilePath = szFilePath;
+        mCwd = szCurrentDirectory ? szCurrentDirectory : "";
+        if(argv)
+        {
+            for(const char* const* p = argv; *p != nullptr; ++p)
+                mArgv.emplace_back(*p);
+        }
+        mHasLaunchArgs = true;
+        return true;
+    }
+
+    bool Debugger::launchChild()
+    {
+        if(!mHasLaunchArgs)
+        {
+            cbInternalError("launchChild called without Init");
+            return false;
+        }
+
         int pipeFds[2];
         if(pipe2(pipeFds, O_CLOEXEC) == -1)
         {
@@ -51,9 +86,9 @@ namespace ElfBug
             if(setpgid(0, 0) < 0)
                 childError("setpgid failed");
 
-            if(szCurrentDirectory)
+            if(!mCwd.empty())
             {
-                if(chdir(szCurrentDirectory) == -1)
+                if(chdir(mCwd.c_str()) == -1)
                     childError("chdir failed");
             }
 
@@ -63,12 +98,19 @@ namespace ElfBug
             if(ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1)
                 childError("PTRACE_TRACEME failed");
 
-            if(argv)
-                execv(szFilePath, const_cast<char* const*>(argv));
+            std::vector<char*> argvPtrs;
+            if(!mArgv.empty())
+            {
+                argvPtrs.reserve(mArgv.size() + 1);
+                for(auto & s : mArgv)
+                    argvPtrs.push_back(s.data());
+                argvPtrs.push_back(nullptr);
+                execv(mFilePath.c_str(), argvPtrs.data());
+            }
             else
             {
-                const char* defaultArgv[] = { szFilePath, nullptr };
-                execv(szFilePath, const_cast<char* const*>(defaultArgv));
+                char* defaultArgv[] = { const_cast<char*>(mFilePath.c_str()), nullptr };
+                execv(mFilePath.c_str(), defaultArgv);
             }
 
             childError("execv failed");
@@ -77,8 +119,21 @@ namespace ElfBug
         close(pipeFds[1]);
 
         char errBuf[256] = {};
-        const ssize_t n = read(pipeFds[0], errBuf, sizeof(errBuf) - 1);
+        ssize_t n;
+        do
+        {
+            n = read(pipeFds[0], errBuf, sizeof(errBuf) - 1);
+        }
+        while(n == -1 && errno == EINTR);
         close(pipeFds[0]);
+
+        if(n == -1)
+        {
+            const std::string err = strerror(errno);
+            waitpid(pid, nullptr, 0);
+            cbInternalError("read() from child pipe failed: " + err);
+            return false;
+        }
 
         if(n > 0)
         {
@@ -87,15 +142,14 @@ namespace ElfBug
             return false;
         }
 
-        mMainPid = pid;
-        mIsAttached = false;
+        mMainPid.store(pid, std::memory_order_release);
         return true;
     }
 
-    bool Debugger::Attach(const pid_t processId)
+    bool Debugger::Attach(pid_t)
     {
         // TODO: implement ptrace attach
-        (void)processId;
+        cbInternalError("Attach not implemented");
         return false;
     }
 
@@ -126,31 +180,33 @@ namespace ElfBug
 
     void Debugger::Pause()
     {
-        if(mMainPid > 0)
+        const pid_t pid = mMainPid.load(std::memory_order_acquire);
+        if(pid > 0)
         {
             mPauseRequested.store(true, std::memory_order_release);
-            kill(mMainPid, SIGSTOP);
+            kill(pid, SIGSTOP);
         }
     }
 
     bool Debugger::Stop()
     {
-        if(mMainPid <= 0)
+        const pid_t pid = mMainPid.load(std::memory_order_acquire);
+        if(pid <= 0)
             return false;
 
-        mIsRunning.store(false, std::memory_order_release);
         {
             std::lock_guard lock(mPauseMutex);
             mPaused.store(false, std::memory_order_release);
         }
         mPauseCv.notify_one();
 
-        return kill(mMainPid, SIGKILL) == 0;
+        return kill(pid, SIGKILL) == 0;
     }
 
     void Debugger::Detach()
     {
         // TODO: implement ptrace detach
+        cbInternalError("Detach not implemented");
     }
 
     void Debugger::cbCreateProcessEvent(const pid_t pid, const ptr entryPoint) { (void)pid; (void)entryPoint; }

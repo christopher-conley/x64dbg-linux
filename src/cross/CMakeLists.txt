@@ -28,6 +28,7 @@ endif()
 option(LIBPL_ENABLE_CLI "" OFF)
 option(LIBPL_ENABLE_TESTS "" OFF)
 option(LIBWOLV_ENABLE_TESTS "" OFF)
+option(ELFBUG_BUILD_TESTS "" OFF)
 
 project(cross
 	LANGUAGES
@@ -36,6 +37,10 @@ project(cross
 )
 
 include("widgets/Qt.cmake")
+
+if(ELFBUG_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    enable_testing()
+endif()
 
 # Packages
 find_package(Threads REQUIRED)
@@ -60,6 +65,18 @@ endif()
 add_subdirectory(vendor)
 set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND ELFBUG_BUILD_TESTS) # elfbug-tests
+	# Subdirectory: ElfBug/tests
+	set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+	if(CMAKE_FOLDER)
+		set(CMAKE_FOLDER "${CMAKE_FOLDER}/ElfBug/tests")
+	else()
+		set(CMAKE_FOLDER "ElfBug/tests")
+	endif()
+	add_subdirectory("ElfBug/tests")
+	set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
+
+endif()
 # Target: minidump
 set(minidump_SOURCES
 	cmake.toml
