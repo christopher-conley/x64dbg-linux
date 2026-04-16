@@ -568,7 +568,8 @@ bool SymbolFromAddressExactOrLower(duint address, SYMBOLINFO* info)
                 return it;
             // right now 'it' points to the first element bigger than rva
             return it == modInfo->exportsByRva.begin() ? modInfo->exportsByRva.end() : --it;
-        }();
+        }
+        ();
 
         if(it != modInfo->exportsByRva.end())
         {

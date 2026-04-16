@@ -385,7 +385,8 @@ void BreakpointsView::updateBreakpointsSlot()
                     default:
                         return QString();
                     }
-                }(BPHWSIZE(bp.hwSize));
+                }
+                (BPHWSIZE(bp.hwSize));
 
                 switch(bp.typeEx)
                 {
@@ -429,7 +430,8 @@ void BreakpointsView::updateBreakpointsSlot()
                     default:
                         return QString();
                     }
-                }(BPMEMTYPE(bp.typeEx));
+                }
+                (BPMEMTYPE(bp.typeEx));
                 next();
                 colored(op, mSummaryKeywordColor);
                 colored("(", mSummaryParenColor);
@@ -684,7 +686,8 @@ void BreakpointsView::resetHitCountBreakpointSlot()
             default:
                 return QString("invalid");
             }
-        }());
+        }
+        ());
     }
 }
 
@@ -709,7 +712,8 @@ void BreakpointsView::enableAllBreakpointsSlot()
         default:
             return "invalid";
         }
-    }());
+    }
+    ());
 }
 
 void BreakpointsView::disableAllBreakpointsSlot()
@@ -733,7 +737,8 @@ void BreakpointsView::disableAllBreakpointsSlot()
         default:
             return "invalid";
         }
-    }());
+    }
+    ());
 }
 
 void BreakpointsView::removeAllBreakpointsSlot()
@@ -757,7 +762,8 @@ void BreakpointsView::removeAllBreakpointsSlot()
         default:
             return "invalid";
         }
-    }());
+    }
+    ());
 }
 
 void BreakpointsView::addDllBreakpointSlot()

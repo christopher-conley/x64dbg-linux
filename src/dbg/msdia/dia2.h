@@ -2958,13 +2958,13 @@ public:
         /* [in] */ DWORD rva,
         /* [in] */ enum SymTagEnum symtag,
         /* [out] */ IDiaSymbol** ppSymbol,
-        /* [out] */ long * displacement) = 0;
+        /* [out] */ long* displacement) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE findSymbolByVAEx(
         /* [in] */ ULONGLONG va,
         /* [in] */ enum SymTagEnum symtag,
         /* [out] */ IDiaSymbol** ppSymbol,
-        /* [out] */ long * displacement) = 0;
+        /* [out] */ long* displacement) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE findFile(
         /* [in] */ IDiaSymbol * pCompiland,

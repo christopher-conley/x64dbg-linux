@@ -696,7 +696,8 @@ void pluginunloadall()
     {
         SHARED_ACQUIRE(LockPluginList);
         return gPluginList;
-    }();
+    }
+    ();
 
     // Unload all plugins.
     for(const auto & plugin : pluginListCopy)

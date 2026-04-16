@@ -657,7 +657,8 @@ static void ReadDebugDirectory(MODINFO & Info, ULONG_PTR FileMapVA)
             default:
                 return "unknown";
             }
-        }(entry->Type);
+        }
+        (entry->Type);
 
         /*dprintf("IMAGE_DEBUG_DIRECTORY:\nCharacteristics: %08X\nTimeDateStamp: %08X\nMajorVersion: %04X\nMinorVersion: %04X\nType: %s\nSizeOfData: %08X\nAddressOfRawData: %08X\nPointerToRawData: %08X\n",
                 debugDir->Characteristics, debugDir->TimeDateStamp, debugDir->MajorVersion, debugDir->MinorVersion, typeName, debugDir->SizeOfData, debugDir->AddressOfRawData, debugDir->PointerToRawData);*/

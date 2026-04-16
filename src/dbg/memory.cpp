@@ -30,7 +30,8 @@ static const SYSTEM_INFO systemInfo = []()
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     return si;
-}();
+}
+();
 
 static std::vector<MEMPAGE> QueryMemPages()
 {
