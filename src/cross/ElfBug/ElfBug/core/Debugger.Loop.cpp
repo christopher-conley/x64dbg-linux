@@ -8,6 +8,8 @@
 
 namespace ElfBug
 {
+    // Publishes mPaused=true under the mutex before the event callback fires,
+    // so a concurrent Continue()/Stop() can't race past and strand pauseAndResume().
     void Debugger::beginPause()
     {
         std::lock_guard lock(mPauseMutex);

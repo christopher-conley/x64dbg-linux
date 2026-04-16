@@ -64,8 +64,8 @@ namespace ElfBug
         void createThreadEvent(pid_t tid);
         void exitThreadEvent(pid_t tid);
 
+        // Tracer-thread only; caller threads must not write.
         std::atomic<bool> mIsRunning{false};
-        bool mIsAttached = false;
         bool mSystemBreakpointHit = false;
         std::atomic<bool> mPaused{false};
         std::atomic<bool> mStepPending{false};

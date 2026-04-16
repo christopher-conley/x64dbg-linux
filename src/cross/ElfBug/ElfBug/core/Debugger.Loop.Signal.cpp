@@ -120,6 +120,7 @@ namespace ElfBug
 
         case PTRACE_EVENT_EXIT:
         {
+            // Notification only; exit is emitted via WIFEXITED/WIFSIGNALED in debugLoop.
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;

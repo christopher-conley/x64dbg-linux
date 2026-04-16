@@ -40,7 +40,6 @@ namespace ElfBug
                 mArgv.emplace_back(*p);
         }
         mHasLaunchArgs = true;
-        mIsAttached = false;
         return true;
     }
 
@@ -174,8 +173,6 @@ namespace ElfBug
         if(mMainPid <= 0)
             return false;
 
-        //this SHOULD Be enabled, TODO: invesitgate this
-       // mIsRunning.store(false, std::memory_order_release);
         {
             std::lock_guard lock(mPauseMutex);
             mPaused.store(false, std::memory_order_release);
