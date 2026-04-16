@@ -13,7 +13,7 @@ static void* worker(void*)
 int main()
 {
     std::vector<pthread_t> threads(5);
-    for(auto& t : threads) pthread_create(&t, nullptr, worker, nullptr);
-    for(const auto& t : threads) pthread_join(t, nullptr);
+    for(auto & t : threads) pthread_create(&t, nullptr, worker, nullptr);
+    for(const auto & t : threads) pthread_join(t, nullptr);
     return gRanCount.load(std::memory_order_relaxed);
 }

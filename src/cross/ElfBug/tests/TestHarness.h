@@ -168,13 +168,15 @@ namespace ElfBug::test
         void cbBreakpoint(const BreakpointInfo & info) override
         {
             push({EventType::Breakpoint, {}, mThread ? mThread->tid : 0, 0, info.address, 0, {},
-                  mThread ? mThread->registers.Gip() : 0});
+                  mThread ? mThread->registers.Gip() : 0
+                 });
         }
 
         void cbStep() override
         {
             push({EventType::Step, {}, mThread ? mThread->tid : 0, 0, 0, 0, {},
-                  mThread ? mThread->registers.Gip() : 0});
+                  mThread ? mThread->registers.Gip() : 0
+                 });
         }
 
         void cbPaused() override
