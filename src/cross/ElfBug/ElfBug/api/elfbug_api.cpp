@@ -138,9 +138,12 @@ struct ElfBugDebugger : ElfBug::Debugger
             return ElfBugArch_Unknown;
         switch(mProcess->arch)
         {
-        case ElfBug::Arch::X86_64: return ElfBugArch_X86_64;
-        case ElfBug::Arch::I386:   return ElfBugArch_I386;
-        default:                    return ElfBugArch_Unknown;
+        case ElfBug::Arch::X86_64:
+            return ElfBugArch_X86_64;
+        case ElfBug::Arch::I386:
+            return ElfBugArch_I386;
+        default:
+            return ElfBugArch_Unknown;
         }
     }
 
