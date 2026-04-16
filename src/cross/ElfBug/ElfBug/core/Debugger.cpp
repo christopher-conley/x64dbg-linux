@@ -201,6 +201,7 @@ namespace ElfBug
     void Debugger::Detach()
     {
         // TODO: implement ptrace detach
+        cbInternalError("Detach not implemented");
     }
 
     void Debugger::cbCreateProcessEvent(const pid_t pid, const ptr entryPoint) { (void)pid; (void)entryPoint; }

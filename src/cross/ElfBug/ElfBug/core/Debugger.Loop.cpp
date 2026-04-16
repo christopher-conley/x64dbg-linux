@@ -83,7 +83,8 @@ namespace ElfBug
                   PTRACE_O_TRACESYSGOOD |
                   PTRACE_O_TRACECLONE |
                   PTRACE_O_TRACEEXEC |
-                  PTRACE_O_TRACEEXIT) == -1)
+                  PTRACE_O_TRACEEXIT |
+                  PTRACE_O_EXITKILL) == -1)
         {
             cbInternalError("PTRACE_SETOPTIONS failed: " + std::string(strerror(errno)));
             mIsRunning.store(false, std::memory_order_release);

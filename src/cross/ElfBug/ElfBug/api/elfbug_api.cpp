@@ -53,7 +53,11 @@ struct ElfBugDebugger : ElfBug::Debugger
         snprintf(path, sizeof(path), "/proc/%d/maps", mProcess->pid);
         FILE* f = fopen(path, "r");
         if(!f)
+        {
+            std::lock_guard lock(mapMutex);
+            memoryMap.clear();
             return;
+        }
 
         char line[512];
         while(fgets(line, sizeof(line), f))

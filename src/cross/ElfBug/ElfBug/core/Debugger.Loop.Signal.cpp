@@ -74,7 +74,9 @@ namespace ElfBug
             else
             {
                 cbExceptionEvent(sig, faultAddr);
-                ptrace(PTRACE_CONT, pid, nullptr, reinterpret_cast<void*>(static_cast<uintptr_t>(sig)));
+                if(ptrace(PTRACE_CONT, pid, nullptr,
+                          reinterpret_cast<void*>(static_cast<uintptr_t>(sig))) == -1)
+                    cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             }
             break;
         }
@@ -89,19 +91,6 @@ namespace ElfBug
         {
         case PTRACE_EVENT_EXEC:
         {
-            if(!mSystemBreakpointHit)
-            {
-                mSystemBreakpointHit = true;
-                if(mThread)
-                {
-                    mThread->registers.Read();
-                    beginPause();
-                    cbSystemBreakpoint();
-                    if(!pauseAndResume(pid))
-                        break;
-                }
-                break;
-            }
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
