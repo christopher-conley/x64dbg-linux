@@ -24,10 +24,15 @@ namespace ElfBug
 
     bool Debugger::Init(const char* szFilePath, const char* const* argv, const char* szCurrentDirectory)
     {
+        mHasLaunchArgs = false;
+        mFilePath.clear();
+        mArgv.clear();
+        mCwd.clear();
+
         if(!szFilePath)
             return false;
 
-        if(access(szFilePath, X_OK) != 0)
+        if(!szCurrentDirectory && access(szFilePath, X_OK) != 0)
         {
             cbInternalError("cannot execute '" + std::string(szFilePath) + "': " + std::string(strerror(errno)));
             return false;
@@ -35,7 +40,6 @@ namespace ElfBug
 
         mFilePath = szFilePath;
         mCwd = szCurrentDirectory ? szCurrentDirectory : "";
-        mArgv.clear();
         if(argv)
         {
             for(const char* const* p = argv; *p != nullptr; ++p)
