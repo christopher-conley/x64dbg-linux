@@ -34,6 +34,7 @@ namespace ElfBug
         if(mStepPending.load(std::memory_order_acquire) && mThread)
         {
             mStepPending.store(false, std::memory_order_release);
+            // TODO: mPendingSignal is dropped here, decide the policy
             mThread->StepInto();
         }
         else

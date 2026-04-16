@@ -165,9 +165,9 @@ protected:
     void cbCreateProcessEvent(const pid_t pid, const ElfBug::ptr ep) override
     {
         activePid.store(pid, std::memory_order_release);
-        active.store(true, std::memory_order_release);
         entryPoint = ep;
         refreshMemoryMap();
+        active.store(true, std::memory_order_release);
         if(cb.onCreateProcess)
             cb.onCreateProcess(pid, ep, cb.userdata);
     }

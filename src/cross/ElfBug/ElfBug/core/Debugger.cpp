@@ -4,6 +4,7 @@
 #include <sys/personality.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 #include <csignal>
 #include <cstring>
 
@@ -114,8 +115,20 @@ namespace ElfBug
         close(pipeFds[1]);
 
         char errBuf[256] = {};
-        const ssize_t n = read(pipeFds[0], errBuf, sizeof(errBuf) - 1);
+        ssize_t n;
+        do
+        {
+            n = read(pipeFds[0], errBuf, sizeof(errBuf) - 1);
+        } while(n == -1 && errno == EINTR);
         close(pipeFds[0]);
+
+        if(n == -1)
+        {
+            const std::string err = strerror(errno);
+            waitpid(pid, nullptr, 0);
+            cbInternalError("read() from child pipe failed: " + err);
+            return false;
+        }
 
         if(n > 0)
         {
