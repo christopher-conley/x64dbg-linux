@@ -1048,10 +1048,10 @@
      <normaloff>:/Default/icons/byte.png</normaloff>:/Default/icons/byte.png</iconset>
    </property>
    <property name="text">
-    <string>Count hits (up to 255)</string>
+    <string>Count hits (up to 63)</string>
    </property>
    <property name="statusTip">
-    <string>Enable trace coverage with 1 byte to record how many times an instruction has been executed.</string>
+    <string>Enable trace coverage with 1 byte per byte of code to record how many times an instruction has been executed, enable hit count up to 63 and accurate run trace assisted disassembly.</string>
    </property>
   </action>
   <action name="actionTRWord">
@@ -1060,10 +1060,15 @@
      <normaloff>:/Default/icons/word.png</normaloff>:/Default/icons/word.png</iconset>
    </property>
    <property name="text">
-    <string>Count hits (up to 65535)</string>
+    <string>Count hits (up to 16383)</string>
    </property>
    <property name="statusTip">
-    <string>Enable trace coverage with 1 word to record how many times an instruction has been executed.</string>
+    <string>Enable trace coverage with 2 bytes per byte of code to record how many times an instruction has been executed, enable hit count up to 16383 and accurate run trace assisted disassembly.</string>
+   </property>
+  </action>
+  <action name="actionTRReset">
+   <property name="text">
+    <string>Reset trace coverage</string>
    </property>
   </action>
   <action name="actionTRTIBT">
