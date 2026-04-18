@@ -580,7 +580,7 @@ namespace Exprfunc
         auto expr = argExpr(index);
         duint oldvalue = 0;
         valfromstring(expr.c_str(), &oldvalue);
-        valtostring(expr.c_str(), value, true);
+        valtostringfromvalue(expr.c_str(), value, true);
         return oldvalue;
     }
 

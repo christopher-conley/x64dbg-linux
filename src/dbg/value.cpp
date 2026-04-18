@@ -1898,6 +1898,58 @@ static bool startsWith(const char* pre, const char* str)
 #define x8780BITFPU_PRE_FIELD_STRING_ST "st"
 #define STRLEN_USING_SIZEOF(string) (sizeof(string) - 1)
 
+static size_t getfpubuffersize(const char* string)
+{
+    if(startsWith(x8780BITFPU_PRE_FIELD_STRING, string))
+    {
+        const auto reg = string + STRLEN_USING_SIZEOF(x8780BITFPU_PRE_FIELD_STRING);
+        if(*reg >= '0' && *reg <= '7')
+            return 10;
+    }
+    else if(startsWith(x8780BITFPU_PRE_FIELD_STRING_ST, string))
+    {
+        const auto reg = string + STRLEN_USING_SIZEOF(x8780BITFPU_PRE_FIELD_STRING_ST);
+        if(*reg >= '0' && *reg <= '7')
+            return 10;
+    }
+    else if(startsWith(MMX_PRE_FIELD_STRING, string))
+    {
+        const auto reg = string + STRLEN_USING_SIZEOF(MMX_PRE_FIELD_STRING);
+        if(*reg >= '0' && *reg <= '7')
+            return sizeof(ULONGLONG);
+    }
+    else if(startsWith(XMM_PRE_FIELD_STRING, string))
+    {
+        const auto reg = string + STRLEN_USING_SIZEOF(XMM_PRE_FIELD_STRING);
+        if(*reg >= '0' && *reg <= '9' && atoi(reg) < ArchValue(8, 16))
+            return sizeof(XmmRegister_t);
+    }
+    else if(startsWith(YMM_PRE_FIELD_STRING, string))
+    {
+        const auto reg = string + STRLEN_USING_SIZEOF(YMM_PRE_FIELD_STRING);
+        if(*reg >= '0' && *reg <= '9' && atoi(reg) < ArchValue(8, 16))
+            return sizeof(YmmRegister_t);
+    }
+    else if(startsWith(ZMM_PRE_FIELD_STRING, string))
+    {
+        const auto reg = string + STRLEN_USING_SIZEOF(ZMM_PRE_FIELD_STRING);
+        if(*reg >= '0' && *reg <= '9' && atoi(reg) < ArchValue(8, 32))
+            return sizeof(ZmmRegister_t);
+    }
+    else if(startsWith("K", string))
+    {
+        if(string[1] >= '0' && string[1] <= '7')
+            return sizeof(ULONGLONG);
+    }
+    return 0;
+}
+
+static void scalarToRegisterBuffer(void* buffer, size_t bufferSize, duint value)
+{
+    memset(buffer, 0, bufferSize);
+    memcpy(buffer, &value, bufferSize < sizeof(value) ? bufferSize : sizeof(value));
+}
+
 /**
 \brief Sets an FPU value (MXCSR fields, MMX fields, etc.) by name.
 \param string The name of the FPU value to set.
@@ -2285,6 +2337,7 @@ static void setfpuvalue(const char* string, duint value)
             }
             else
             {
+                // Whole FPU/SIMD register writes pass raw bytes by pointer.
                 context.Opmask[registerindex] = *(ULONGLONG*)value;
                 SetAVX512Context(hActiveThread, &context);
             }
@@ -2303,11 +2356,68 @@ static void setfpuvalue(const char* string, duint value)
             }
             else
             {
+                // Whole FPU/SIMD register writes pass raw bytes by pointer.
                 context.ZmmRegisters[registerindex] = *(ZmmRegister_t*)value;
                 SetAVX512Context(hActiveThread, &context);
             }
         }
     }
+}
+
+/**
+\brief Sets a value by name using scalar semantics.
+\param string The name of the thing to set.
+\param value The scalar value to set.
+\param silent true to not have output to the console.
+\return true if the value was set successfully, false otherwise.
+*/
+bool valtostringfromvalue(const char* string, duint value, bool silent)
+{
+    // Whole SIMD/x87/opmask register writes use raw buffers internally.
+    // Scalar command/expression assignments need a temporary buffer so they
+    // don't pass plain integers as pointers into setfpuvalue()/SetContextDataEx().
+    if(string && *string == '_')
+    {
+        const auto bufferSize = getfpubuffersize(string + 1);
+        switch(bufferSize)
+        {
+        case sizeof(ULONGLONG):
+        {
+            ULONGLONG raw = 0;
+            scalarToRegisterBuffer(&raw, sizeof(raw), value);
+            return valtostring(string, (duint)&raw, silent);
+        }
+
+        case 10:
+        {
+            unsigned char raw[10] = {};
+            scalarToRegisterBuffer(raw, sizeof(raw), value);
+            return valtostring(string, (duint)raw, silent);
+        }
+
+        case sizeof(XmmRegister_t):
+        {
+            XmmRegister_t raw = {};
+            scalarToRegisterBuffer(&raw, sizeof(raw), value);
+            return valtostring(string, (duint)&raw, silent);
+        }
+
+        case sizeof(YmmRegister_t):
+        {
+            YmmRegister_t raw = {};
+            scalarToRegisterBuffer(&raw, sizeof(raw), value);
+            return valtostring(string, (duint)&raw, silent);
+        }
+
+        case sizeof(ZmmRegister_t):
+        {
+            ZmmRegister_t raw = {};
+            scalarToRegisterBuffer(&raw, sizeof(raw), value);
+            return valtostring(string, (duint)&raw, silent);
+        }
+        }
+    }
+    return valtostring(string, value, silent);
 }
 
 /**

@@ -14,6 +14,7 @@ bool valfromstring_noexpr(const char* string, duint* value, bool silent = true, 
 bool valfromstring(const char* string, duint* value, bool silent = true, bool baseonly = false, int* value_size = nullptr, bool* isvar = nullptr, bool* hexonly = nullptr, bool allowassign = false);
 bool valflagfromstring(duint eflags, const char* string);
 bool valtostring(const char* string, duint value, bool silent);
+bool valtostringfromvalue(const char* string, duint value, bool silent);
 bool valmxcsrflagfromstring(duint mxcsrflags, const char* string);
 bool valx87statuswordflagfromstring(duint statusword, const char* string);
 bool valx87controlwordflagfromstring(duint controlword, const char* string);
