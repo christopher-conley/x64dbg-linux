@@ -19,6 +19,7 @@ class CPURegistersView : public RegistersView
     Q_OBJECT
 public:
     CPURegistersView(CPUWidget* parent = nullptr);
+    void setRegisterData(REGISTER_NAME reg, const void* data, size_t size);
 
 public slots:
     void setRegister(REGISTER_NAME reg, duint value);
@@ -51,6 +52,7 @@ protected slots:
     void disasmSelectionChangedSlot(duint va);
 
 private:
+    QString registerNameForSet(REGISTER_NAME reg) const;
     void CreateDumpNMenu(QMenu* dumpMenu);
     void displayEditDialog();
     void setupContextMenu();

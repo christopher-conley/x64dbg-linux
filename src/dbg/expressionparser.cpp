@@ -721,10 +721,10 @@ static bool handleAssignment(const char* variable, duint resultv, bool silent, b
     valfromstring_noexpr(variable, &temp, true, true, nullptr, &destIsVar, nullptr); //there is no return check on this because the destination might not exist yet
     if(!destIsVar)
         destIsVar = vargettype(variable, nullptr);
-    if(!destIsVar || !valtostring(variable, resultv, true))
+    if(!destIsVar || !valsetscalar(variable, resultv, true))
     {
         duint value;
-        if(valfromstring(variable, &value)) //if the var is a value already it's an invalid destination
+        if(valrequiresbuffer(variable) || valfromstring(variable, &value)) //if the var is a value already it's an invalid destination
         {
             if(!silent)
                 dprintf(QT_TRANSLATE_NOOP("DBG", "invalid dest \"%s\"\n"), variable);

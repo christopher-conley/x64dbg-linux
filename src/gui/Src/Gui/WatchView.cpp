@@ -238,7 +238,7 @@ void WatchView::modifyWatchSlot()
     modifyDialog.setup(tr("Modify \"%1\"").arg(QString(WatchList[sel].WatchName)), WatchList[sel].value, sizeof(duint));
     if(modifyDialog.exec() == QDialog::Accepted)
     {
-        if(!DbgValToString(WatchList[sel].Expression, modifyDialog.getVal()))
+        if(!DbgValSetScalar(WatchList[sel].Expression, modifyDialog.getVal()))
             SimpleErrorBox(this, tr("Cannot modify \"%1\"").arg(QString(WatchList[sel].WatchName)), tr("It might not possible to assign a value to \"%1\".").arg(QString(WatchList[sel].Expression)));
     }
     updateWatch();

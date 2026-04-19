@@ -23,10 +23,10 @@ static bool ReadWriteVariable(const char* varname, const std::function<bool(duin
     valfromstring(varname, &temp, true, true, 0, nullptr, 0); //there is no return check on this because the destination might not exist yet
     if(!isvar)
         isvar = vargettype(varname, 0);
-    if(!isvar || !valtostring(varname, set_value, true))
+    if(!isvar || !valsetscalar(varname, set_value, true))
     {
         duint value;
-        if(valfromstring(varname, &value)) //if the var is a value already it's an invalid destination
+        if(valrequiresbuffer(varname) || valfromstring(varname, &value)) //if the var is a value already it's an invalid destination
         {
             dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid variable \"%s\"\n"), varname);
             return false;
@@ -262,7 +262,7 @@ bool cbInstrPop(int argc, char* argv[])
     GuiUpdateRegisterView();
     if(argc > 1)
     {
-        if(!valtostring(argv[1], value, false))
+        if(!valsetscalar(argv[1], value, false))
             return false;
     }
     return true;
@@ -294,10 +294,10 @@ bool cbInstrPopcnt(int argc, char* argv[])
         valfromstring(argv[1], &temp, true, true, 0, &isvar, 0); //there is no return check on this because the destination might not exist yet
         if(!isvar)
             isvar = vargettype(argv[1], 0);
-        if(!isvar || !valtostring(argv[1], arg, true))
+        if(!isvar || !valsetscalar(argv[1], arg, true))
         {
             duint value;
-            if(valfromstring(argv[1], &value))  //if the var is a value already it's an invalid destination
+            if(valrequiresbuffer(argv[1]) || valfromstring(argv[1], &value))  //if the var is a value already it's an invalid destination
             {
                 dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid dest \"%s\"\n"), argv[1]);
                 return false;
@@ -337,10 +337,10 @@ bool cbInstrLzcnt(int argc, char* argv[])
         valfromstring(argv[1], &temp, true, true, 0, &isvar, 0); //there is no return check on this because the destination might not exist yet
         if(!isvar)
             isvar = vargettype(argv[1], 0);
-        if(!isvar || !valtostring(argv[1], arg, true))
+        if(!isvar || !valsetscalar(argv[1], arg, true))
         {
             duint value;
-            if(valfromstring(argv[1], &value))  //if the var is a value already it's an invalid destination
+            if(valrequiresbuffer(argv[1]) || valfromstring(argv[1], &value))  //if the var is a value already it's an invalid destination
             {
                 dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid dest \"%s\"\n"), argv[1]);
                 return false;
@@ -456,10 +456,10 @@ bool cbInstrMov(int argc, char* argv[])
         valfromstring(argv[1], &temp, true, true, 0, &isvar, 0); //there is no return check on this because the destination might not exist yet
         if(!isvar)
             isvar = vargettype(argv[1], 0);
-        if(!isvar || !valtostring(argv[1], set_value, true))
+        if(!isvar || !valsetscalar(argv[1], set_value, true))
         {
             duint value;
-            if(valfromstring(argv[1], &value)) //if the var is a value already it's an invalid destination
+            if(valrequiresbuffer(argv[1]) || valfromstring(argv[1], &value)) //if the var is a value already it's an invalid destination
             {
                 dprintf(QT_TRANSLATE_NOOP("DBG", "Invalid dest \"%s\"\n"), argv[1]);
                 return false;
@@ -894,7 +894,7 @@ bool cbInstrKmovq(int argc, char* argv[])
             return false;
         }
 #ifdef _WIN64
-        if(!valtostring(dstText.c_str(), context.Opmask[registerindex], false))
+        if(!valsetscalar(dstText.c_str(), context.Opmask[registerindex], false))
         {
             goto InvalidDest;
         }
@@ -1014,7 +1014,7 @@ bool cbInstrKmovd(int argc, char* argv[])
             dputs(QT_TRANSLATE_NOOP("DBG", "Failed to read register context..."));
             return false;
         }
-        if(!valtostring(dstText.c_str(), DWORD(context.Opmask[registerindex]), false))
+        if(!valsetscalar(dstText.c_str(), DWORD(context.Opmask[registerindex]), false))
         {
             dprintf(QT_TRANSLATE_NOOP("DBG", "Failed to write to %s\n"), dstText.c_str());
             return false;

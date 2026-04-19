@@ -1057,7 +1057,7 @@ void CPUDisassembly::gotoPreviousReferenceSlot()
     if(count)
     {
         if(index > 0 && addr == rvaToVa(getInitialSelection()))
-            DbgValToString("$__disasm_refindex", index - 1);
+            DbgValSetScalar("$__disasm_refindex", index - 1);
         gotoAddress(DbgValFromString("refsearch.addr($__disasm_refindex)"));
         GuiReferenceSetSingleSelection(int(DbgEval("$__disasm_refindex")), false);
     }
@@ -1069,7 +1069,7 @@ void CPUDisassembly::gotoNextReferenceSlot()
     if(count)
     {
         if(index + 1 < count && addr == rvaToVa(getInitialSelection()))
-            DbgValToString("$__disasm_refindex", index + 1);
+            DbgValSetScalar("$__disasm_refindex", index + 1);
         gotoAddress(DbgValFromString("refsearch.addr($__disasm_refindex)"));
         GuiReferenceSetSingleSelection(int(DbgEval("$__disasm_refindex")), false);
     }

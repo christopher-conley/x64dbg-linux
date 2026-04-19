@@ -95,7 +95,8 @@ This section contains information about debug functions of x64dbg.
    DbgSymbolEnum
    DbgSymbolEnumFromCache
    DbgValFromString
-   DbgValToString
+   DbgValSetBuffer
+   DbgValSetScalar
    DbgWinEvent
    DbgWinEventGlobal
    DbgXrefAdd

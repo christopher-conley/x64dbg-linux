@@ -1155,7 +1155,9 @@ BRIDGE_IMPEXP bool DbgGetModuleAt(duint addr, char* text);
 BRIDGE_IMPEXP BPXTYPE DbgGetBpxTypeAt(duint addr);
 BRIDGE_IMPEXP duint DbgValFromString(const char* string);
 BRIDGE_IMPEXP bool DbgGetRegDumpEx(REGDUMP_AVX512* regdump, size_t size);
-BRIDGE_IMPEXP bool DbgValToString(const char* string, duint value);
+BRIDGE_IMPEXP bool DbgValSetBuffer(const char* string, const void* data, size_t size);
+// Previously called DbgValToString.
+BRIDGE_IMPEXP bool DbgValSetScalar(const char* string, duint value);
 BRIDGE_IMPEXP bool DbgMemIsValidReadPtr(duint addr);
 BRIDGE_IMPEXP int DbgGetBpList(BPXTYPE type, BPMAP* list);
 BRIDGE_IMPEXP FUNCTYPE DbgGetFunctionTypeAt(duint addr);
