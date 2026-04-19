@@ -264,6 +264,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 		"ElfBug/ElfBug/process/Memory.cpp"
 		"ElfBug/ElfBug/process/Process.cpp"
 		"ElfBug/ElfBug/process/Process.h"
+		"ElfBug/ElfBug/process/ProcessArch.cpp"
+		"ElfBug/ElfBug/process/ProcessArch.h"
 		"ElfBug/ElfBug/thread/HardwareBreakpoint.cpp"
 		"ElfBug/ElfBug/thread/Registers.cpp"
 		"ElfBug/ElfBug/thread/Registers.h"

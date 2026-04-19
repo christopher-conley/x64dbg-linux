@@ -131,6 +131,22 @@ struct ElfBugDebugger : ElfBug::Debugger
         return mProcess->MemRead(static_cast<ElfBug::ptr>(addr), dest, static_cast<ElfBug::ptr>(size));
     }
 
+    ElfBugArch getArch() const
+    {
+        std::shared_lock lock(mProcessMutex);
+        if(!mProcess)
+            return ElfBugArch_Unknown;
+        switch(mProcess->arch)
+        {
+        case ElfBug::Arch::X86_64:
+            return ElfBugArch_X86_64;
+        case ElfBug::Arch::I386:
+            return ElfBugArch_I386;
+        default:
+            return ElfBugArch_Unknown;
+        }
+    }
+
     bool readRegisters(ElfBugRegisters* out) const
     {
         std::shared_lock lock(mProcessMutex);
@@ -322,6 +338,13 @@ extern "C" {
         if(!dbg)
             return 0;
         return dbg->activePid.load(std::memory_order_acquire);
+    }
+
+    ElfBugArch ElfBugGetArch(const ElfBugDebugger* dbg)
+    {
+        if(!dbg)
+            return ElfBugArch_Unknown;
+        return dbg->getArch();
     }
 
     bool ElfBugMemRead(const ElfBugDebugger* dbg, const uint64_t addr, void* dest, const uint64_t size)

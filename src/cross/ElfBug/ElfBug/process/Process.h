@@ -14,6 +14,7 @@ namespace ElfBug
     {
     public:
         pid_t pid;
+        Arch arch = Arch::Unknown;
         std::unordered_map<pid_t, std::unique_ptr<Thread>> threads;
 
         BreakpointMap breakpoints;

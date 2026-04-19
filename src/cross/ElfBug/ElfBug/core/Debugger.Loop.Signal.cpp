@@ -11,13 +11,16 @@ namespace ElfBug
     {
         const int sig = WSTOPSIG(status);
         mPendingSignal = 0;
-        mThread = nullptr;
 
-        if(mProcess)
         {
-            const auto it = mProcess->threads.find(pid);
-            if(it != mProcess->threads.end())
-                mThread = it->second.get();
+            std::unique_lock lock(mProcessMutex);
+            mThread = nullptr;
+            if(mProcess)
+            {
+                const auto it = mProcess->threads.find(pid);
+                if(it != mProcess->threads.end())
+                    mThread = it->second.get();
+            }
         }
 
         switch(sig)
@@ -174,6 +177,7 @@ namespace ElfBug
                         if(!mThread->StepInto())
                         {
                             cbInternalError("PTRACE_SINGLESTEP failed: " + std::string(strerror(errno)));
+                            mProcess->SetBreakpoint(bpAddr, false);
                             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
                             break;
@@ -188,6 +192,7 @@ namespace ElfBug
                         if(waited == -1)
                         {
                             cbInternalError("waitpid(step) failed: " + std::string(strerror(errno)));
+                            mProcess->SetBreakpoint(bpAddr, false);
                             break;
                         }
                         mThread->clearSingleStep();
