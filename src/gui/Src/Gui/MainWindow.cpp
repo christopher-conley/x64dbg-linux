@@ -301,6 +301,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(ui->actionTRBit, SIGNAL(triggered()), mCpuWidget->getDisasmWidget(), SLOT(traceCoverageBitSlot()));
     connect(ui->actionTRByte, SIGNAL(triggered()), mCpuWidget->getDisasmWidget(), SLOT(traceCoverageByteSlot()));
     connect(ui->actionTRWord, SIGNAL(triggered()), mCpuWidget->getDisasmWidget(), SLOT(traceCoverageWordSlot()));
+    connect(ui->actionTRReset, SIGNAL(triggered()), mCpuWidget->getDisasmWidget(), SLOT(traceCoverageResetSlot()));
     connect(ui->actionTRNone, SIGNAL(triggered()), mCpuWidget->getDisasmWidget(), SLOT(traceCoverageDisableSlot()));
     makeCommandAction(ui->actionTRTIBT, "tibt");
     makeCommandAction(ui->actionTRTOBT, "tobt");

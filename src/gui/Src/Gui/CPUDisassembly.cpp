@@ -395,9 +395,9 @@ void CPUDisassembly::setupRightClickContextMenu()
     mCommonActions->build(mMenuBuilder, CommonActions::ActionComment | CommonActions::ActionBookmark);
 
     QAction* traceCoverageDisable = makeAction(DIcon("close-all-tabs"), tr("Disable"), SLOT(traceCoverageDisableSlot()));
-    QAction* traceCoverageEnableBit = makeAction(DIcon("bit"), tr("Bit"), SLOT(traceCoverageBitSlot()));
-    QAction* traceCoverageEnableByte = makeAction(DIcon("byte"), tr("Byte"), SLOT(traceCoverageByteSlot()));
-    QAction* traceCoverageEnableWord = makeAction(DIcon("word"), tr("Word"), SLOT(traceCoverageWordSlot()));
+    QAction* traceCoverageEnableBit = makeDescAction(DIcon("bit"), tr("Mark covered (yes/no)"), tr("Enable trace coverage with 1 bit (whether an instruction was executed or not)"), SLOT(traceCoverageBitSlot()));
+    QAction* traceCoverageEnableByte = makeDescAction(DIcon("byte"), tr("Count hits (up to 63)"), tr("Enable trace coverage with 1 byte per byte of code to record how many times an instruction has been executed, enable hit count up to 63 and accurate run trace assisted disassembly."), SLOT(traceCoverageByteSlot()));
+    QAction* traceCoverageEnableWord = makeDescAction(DIcon("word"), tr("Count hits (up to 16383)"), tr("Enable trace coverage with 2 bytes per byte of code to record how many times an instruction has been executed, enable hit count up to 16383 and accurate run trace assisted disassembly."), SLOT(traceCoverageWordSlot()));
     QAction* traceCoverageReset = makeAction(tr("Reset trace coverage"), SLOT(traceCoverageResetSlot()));
     QAction* traceCoverageToggleTraceRecording = makeShortcutAction(DIcon("control-record"), tr("Start trace recording"), SLOT(traceCoverageToggleTraceRecordingSlot()), "ActionToggleRunTrace");
     mMenuBuilder->addMenu(makeMenu(DIcon("trace"), tr("Trace coverage")), [ = ](QMenu * menu)
