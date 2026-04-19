@@ -234,7 +234,8 @@ BRIDGE_IMPEXP const wchar_t* BridgeInit(BRIDGE_CONFIG* config)
     LOADEXPORT(_dbg_encodetypeset);
     LOADEXPORT(_dbg_bpgettypeat);
     LOADEXPORT(_dbg_getregdump);
-    LOADEXPORT(_dbg_valtostring);
+    LOADEXPORT(_dbg_valsetbuffer);
+    LOADEXPORT(_dbg_valsetscalar);
     LOADEXPORT(_dbg_memisvalidreadptr);
     LOADEXPORT(_dbg_getbplist);
     LOADEXPORT(_dbg_dbgcmddirectexec);
@@ -985,9 +986,19 @@ BRIDGE_IMPEXP bool DbgGetRegDumpEx(REGDUMP_AVX512* regdump, size_t size)
 }
 
 // FIXME all
+BRIDGE_IMPEXP bool DbgValSetBuffer(const char* string, const void* data, size_t size)
+{
+    return _dbg_valsetbuffer(string, data, size);
+}
+
+BRIDGE_IMPEXP bool DbgValSetScalar(const char* string, duint value)
+{
+    return _dbg_valsetscalar(string, value);
+}
+
 BRIDGE_IMPEXP bool DbgValToString(const char* string, duint value)
 {
-    return _dbg_valtostring(string, value);
+    return DbgValSetScalar(string, value);
 }
 
 BRIDGE_IMPEXP bool DbgMemIsValidReadPtr(duint addr)

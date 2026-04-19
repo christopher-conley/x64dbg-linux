@@ -921,7 +921,7 @@ void CPUStack::realignSlot()
 #else //x86
     mCsp &= ~0x3;
 #endif //_WIN64
-    DbgValToString("csp", mCsp);
+    DbgValSetScalar("csp", mCsp);
     GuiUpdateAllViews();
 }
 

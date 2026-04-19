@@ -2,9 +2,10 @@
 
 Regression test for x64dbg issue #3803.
 
-This test covers two things:
+This test now covers the cleaned-up setter split:
 
-- `_K0=5` no longer crashes the debugger when the assignment goes through the scalar expression path.
-- `_ZMM0=5` still writes whole-register data correctly by materializing a temporary buffer and then verifying the low dwords through `vmovdqu`.
+- scalar assignment APIs reject raw whole-register destinations such as `_K0` and `_ZMM0` instead of treating integers as pointers;
+- raw whole-register writes still work through `DbgValSetBuffer` with exact-size buffers;
+- expression/command paths like `_K0=5`, `_ZMM0=5`, `mov _K0, 5`, and `mov _ZMM0, 5` fail cleanly instead of creating variables or crashing.
 
-The ZMM verification works on both x64 and x86 test runs, including hosts without AVX-512, because TitanEngine falls back to AVX state for `GetAVX512Context`/`SetAVX512Context`.
+The assertions are implemented in `plugin.cpp`, which exercises both the command layer and the new bridge setter APIs on x64 and x86. The ZMM verification checks the low lane through `vmovdqu`, which keeps the test reliable on hosts without AVX-512 hardware where only the AVX subset is preserved.

@@ -165,17 +165,35 @@ void TraceRegisters::onSetCurrentRegister()
     // map x87st0 to x87r0
     REGISTER_NAME reg = mSelected;
     QString regName;
-    duint value;
     if(reg >= x87st0 && reg <= x87st7)
         regName = QString().sprintf("st%d", reg - x87st0);
     else
         // map "cax" to "eax" or "rax"
         regName = mRegisterMapping.constFind(reg).value();
+    if(reg >= XMM0 && reg <= ArchValue(XMM7, XMM31))
+    {
+        switch(mXMMMode)
+        {
+        case 1:
+            regName[0] = 'Y';
+            break;
+        case 2:
+            regName[0] = 'Z';
+            break;
+        }
+    }
 
     // flags and MFPU need to '_' infront
     if(mFlags.contains(reg) || mFPU.contains(reg))
         regName = "_" + regName;
 
+    if(mFPUXMM.contains(reg) || mFPUMMX.contains(reg) || mFPUOpmask.contains(reg) || mFPUx87_80BITSDISPLAY.contains(reg))
+    {
+        DbgValSetBuffer(regName.toUtf8().constData(), registerValue(&mRegDumpStruct, mSelected), GetSizeRegister(mSelected));
+        return;
+    }
+
+    duint value;
     if(mUINTDISPLAY.contains(reg))
         value = *((const duint*)registerValue(&mRegDumpStruct, mSelected));
     else if(mBOOLDISPLAY.contains(reg))
@@ -184,12 +202,10 @@ void TraceRegisters::onSetCurrentRegister()
         value = (duint)(*(const unsigned short*)registerValue(&mRegDumpStruct, mSelected));
     else if(mDWORDDISPLAY.contains(reg))
         value = (duint)(*(const DWORD*)registerValue(&mRegDumpStruct, mSelected));
-    else if(mFPUXMM.contains(reg) || mFPUMMX.contains(reg) || mFPUOpmask.contains(mSelected) || mFPUx87_80BITSDISPLAY.contains(reg))
-        value = (duint)((const char*)registerValue(&mRegDumpStruct, mSelected));
     else
         value = *((const duint*)registerValue(&mRegDumpStruct, mSelected));
 
-    DbgValToString(regName.toUtf8().constData(), value);
+    DbgValSetScalar(regName.toUtf8().constData(), value);
 
 }
 

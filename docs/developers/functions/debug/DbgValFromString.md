@@ -22,4 +22,5 @@ eip = DbgValFromString("cip");
 
 ## Related functions
 
-- [DbgValToString](./DbgValToString.md)
+- [DbgValSetScalar](./DbgValSetScalar.md)
+- [DbgValSetBuffer](./DbgValSetBuffer.md)

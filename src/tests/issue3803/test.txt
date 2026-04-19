@@ -1,12 +1,3 @@
 settingset Events, EntryBreakpoint, 0
 init tests/issue3803.exe
-_K0=5
-testassert 1, "survived _K0=5 expression assignment"
-alloc 40
-testassert $result != 0, "alloc succeeded"
-_ZMM0=5
-vmovdqu [$result], zmm0
-testassert dword:[$result] == 5, "zmm0 low dword updated from scalar assignment"
-testassert dword:[$result+4] == 0, "zmm0 dword[1] zeroed"
-testassert dword:[$result+8] == 0, "zmm0 dword[2] zeroed"
-testassert dword:[$result+C] == 0, "zmm0 dword[3] zeroed"
+issue3803assert

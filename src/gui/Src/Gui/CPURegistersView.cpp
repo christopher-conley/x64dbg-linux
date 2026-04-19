@@ -267,7 +267,7 @@ static void editSIMDRegister(CPURegistersView* parent, int bits, const QString &
     mEditFloat.show();
     mEditFloat.selectAllText();
     if(mEditFloat.exec() == QDialog::Accepted)
-        parent->setRegister(mSelected, (duint)mEditFloat.getData());
+        parent->setRegisterData(mSelected, mEditFloat.getData(), bits / 8);
 }
 
 /**
@@ -370,7 +370,7 @@ void CPURegistersView::displayEditDialog()
                         }
                         else
                         {
-                            setRegister(mSelected, reinterpret_cast<duint>(&newopmaskvalue));
+                            setRegisterData(mSelected, &newopmaskvalue, sizeof(newopmaskvalue));
                             return;
                         }
                     }
@@ -382,7 +382,7 @@ void CPURegistersView::displayEditDialog()
                         {
                             char number[10];
                             str2ld(mLineEdit.editText.toUtf8().constData(), number);
-                            setRegister(mSelected, reinterpret_cast<duint>(number));
+                            setRegisterData(mSelected, number, sizeof(number));
                             return;
                         }
                         else
@@ -414,10 +414,10 @@ void CPURegistersView::displayEditDialog()
                                         if(!ConfigBool("Gui", "FpuRegistersLittleEndian")) // reverse byte order if it is big-endian
                                         {
                                             pArray = ByteReverse(QByteArray(pData, sizeRegister));
-                                            setRegister(mSelected, reinterpret_cast<duint>(pArray.constData()));
+                                            setRegisterData(mSelected, pArray.constData(), sizeRegister);
                                         }
                                         else
-                                            setRegister(mSelected, reinterpret_cast<duint>(pData));
+                                            setRegisterData(mSelected, pData, sizeRegister);
                                     }
 
                                     free(pData);
@@ -778,44 +778,50 @@ void CPURegistersView::displayCustomContextMenuSlot(QPoint pos)
     }
 }
 
-void CPURegistersView::setRegister(REGISTER_NAME reg, duint value)
+QString CPURegistersView::registerNameForSet(REGISTER_NAME reg) const
 {
-    // is register-id known?
+    QString regName;
+    if(reg >= x87st0 && reg <= x87st7)
+        regName = QString().sprintf("st%d", reg - x87st0);
+    else
+        // map "cax" to "eax" or "rax"
+        regName = mRegisterMapping.constFind(reg).value();
+
+    if(reg >= XMM0 && reg <= ArchValue(XMM7, XMM31))
+    {
+        switch(mXMMMode)
+        {
+        case 1:
+            regName[0] = 'Y';
+            break;
+        case 2:
+            regName[0] = 'Z';
+            break;
+        }
+    }
+
+    if(mFlags.contains(reg) || mFPU.contains(reg))
+        regName = "_" + regName;
+
+    return regName;
+}
+
+void CPURegistersView::setRegisterData(REGISTER_NAME reg, const void* data, size_t size)
+{
     if(mRegisterMapping.contains(reg))
     {
-        // map x87st0 to x87r0
-        QString regName;
-        if(reg >= x87st0 && reg <= x87st7)
-            regName = QString().sprintf("st%d", reg - x87st0);
-        else
-            // map "cax" to "eax" or "rax"
-            regName = mRegisterMapping.constFind(reg).value();
-        if(reg >= XMM0 && reg <= ArchValue(XMM7, XMM31))
-        {
-            switch(mXMMMode)
-            {
-            case 1:
-                regName[0] = 'Y';
-                break;
-            case 2:
-                regName[0] = 'Z';
-                break;
-            }
-        }
-
-        // flags need to '_' infront
-        if(mFlags.contains(reg))
-            regName = "_" + regName;
-
-        // we change the value (so highlight it)
         mRegisterUpdates.insert(reg);
-        // tell everything the compiler
-        if(mFPU.contains(reg))
-            regName = "_" + regName;
+        DbgValSetBuffer(registerNameForSet(reg).toUtf8().constData(), data, size);
+        emit refresh();
+    }
+}
 
-        DbgValToString(regName.toUtf8().constData(), value);
-
-        // force repaint
+void CPURegistersView::setRegister(REGISTER_NAME reg, duint value)
+{
+    if(mRegisterMapping.contains(reg))
+    {
+        mRegisterUpdates.insert(reg);
+        DbgValSetScalar(registerNameForSet(reg).toUtf8().constData(), value);
         emit refresh();
     }
 }

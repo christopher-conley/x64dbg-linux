@@ -160,8 +160,8 @@ void ReferenceView::referenceSetCurrentTaskProgressSlot(int progress, QString ta
 
 void ReferenceView::searchSelectionChanged(duint index)
 {
-    DbgValToString("$__disasm_refindex", index);
-    DbgValToString("$__dump_refindex", index);
+    DbgValSetScalar("$__disasm_refindex", index);
+    DbgValSetScalar("$__dump_refindex", index);
 }
 
 void ReferenceView::reloadDataSlot()

@@ -736,9 +736,14 @@ extern "C" DLL_EXPORT bool _dbg_getregdump(REGDUMP_AVX512* regdump)
     return true;
 }
 
-extern "C" DLL_EXPORT bool _dbg_valtostring(const char* string, duint value)
+extern "C" DLL_EXPORT bool _dbg_valsetbuffer(const char* string, const void* data, size_t size)
 {
-    return valtostring(string, value, true);
+    return valsetbuffer(string, data, size, true);
+}
+
+extern "C" DLL_EXPORT bool _dbg_valsetscalar(const char* string, duint value)
+{
+    return valsetscalar(string, value, true);
 }
 
 extern "C" DLL_EXPORT int _dbg_getbplist(BPXTYPE type, BPMAP* bpmap)

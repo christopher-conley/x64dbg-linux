@@ -1,6 +1,8 @@
 # DbgValToString
 
-Set the variable to the value.
+Legacy name for `DbgValSetScalar` kept for binary compatibility.
+
+`DbgValToString` is no longer part of the public bridge header. Use [DbgValSetScalar](./DbgValSetScalar.md) instead.
 
 ```c++
 bool DbgValToString(const char* string, duint value);
@@ -25,3 +27,4 @@ DbgValToString("eax", 1);
 ## Related functions
 
 - [DbgValFromString](./DbgValFromString.md)
+- [DbgValSetScalar](./DbgValSetScalar.md)

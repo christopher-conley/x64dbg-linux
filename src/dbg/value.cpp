@@ -1898,6 +1898,12 @@ static bool startsWith(const char* pre, const char* str)
 #define x8780BITFPU_PRE_FIELD_STRING_ST "st"
 #define STRLEN_USING_SIZEOF(string) (sizeof(string) - 1)
 
+enum class ValSetMode
+{
+    Scalar,
+    Buffer,
+};
+
 static size_t getfpubuffersize(const char* string)
 {
     if(startsWith(x8780BITFPU_PRE_FIELD_STRING, string))
@@ -1944,26 +1950,32 @@ static size_t getfpubuffersize(const char* string)
     return 0;
 }
 
-static void scalarToRegisterBuffer(void* buffer, size_t bufferSize, duint value)
+bool valrequiresbuffer(const char* string)
 {
-    memset(buffer, 0, bufferSize);
-    memcpy(buffer, &value, bufferSize < sizeof(value) ? bufferSize : sizeof(value));
+    return string && *string == '_' && getfpubuffersize(string + 1) != 0;
+}
+
+static bool getscalarfromdata(const void* data, size_t size, duint* value)
+{
+    if(value == nullptr || data == nullptr || size == 0 || size > sizeof(duint))
+        return false;
+    *value = 0;
+    memcpy(value, data, size);
+    return true;
 }
 
 /**
-\brief Sets an FPU value (MXCSR fields, MMX fields, etc.) by name.
+\brief Sets a scalar FPU value (MXCSR fields, x87 control/status fields, etc.) by name.
 \param string The name of the FPU value to set.
-\param value The value to set.
+\param value The scalar value to set.
+\return true if the value was set successfully, false otherwise.
 */
-static void setfpuvalue(const char* string, duint value)
+static bool setfpuscalar(const char* string, duint value)
 {
     duint xorval = 0;
     duint flags = 0;
     duint flag = 0;
-    bool set = false;
-
-    if(value)
-        set = true;
+    bool set = value != 0;
 
     if(startsWith(MxCsr_PRE_FIELD_STRING, string))
     {
@@ -1987,31 +1999,24 @@ static void setfpuvalue(const char* string, duint value)
                 xorval = flag;
             SetContextDataEx(hActiveThread, UE_MXCSR, flags ^ xorval);
         }
+        return true;
     }
     else if(startsWith(x87TW_PRE_FIELD_STRING, string))
     {
-        unsigned int i;
-
         string += STRLEN_USING_SIZEOF(x87TW_PRE_FIELD_STRING);
-        i = atoi(string);
-
+        const auto i = atoi(string);
         if(i > 7)
-            return;
+            return false;
 
         flags = GetContextDataEx(hActiveThread, UE_X87_TAGWORD);
-
         flag = 3;
         flag <<= i * 2;
-
         flags &= ~flag;
-
         flag = value;
         flag <<= i * 2;
-
         flags |= flag;
-
-        SetContextDataEx(hActiveThread, UE_X87_TAGWORD, (unsigned short) flags);
-
+        SetContextDataEx(hActiveThread, UE_X87_TAGWORD, (unsigned short)flags);
+        return true;
     }
     else if(startsWith(x87SW_PRE_FIELD_STRING, string))
     {
@@ -2035,6 +2040,7 @@ static void setfpuvalue(const char* string, duint value)
                 xorval = flag;
             SetContextDataEx(hActiveThread, UE_X87_STATUSWORD, flags ^ xorval);
         }
+        return true;
     }
     else if(startsWith(x87CW_PRE_FIELD_STRING, string))
     {
@@ -2068,24 +2074,45 @@ static void setfpuvalue(const char* string, duint value)
                 xorval = flag;
             SetContextDataEx(hActiveThread, UE_X87_CONTROLWORD, flags ^ xorval);
         }
+        return true;
     }
     else if(_strnicmp(string, "x87TagWord", (int)strlen(string)) == 0)
     {
-        SetContextDataEx(hActiveThread, UE_X87_TAGWORD, (unsigned short) value);
+        SetContextDataEx(hActiveThread, UE_X87_TAGWORD, (unsigned short)value);
+        return true;
     }
     else if(_strnicmp(string, "x87StatusWord", (int)strlen(string)) == 0)
     {
-        SetContextDataEx(hActiveThread, UE_X87_STATUSWORD, (unsigned short) value);
+        SetContextDataEx(hActiveThread, UE_X87_STATUSWORD, (unsigned short)value);
+        return true;
     }
     else if(_strnicmp(string, "x87ControlWord", (int)strlen(string)) == 0)
     {
-        SetContextDataEx(hActiveThread, UE_X87_CONTROLWORD, (unsigned short) value);
+        SetContextDataEx(hActiveThread, UE_X87_CONTROLWORD, (unsigned short)value);
+        return true;
     }
     else if(_strnicmp(string, "MxCsr", (int)strlen(string)) == 0)
     {
         SetContextDataEx(hActiveThread, UE_MXCSR, value);
+        return true;
     }
-    else if(startsWith(x8780BITFPU_PRE_FIELD_STRING, string))
+
+    return false;
+}
+
+/**
+\brief Sets raw FPU/SIMD register data by name.
+\param string The name of the FPU/SIMD register to set.
+\param data The raw register data.
+\param size The size of \p data.
+\return true if the value was set successfully, false otherwise.
+*/
+static bool setfpubuffer(const char* string, const void* data, size_t size)
+{
+    if(data == nullptr || size != getfpubuffersize(string))
+        return false;
+
+    if(startsWith(x8780BITFPU_PRE_FIELD_STRING, string))
     {
         string += STRLEN_USING_SIZEOF(x8780BITFPU_PRE_FIELD_STRING);
         TitanRegister registerindex;
@@ -2129,11 +2156,14 @@ static void setfpuvalue(const char* string, duint value)
             break;
         }
         if(found)
-            SetContextDataEx(hActiveThread, registerindex, value);
+        {
+            SetContextDataEx(hActiveThread, registerindex, (ULONG_PTR)data);
+            return true;
+        }
     }
     else if(startsWith(x8780BITFPU_PRE_FIELD_STRING_ST, string))
     {
-        flags = GetContextDataEx(hActiveThread, UE_X87_STATUSWORD);
+        auto flags = GetContextDataEx(hActiveThread, UE_X87_STATUSWORD);
         flags >>= 11;
         flags &= 7;
         string += STRLEN_USING_SIZEOF(x8780BITFPU_PRE_FIELD_STRING_ST);
@@ -2180,7 +2210,8 @@ static void setfpuvalue(const char* string, duint value)
         if(found)
         {
             registerindex += UE_x87_r0;
-            SetContextDataEx(hActiveThread, (TitanRegister)registerindex, value);
+            SetContextDataEx(hActiveThread, (TitanRegister)registerindex, (ULONG_PTR)data);
+            return true;
         }
     }
     else if(startsWith(MMX_PRE_FIELD_STRING, string))
@@ -2227,24 +2258,21 @@ static void setfpuvalue(const char* string, duint value)
             break;
         }
         if(found)
-            SetContextDataEx(hActiveThread, registerindex, value);
+        {
+            SetContextDataEx(hActiveThread, registerindex, (ULONG_PTR)data);
+            return true;
+        }
     }
     else if(startsWith(XMM_PRE_FIELD_STRING, string))
     {
         string += STRLEN_USING_SIZEOF(XMM_PRE_FIELD_STRING);
-        DWORD registerindex;
-        bool found = true;
-        registerindex = atoi(string);
+        auto registerindex = atoi(string);
         if(registerindex < ArchValue(8, 16))
         {
             registerindex += UE_XMM0;
+            SetContextDataEx(hActiveThread, (TitanRegister)registerindex, (ULONG_PTR)data);
+            return true;
         }
-        else
-        {
-            found = false;
-        }
-        if(found)
-            SetContextDataEx(hActiveThread, (TitanRegister)registerindex, value);
     }
     else if(startsWith(YMM_PRE_FIELD_STRING, string))
     {
@@ -2322,12 +2350,14 @@ static void setfpuvalue(const char* string, duint value)
             break;
         }
         if(found)
-            SetContextDataEx(hActiveThread, registerindex, value);
+        {
+            SetContextDataEx(hActiveThread, registerindex, (ULONG_PTR)data);
+            return true;
+        }
     }
-    else if(startsWith("K", string))  // Opmask registers
+    else if(startsWith("K", string))
     {
-        DWORD registerindex;
-        registerindex = atoi(string + 1);
+        const auto registerindex = atoi(string + 1);
         if(registerindex < 8)
         {
             TITAN_ENGINE_CONTEXT_AVX512_t context = {};
@@ -2337,16 +2367,15 @@ static void setfpuvalue(const char* string, duint value)
             }
             else
             {
-                // Whole FPU/SIMD register writes pass raw bytes by pointer.
-                context.Opmask[registerindex] = *(ULONGLONG*)value;
+                memcpy(&context.Opmask[registerindex], data, sizeof(context.Opmask[registerindex]));
                 SetAVX512Context(hActiveThread, &context);
+                return true;
             }
         }
     }
     else if(startsWith(ZMM_PRE_FIELD_STRING, string))
     {
-        DWORD registerindex;
-        registerindex = atoi(string + STRLEN_USING_SIZEOF(ZMM_PRE_FIELD_STRING));
+        const auto registerindex = atoi(string + STRLEN_USING_SIZEOF(ZMM_PRE_FIELD_STRING));
         if(registerindex < ArchValue(8, 32))
         {
             TITAN_ENGINE_CONTEXT_AVX512_t context = {};
@@ -2356,81 +2385,21 @@ static void setfpuvalue(const char* string, duint value)
             }
             else
             {
-                // Whole FPU/SIMD register writes pass raw bytes by pointer.
-                context.ZmmRegisters[registerindex] = *(ZmmRegister_t*)value;
+                memcpy(&context.ZmmRegisters[registerindex], data, sizeof(context.ZmmRegisters[registerindex]));
                 SetAVX512Context(hActiveThread, &context);
+                return true;
             }
         }
     }
+
+    return false;
 }
 
-/**
-\brief Sets a value by name using scalar semantics.
-\param string The name of the thing to set.
-\param value The scalar value to set.
-\param silent true to not have output to the console.
-\return true if the value was set successfully, false otherwise.
-*/
-bool valtostringfromvalue(const char* string, duint value, bool silent)
+static bool valsetinternal(const char* string, const void* data, size_t size, ValSetMode mode, bool silent)
 {
-    // Whole SIMD/x87/opmask register writes use raw buffers internally.
-    // Scalar command/expression assignments need a temporary buffer so they
-    // don't pass plain integers as pointers into setfpuvalue()/SetContextDataEx().
-    if(string && *string == '_')
-    {
-        const auto bufferSize = getfpubuffersize(string + 1);
-        switch(bufferSize)
-        {
-        case sizeof(ULONGLONG):
-        {
-            ULONGLONG raw = 0;
-            scalarToRegisterBuffer(&raw, sizeof(raw), value);
-            return valtostring(string, (duint)&raw, silent);
-        }
-
-        case 10:
-        {
-            unsigned char raw[10] = {};
-            scalarToRegisterBuffer(raw, sizeof(raw), value);
-            return valtostring(string, (duint)raw, silent);
-        }
-
-        case sizeof(XmmRegister_t):
-        {
-            XmmRegister_t raw = {};
-            scalarToRegisterBuffer(&raw, sizeof(raw), value);
-            return valtostring(string, (duint)&raw, silent);
-        }
-
-        case sizeof(YmmRegister_t):
-        {
-            YmmRegister_t raw = {};
-            scalarToRegisterBuffer(&raw, sizeof(raw), value);
-            return valtostring(string, (duint)&raw, silent);
-        }
-
-        case sizeof(ZmmRegister_t):
-        {
-            ZmmRegister_t raw = {};
-            scalarToRegisterBuffer(&raw, sizeof(raw), value);
-            return valtostring(string, (duint)&raw, silent);
-        }
-        }
-    }
-    return valtostring(string, value, silent);
-}
-
-/**
-\brief Sets a register, variable, flag, memory location or FPU value by name.
-\param string The name of the thing to set.
-\param value The value to set.
-\param silent true to not have output to the console.
-\return true if the value was set successfully, false otherwise.
-*/
-bool valtostring(const char* string, duint value, bool silent)
-{
-    if(!*string)
+    if(string == nullptr || data == nullptr || size == 0 || !*string)
         return false;
+
     if(string[0] == '['
             || (isdigitduint(string[0]) && string[1] == ':' && string[2] == '[')
             || (string[1] == 's' && (string[0] == 'c' || string[0] == 'd' || string[0] == 'e' || string[0] == 'f' || string[0] == 'g' || string[0] == 's') && string[2] == ':' && string[3] == '[') //memory location
@@ -2444,17 +2413,19 @@ bool valtostring(const char* string, duint value, bool silent)
                 dputs(QT_TRANSLATE_NOOP("DBG", "Not debugging"));
             return false;
         }
-        int len = (int)strlen(string);
-
-        int read_size = sizeof(duint);
+        const int len = (int)strlen(string);
+        size_t writeSize = mode == ValSetMode::Buffer ? size : sizeof(duint);
         int prefix_size = 1;
         size_t seg_offset = 0;
-        if(string[1] == ':') //n:[ (number of bytes to read)
+        size_t explicitSize = 0;
+        bool hasExplicitSize = false;
+        if(string[1] == ':') //n:[ (number of bytes to write)
         {
             prefix_size = 3;
-            int new_size = string[0] - '0';
-            if(new_size < read_size)
-                read_size = new_size;
+            explicitSize = string[0] - '0';
+            hasExplicitSize = true;
+            if(mode == ValSetMode::Scalar && explicitSize < writeSize)
+                writeSize = explicitSize;
         }
         else if(string[1] == 's' && string[2] == ':')
         {
@@ -2485,9 +2456,10 @@ bool valtostring(const char* string, duint value, bool silent)
                ) // byte:[...]
         {
             prefix_size = 6;
-            int new_size = 1;
-            if(new_size < read_size)
-                read_size = new_size;
+            explicitSize = 1;
+            hasExplicitSize = true;
+            if(mode == ValSetMode::Scalar)
+                writeSize = explicitSize;
         }
         else if(string[0] == 'w'
                 && string[1] == 'o'
@@ -2497,9 +2469,10 @@ bool valtostring(const char* string, duint value, bool silent)
                ) // word:[...]
         {
             prefix_size = 6;
-            int new_size = 2;
-            if(new_size < read_size)
-                read_size = new_size;
+            explicitSize = 2;
+            hasExplicitSize = true;
+            if(mode == ValSetMode::Scalar)
+                writeSize = explicitSize;
         }
         else if(string[0] == 'd'
                 && string[1] == 'w'
@@ -2510,9 +2483,10 @@ bool valtostring(const char* string, duint value, bool silent)
                ) // dword:[...]
         {
             prefix_size = 7;
-            int new_size = 4;
-            if(new_size < read_size)
-                read_size = new_size;
+            explicitSize = 4;
+            hasExplicitSize = true;
+            if(mode == ValSetMode::Scalar)
+                writeSize = explicitSize;
         }
 #ifdef _WIN64
         else if(string[0] == 'q'
@@ -2524,11 +2498,15 @@ bool valtostring(const char* string, duint value, bool silent)
                ) // qword:[...]
         {
             prefix_size = 7;
-            int new_size = 8;
-            if(new_size < read_size)
-                read_size = new_size;
+            explicitSize = 8;
+            hasExplicitSize = true;
+            if(mode == ValSetMode::Scalar)
+                writeSize = explicitSize;
         }
 #endif //_WIN64
+
+        if(mode == ValSetMode::Buffer && hasExplicitSize && explicitSize != size)
+            return false;
 
         String ptrstring;
         for(auto i = prefix_size, depth = 1; i < len; i++)
@@ -2547,8 +2525,7 @@ bool valtostring(const char* string, duint value, bool silent)
         duint temp;
         if(!valfromstring(ptrstring.c_str(), &temp, silent))
             return false;
-        duint value_ = value;
-        if(!MemPatch(temp + seg_offset, &value_, read_size))
+        if(!MemPatch(temp + seg_offset, data, writeSize))
         {
             if(!silent)
                 dputs(QT_TRANSLATE_NOOP("DBG", "Failed to write memory"));
@@ -2558,8 +2535,14 @@ bool valtostring(const char* string, duint value, bool silent)
         GuiUpdatePatches(); //update patch dialog
         return true;
     }
-    else if(isregister(string)) //register
+
+    duint value = 0;
+    const bool hasScalar = getscalarfromdata(data, size, &value);
+
+    if(isregister(string)) //register
     {
+        if(!hasScalar)
+            return false;
         if(!DbgIsDebugging())
         {
             if(!silent)
@@ -2567,8 +2550,8 @@ bool valtostring(const char* string, duint value, bool silent)
             return false;
         }
         bool ok = setregister(string, value);
-        int len = (int)strlen(string);
-        Memory<char*> regName(len + 1, "valtostring:regname");
+        const int len = (int)strlen(string);
+        Memory<char*> regName(len + 1, "valsetscalar:regname");
         strcpy_s(regName(), len + 1, string);
         _strlwr_s(regName(), regName.size());
         if(strstr(regName(), "ip"))
@@ -2589,20 +2572,19 @@ bool valtostring(const char* string, duint value, bool silent)
     }
     else if(*string == '_' && isflag(string + 1)) //flag
     {
+        if(!hasScalar)
+            return false;
         if(!DbgIsDebugging())
         {
             if(!silent)
                 dputs(QT_TRANSLATE_NOOP("DBG", "Not debugging"));
             return false;
         }
-        bool set = false;
-        if(value)
-            set = true;
-        setflag(string + 1, set);
+        setflag(string + 1, value != 0);
         GuiUpdateAllViews(); //repaint gui
         return true;
     }
-    else if((*string == '_')) //FPU values
+    else if(*string == '_') //FPU values
     {
         if(!DbgIsDebugging())
         {
@@ -2610,10 +2592,26 @@ bool valtostring(const char* string, duint value, bool silent)
                 dputs(QT_TRANSLATE_NOOP("DBG", "Not debugging!"));
             return false;
         }
-        setfpuvalue(string + 1, value);
+        if(valrequiresbuffer(string))
+        {
+            if(mode != ValSetMode::Buffer)
+                return false;
+            if(!setfpubuffer(string + 1, data, size))
+                return false;
+        }
+        else
+        {
+            if(!hasScalar)
+                return false;
+            if(!setfpuscalar(string + 1, value))
+                return false;
+        }
         GuiUpdateAllViews(); //repaint gui
         return true;
     }
+
+    if(!hasScalar)
+        return false;
 
     PLUG_CB_VALTOSTRING info;
     info.string = string;
@@ -2624,6 +2622,31 @@ bool valtostring(const char* string, duint value, bool silent)
         return true;
 
     return varset(string, value, false); //variable
+}
+
+/**
+\brief Sets a register, variable, flag, memory location or raw register data by name.
+\param string The name of the thing to set.
+\param data The bytes to set.
+\param size The size of \p data.
+\param silent true to not have output to the console.
+\return true if the value was set successfully, false otherwise.
+*/
+bool valsetbuffer(const char* string, const void* data, size_t size, bool silent)
+{
+    return valsetinternal(string, data, size, ValSetMode::Buffer, silent);
+}
+
+/**
+\brief Sets a register, variable, flag or memory location by name using scalar semantics.
+\param string The name of the thing to set.
+\param value The scalar value to set.
+\param silent true to not have output to the console.
+\return true if the value was set successfully, false otherwise.
+*/
+bool valsetscalar(const char* string, duint value, bool silent)
+{
+    return valsetinternal(string, &value, sizeof(value), ValSetMode::Scalar, silent);
 }
 
 /**

@@ -22,6 +22,24 @@ target_compile_features(test_issue3803_target PRIVATE cxx_std_17)
 set_target_properties(test_issue3803_target PROPERTIES OUTPUT_NAME issue3803)
 x64dbg_set_output_dir(test_issue3803_target "${X64DBG_TEST_OUTPUT_DIR}")
 
+add_library(test_issue3803_plugin SHARED plugin.cpp)
+target_include_directories(test_issue3803_plugin PRIVATE
+    "${PROJECT_SOURCE_DIR}/src/dbg"
+    "${PROJECT_SOURCE_DIR}/src/bridge"
+)
+target_link_libraries(test_issue3803_plugin PRIVATE
+    bridge
+    dbg
+)
+target_compile_definitions(test_issue3803_plugin PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_features(test_issue3803_plugin PRIVATE cxx_std_17)
+set_target_properties(test_issue3803_plugin PROPERTIES
+    PREFIX ""
+    SUFFIX "${X64DBG_TEST_PLUGIN_SUFFIX}"
+    OUTPUT_NAME "Issue3803Plugin"
+)
+x64dbg_set_output_dir(test_issue3803_plugin "${ISSUE3803_RUNTIME_DIR}")
+
 set(ISSUE3803_COPY_SCRIPT_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E make_directory "${ISSUE3803_RUNTIME_DIR}"
 )
@@ -34,8 +52,8 @@ foreach(script ${ISSUE3803_TEST_SCRIPTS})
     )
 endforeach()
 
-add_custom_command(TARGET test_issue3803_target POST_BUILD
+add_custom_command(TARGET test_issue3803_plugin POST_BUILD
     ${ISSUE3803_COPY_SCRIPT_COMMANDS}
 )
 
-add_dependencies(x64dbg_tests test_issue3803_target)
+add_dependencies(x64dbg_tests test_issue3803_target test_issue3803_plugin)
