@@ -99,6 +99,7 @@ file(COPY "${ROOT_DIR}/bin/x32/x32dbg.dll" DESTINATION "${RELEASE_MAIN_DIR}/x32"
 file(COPY "${ROOT_DIR}/bin/x32/x32dbg.exe" DESTINATION "${RELEASE_MAIN_DIR}/x32")
 file(COPY "${ROOT_DIR}/bin/x32/x32gui.dll" DESTINATION "${RELEASE_MAIN_DIR}/x32")
 file(COPY "${ROOT_DIR}/bin/x32/loaddll.exe" DESTINATION "${RELEASE_MAIN_DIR}/x32")
+file(COPY "${ROOT_DIR}/bin/x32/headless.exe" DESTINATION "${RELEASE_MAIN_DIR}/x32")
 copy_debug_engines("x32")
 
 # Copy x64 files
@@ -107,6 +108,7 @@ file(COPY "${ROOT_DIR}/bin/x64/x64dbg.dll" DESTINATION "${RELEASE_MAIN_DIR}/x64"
 file(COPY "${ROOT_DIR}/bin/x64/x64dbg.exe" DESTINATION "${RELEASE_MAIN_DIR}/x64")
 file(COPY "${ROOT_DIR}/bin/x64/x64gui.dll" DESTINATION "${RELEASE_MAIN_DIR}/x64")
 file(COPY "${ROOT_DIR}/bin/x64/loaddll.exe" DESTINATION "${RELEASE_MAIN_DIR}/x64")
+file(COPY "${ROOT_DIR}/bin/x64/headless.exe" DESTINATION "${RELEASE_MAIN_DIR}/x64")
 copy_debug_engines("x64")
 
 # Create commithash.txt
