@@ -24,6 +24,11 @@ function(x64dbg_set_output_dir target dir)
         LIBRARY_OUTPUT_DIRECTORY_RELEASE "${dir}"
         LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO "${dir}"
         LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL "${dir}"
+        ARCHIVE_OUTPUT_DIRECTORY "${dir}"
+        ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${dir}"
+        ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${dir}"
+        ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${dir}"
+        ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${dir}"
     )
 endfunction()
 
@@ -155,12 +160,14 @@ endfunction()
 
 set(MEMBP_TARGET_COMPILE_OPTIONS)
 if(MSVC)
-    list(APPEND MEMBP_TARGET_COMPILE_OPTIONS /RTC- /GS- /GR- /Zl)
+    string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    list(APPEND MEMBP_TARGET_COMPILE_OPTIONS /GS- /GR- /Zl)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     list(APPEND MEMBP_TARGET_COMPILE_OPTIONS -fno-stack-protector)
 endif()
 
 set(X64DBG_STANDARD_TESTS
+    issue3803
     issue3808
     cmdline_init
     cmdline_setcommandline
