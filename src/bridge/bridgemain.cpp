@@ -996,7 +996,8 @@ BRIDGE_IMPEXP bool DbgValSetScalar(const char* string, duint value)
     return _dbg_valsetscalar(string, value);
 }
 
-BRIDGE_IMPEXP bool DbgValToString(const char* string, duint value)
+// Deprecated api, only provided for binary compatibility
+extern "C" __declspec(dllexport) bool DbgValToString(const char* string, duint value)
 {
     return DbgValSetScalar(string, value);
 }
