@@ -1,9 +1,23 @@
 #include "ImageTextBrowser.h"
 
-#include <QResizeEvent>
-#include <QApplication>
 #include <QScrollBar>
-#include <QTextBlock>
+#include <QStyle>
+
+int ImageTextBrowser::imageMaxWidth() const
+{
+    auto maxWidth = viewport()->width() - qRound(document()->documentMargin() * 2);
+
+    // QTextBrowser decides whether the vertical scroll bar is needed after the
+    // document is laid out. Reserve the width up front so wide images do not
+    // end up a few pixels too large once the scroll bar appears.
+    if(verticalScrollBarPolicy() != Qt::ScrollBarAlwaysOff && !verticalScrollBar()->isVisible())
+    {
+        maxWidth -= style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this);
+    }
+
+    // Leave a tiny safety margin for layout rounding.
+    return qMax(1, maxWidth - 2);
+}
 
 ImageTextBrowser::ImageTextBrowser(QWidget* parent)
     : QTextBrowser(parent)
@@ -58,11 +72,13 @@ QVariant ImageTextBrowser::loadResource(int type, const QUrl & name)
         return QTextBrowser::loadResource(type, name);
     }
 
-    // Scale the image to the width of the document
-    auto maxWidth = viewport()->width() - document()->documentMargin() * 2;
+    // Scale the image to the width of the document. Reserve room for the
+    // vertical scroll bar because it may appear only after layout.
+    auto maxWidth = imageMaxWidth();
     if(image.width() > maxWidth)
     {
-        image = image.scaledToWidth((int)maxWidth, Qt::SmoothTransformation);
+        image = image.scaledToWidth(maxWidth, Qt::SmoothTransformation);
     }
+
     return image;
 }

@@ -185,11 +185,15 @@ static QString markdownToHtml(const QString & markdown)
 
 static void markdownGithubLinks(QString & markdown, const QString & issueUrl)
 {
-    static QRegularExpression usernameRegex(R"((?<=^|\s)@([a-zA-Z0-9-]{1,39})(?=\s|$))");
+    // Allow trailing punctuation such as ",", "." and ")" while avoiding
+    // matches inside e-mail addresses and URLs.
+    static QRegularExpression usernameRegex(
+        R"((?<![\w/])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)\b)"
+    );
     markdown.replace(usernameRegex, R"([@\1](https://github.com/\1))");
     if(!issueUrl.isEmpty())
     {
-        static QRegularExpression issueRegex(R"((?<=^|\s)#(\d+)(?=\s|$))");
+        static QRegularExpression issueRegex(R"((?<![\w/])#(\d+)\b)");
         markdown.replace(issueRegex, QString(R"([#\1](%1\1))").arg(issueUrl));
     }
 }
@@ -252,6 +256,13 @@ bool ReleaseNotesDialog::setMarkdown(QString markdown, const QString & issueUrl)
     auto html = markdownToHtml(markdown);
     html = fixupHtmlEmojiBug(html);
     ui->textBrowser->setText(html);
+
+    // Trigger one extra relayout after the document has been populated. This
+    // lets images pick up the final viewport width after the scroll bars have
+    // settled.
+    if(html.contains("<img"))
+        ui->textBrowser->resizeImages();
+
     return !html.isEmpty();
 }
 

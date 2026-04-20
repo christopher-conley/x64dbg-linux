@@ -1,9 +1,9 @@
 #pragma once
 
+#include <QMap>
 #include <QTextBrowser>
 #include <QTextCursor>
 #include <QTimer>
-#include <QMap>
 
 #include <functional>
 
@@ -25,6 +25,8 @@ protected:
     QVariant loadResource(int type, const QUrl & name) override;
 
 private:
+    int imageMaxWidth() const;
+
     qreal mSavedScrollPercentage = 0.0;
     QTimer* mResizeTimer = nullptr;
     DownloadFn mDownloadFn;
