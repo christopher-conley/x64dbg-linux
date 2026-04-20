@@ -1,23 +1,48 @@
 # x64dbg tests
 
-This is the convention-based automated test tree.
+This is the convention-based automated test tree for headless x64dbg regression tests.
+
+## Core concepts
+
+Each test is a **bundle** identified by its folder name under `src/tests/`.
+
+For a test named `<rel>`:
+
+- source folder: `src/tests/<rel>/`
+- debuggee executable output: `bin/<arch>/tests/<rel>.exe`
+- runtime directory: `bin/<arch>/tests/<rel>/`
+- optional plugin output: `bin/<arch>/tests/<rel>/<rel>.dp32|dp64`
+- test id: `<rel>`
+
+The build system derives those paths and names centrally in `src/tests/CMakeLists.txt` via `x64dbg_add_test(...)`.
+Per-test folders do **not** contain their own `CMakeLists.txt` anymore.
 
 ## Source layout
 
-Each test lives under:
+Enabled tests are declared centrally in `src/tests/CMakeLists.txt`.
+
+A standard test folder looks like this:
 
 ```text
 src/tests/<rel>/
+  target.cpp
+  optional plugin.cpp
   test.txt
   optional test.<variant>.txt
   optional check.py
   optional check.<variant>.py
-  optional *.cpp / plugin sources
+  optional README.md
 ```
 
-`test.txt` keeps the historical test id `<rel>`.
+Conventions:
 
-Additional scripts in the same directory are exposed as `<rel>/<variant>`. For example:
+- `target.cpp` is the debuggee built as `<rel>.exe`
+- `plugin.cpp` is optional; if present it is built automatically as `<rel>.dp32|dp64`
+- `test.txt` is the primary script for test id `<rel>`
+- `test.<variant>.txt` creates test id `<rel>/<variant>`
+- `check.py` and `check.<variant>.py` are optional fallback validators used by `run.py`
+
+Examples:
 
 - `src/tests/membp/test.txt` -> `membp`
 - `src/tests/membp/test.write.txt` -> `membp/write`
@@ -32,12 +57,87 @@ bin/<arch>/tests/
   <rel>/
     test.txt
     test.<variant>.txt
-    *.dp32 / *.dp64
+    <rel>.dp32 | <rel>.dp64
 ```
+
+The runner discovers tests from `src/tests/test*.txt`, then expects the matching built runtime files in `bin/<arch>/tests/`.
+
+## Adding a new test
+
+1. Create a new folder:
+
+   ```text
+   src/tests/<name>/
+   ```
+
+2. Add a debuggee source as `target.cpp`.
+
+3. Add a script as `test.txt`.
+
+4. If the test needs a plugin, add `plugin.cpp`.
+
+5. Register the test in `src/tests/CMakeLists.txt`:
+
+   - standard case: add the folder name to `X64DBG_STANDARD_TESTS`
+   - special case: add an explicit `x64dbg_add_test(NAME <name> ...)` call with the required options
+
+6. Build and run it:
+
+   ```powershell
+   cmake --build build --target x64dbg_tests
+   py src/tests/run.py --arch x64 <name>
+   ```
+
+### Standard test example
+
+Folder:
+
+```text
+src/tests/my_test/
+  target.cpp
+  plugin.cpp
+  test.txt
+```
+
+Registration in `src/tests/CMakeLists.txt`:
+
+```cmake
+list(APPEND X64DBG_STANDARD_TESTS my_test)
+```
+
+### Special-case test example
+
+Use an explicit declaration when the debuggee or plugin needs unusual compile or link flags:
+
+```cmake
+x64dbg_add_test(
+    NAME my_special_test
+    TARGET_LINK_LIBRARIES kernel32
+    TARGET_LINK_OPTIONS
+        "LINKER:/entry:start"
+)
+```
+
+## Plugin conventions
+
+Test plugins should use the injected `X64DBG_TEST_NAME` compile definition instead of hardcoding their runtime name.
+
+Example:
+
+```cpp
+strncpy_s(initStruct->pluginName, sizeof(initStruct->pluginName), X64DBG_TEST_NAME, _TRUNCATE);
+```
+
+This keeps these concepts aligned:
+
+- test folder name
+- test id
+- plugin file name
+- plugin runtime name
 
 ## Running
 
-Example:
+Run the full suite:
 
 ```powershell
 py src/tests/run.py --arch x64
@@ -49,19 +149,16 @@ Run a single test:
 py src/tests/run.py --arch x64 issue3808
 ```
 
+Run a single variant:
+
+```powershell
+py src/tests/run.py --arch x64 membp/write
+```
+
 Run with a specific debug engine:
 
 ```powershell
 py src/tests/run.py --arch x64 --engine GleeBug membp/range-write
-```
-
-By default the runner suppresses debuggee console windows with `[Engine].NoConsoleWindow=1`.
-Use `--console-window` to allow them again.
-
-Run a single variant from a shared directory:
-
-```powershell
-py src/tests/run.py --arch x64 membp/write
 ```
 
 List discovered tests:
@@ -69,6 +166,9 @@ List discovered tests:
 ```powershell
 py src/tests/run.py --arch x64 --list
 ```
+
+By default the runner suppresses debuggee console windows with `[Engine].NoConsoleWindow=1`.
+Use `--console-window` to allow them again.
 
 The runner prints each test result as soon as that test finishes, then prints the summary at the end. On failures it dumps only the filtered `[x64dbg-test]` lines from the test log to the console.
 
@@ -80,7 +180,9 @@ By default temporary artifacts are created under:
 
 This keeps all temporary test runs under one parent directory for easier cleanup.
 
-CI also runs the active suite in GitHub Actions for both architectures and both debugger engines:
+## CI and runner behavior
+
+CI runs the active suite for both architectures and both debugger engines:
 
 - x64 via `py src/tests/run.py --arch x64 --engine TitanEngine` and `--engine GleeBug`
 - x86 via `py src/tests/run.py --arch x86 --engine TitanEngine` and `--engine GleeBug` (`x86` is accepted as an alias for `x32`)

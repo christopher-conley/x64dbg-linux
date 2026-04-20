@@ -6,7 +6,7 @@ Source layout:
 
 ```text
 src/tests/issue3808/
-  flagrepro.cpp
+  plugin.cpp
   target.cpp
   test.txt
 ```
@@ -17,7 +17,7 @@ Runtime layout after build:
 bin/x64/tests/
   issue3808.exe
   issue3808/
-    FlagRepro3808.dp64
+    issue3808.dp64
     test.txt
 ```
 
