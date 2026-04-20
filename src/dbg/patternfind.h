@@ -6,11 +6,8 @@
 
 struct PatternByte
 {
-    struct PatternNibble
-    {
-        unsigned char data;
-        bool wildcard;
-    } nibble[2];
+    unsigned char data;
+    unsigned char mask;
 };
 
 //returns: offset to data when found, -1 when not found
@@ -19,14 +16,6 @@ size_t patternfind(
     size_t datasize, //size of data
     const char* pattern, //pattern to search
     int* patternsize = 0 //outputs the number of bytes the pattern is
-);
-
-//returns: offset to data when found, -1 when not found
-size_t patternfind(
-    const unsigned char* data, //data
-    size_t datasize, //size of data
-    unsigned char* pattern, //bytes to search
-    size_t patternsize //size of bytes to search
 );
 
 //returns: nothing

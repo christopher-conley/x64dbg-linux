@@ -31,10 +31,8 @@ static bool handlePatternArgument(const char* pattern, std::vector<PatternByte> 
             {
                 auto ch = data[i];
                 PatternByte b;
-                b.nibble[0].data = (ch >> 4) & 0xF;
-                b.nibble[0].wildcard = false;
-                b.nibble[1].data = ch & 0xF;
-                b.nibble[1].wildcard = false;
+                b.data = ch;
+                b.mask = 0xFF;
                 searchpattern.push_back(b);
             }
             return true;
@@ -55,15 +53,15 @@ static bool handlePatternArgument(const char* pattern, std::vector<PatternByte> 
         const size_t maxShortSize = 16;
         for(size_t i = 0; i < std::min(searchpattern.size(), maxShortSize); i++)
         {
-            auto doNibble = [&patternshort](const PatternByte::PatternNibble & n)
+            auto doNibble = [&patternshort](const PatternByte& n, int shift)
             {
-                if(n.wildcard)
-                    *patternshort += "?";
+                if((n.mask >> shift) & 0xf)
+                    *patternshort += "0123456789ABCDEF"[(n.data >> shift) & 0xf];
                 else
-                    *patternshort += "0123456789ABCDEF"[n.data & 0xf];
+                    *patternshort += "?";
             };
-            doNibble(searchpattern[i].nibble[0]);
-            doNibble(searchpattern[i].nibble[1]);
+            doNibble(searchpattern[i], 4);
+            doNibble(searchpattern[i], 0);
         }
         if(searchpattern.size() > maxShortSize)
             *patternshort += "...";
