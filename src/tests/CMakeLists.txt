@@ -39,7 +39,7 @@ endfunction()
 
 function(x64dbg_add_test)
     set(options)
-    set(oneValueArgs NAME TARGET_SOURCE PLUGIN_SOURCE)
+    set(oneValueArgs NAME SOURCE_DIR TARGET_SOURCE PLUGIN_SOURCE)
     set(multiValueArgs
         TARGET_COMPILE_DEFINITIONS
         TARGET_COMPILE_OPTIONS
@@ -56,7 +56,11 @@ function(x64dbg_add_test)
         message(FATAL_ERROR "x64dbg_add_test requires NAME")
     endif()
 
-    set(test_source_dir "${CMAKE_CURRENT_LIST_DIR}/${TEST_NAME}")
+    if(TEST_SOURCE_DIR)
+        set(test_source_dir "${TEST_SOURCE_DIR}")
+    else()
+        set(test_source_dir "${CMAKE_CURRENT_LIST_DIR}/${TEST_NAME}")
+    endif()
     if(NOT IS_DIRECTORY "${test_source_dir}")
         message(FATAL_ERROR "x64dbg_add_test(${TEST_NAME}) source dir does not exist: ${test_source_dir}")
     endif()
@@ -158,13 +162,13 @@ function(x64dbg_add_test)
     add_dependencies(x64dbg_tests ${test_dependencies})
 endfunction()
 
-set(MEMBP_TARGET_COMPILE_OPTIONS)
-if(MSVC)
-    string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    list(APPEND MEMBP_TARGET_COMPILE_OPTIONS /GS- /GR- /Zl)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    list(APPEND MEMBP_TARGET_COMPILE_OPTIONS -fno-stack-protector)
-endif()
+function(x64dbg_add_membp_test)
+    set(membp_driver_source_dir "${CMAKE_CURRENT_BINARY_DIR}/membp-driver")
+    set(membp_driver_binary_dir "${membp_driver_source_dir}/build")
+    file(MAKE_DIRECTORY "${membp_driver_source_dir}")
+    file(WRITE "${membp_driver_source_dir}/CMakeLists.txt" "string(REPLACE \"/RTC1\" \"\" CMAKE_CXX_FLAGS_DEBUG \"\${CMAKE_CXX_FLAGS_DEBUG}\")\nset(MEMBP_TARGET_COMPILE_OPTIONS)\nif(MSVC)\n    list(APPEND MEMBP_TARGET_COMPILE_OPTIONS /GS- /GR- /Zl)\nelseif(CMAKE_CXX_COMPILER_ID MATCHES \"Clang|GNU\")\n    list(APPEND MEMBP_TARGET_COMPILE_OPTIONS -fno-stack-protector)\nendif()\n\nx64dbg_add_test(\n    NAME membp\n    SOURCE_DIR \"${CMAKE_CURRENT_LIST_DIR}/membp\"\n    TARGET_COMPILE_OPTIONS \${MEMBP_TARGET_COMPILE_OPTIONS}\n    TARGET_LINK_LIBRARIES kernel32\n    TARGET_LINK_OPTIONS\n        \"LINKER:/entry:start\"\n        \"LINKER:/incremental:no\"\n        \"LINKER:/nodefaultlib\"\n        \"LINKER:/merge:.mbd2=.mbc\"\n        \"LINKER:/merge:.mbd3=.mbc\"\n        \"LINKER:SHELL:/section:.mbc,ERW\"\n)\n")
+    add_subdirectory("${membp_driver_source_dir}" "${membp_driver_binary_dir}")
+endfunction()
 
 set(X64DBG_STANDARD_TESTS
     issue3803
@@ -181,17 +185,6 @@ foreach(test_name IN LISTS X64DBG_STANDARD_TESTS)
     x64dbg_add_test(NAME "${test_name}")
 endforeach()
 
-x64dbg_add_test(
-    NAME membp
-    TARGET_COMPILE_OPTIONS ${MEMBP_TARGET_COMPILE_OPTIONS}
-    TARGET_LINK_LIBRARIES kernel32
-    TARGET_LINK_OPTIONS
-        "LINKER:/entry:start"
-        "LINKER:/incremental:no"
-        "LINKER:/nodefaultlib"
-        "LINKER:/merge:.mbd2=.mbc"
-        "LINKER:/merge:.mbd3=.mbc"
-        "LINKER:SHELL:/section:.mbc,ERW"
-)
+x64dbg_add_membp_test()
 
 # random_dll intentionally remains excluded while its scaffold stays disabled.
