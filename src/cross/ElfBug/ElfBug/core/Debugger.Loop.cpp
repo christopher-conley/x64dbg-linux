@@ -117,9 +117,8 @@ namespace ElfBug
             waitpid(mainPid, &killStatus, __WALL);
             mMainPid.store(0, std::memory_order_release);
             mIsRunning.store(false, std::memory_order_release);
-            const int exitCode = WIFSIGNALED(killStatus) ? -WTERMSIG(killStatus)
-                                 : WIFEXITED(killStatus) ? WEXITSTATUS(killStatus)
-                                 : -SIGKILL;
+            const int exitCode = WIFEXITED(killStatus) ? WEXITSTATUS(killStatus)
+                                 : -WTERMSIG(killStatus);
             cbExitProcessEvent(exitCode);
             return;
         }
