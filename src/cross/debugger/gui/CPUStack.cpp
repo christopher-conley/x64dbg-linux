@@ -32,6 +32,7 @@ void CPUStack::setupColumns()
 {
     const int charwidth = getCharWidth();
 
+    // v1: Comments is unpopulated, stretch void* column instead.
     mForceColumn = 0;
 
     ColumnDescriptor colDesc{};
@@ -107,7 +108,7 @@ void CPUStack::onRegistersUpdated(const REGDUMP & regs)
 {
     mCbp = regs.regcontext.cbp;
 
-    if(mStackFrozen)
+    if(mStackFrozen && regs.regcontext.csp != 0)
     {
         // Keep mCsp live so "Go to RSP" still targets the live value.
         mCsp = regs.regcontext.csp;
@@ -122,6 +123,8 @@ void CPUStack::onProcessStarted()
     mStackFrozen = false;
     if(mFreezeAction)
         mFreezeAction->setChecked(false);
+    if(mCsp != 0)
+        stackDumpAt(mCsp, mCsp);
 }
 
 void CPUStack::gotoCspSlot()
