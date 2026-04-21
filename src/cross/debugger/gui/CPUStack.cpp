@@ -24,13 +24,17 @@ CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* par
     connect(mAdapter, &DbgAdapter::registersUpdated,
             this, &CPUStack::onRegistersUpdated,
             Qt::QueuedConnection);
+
+    connect(mAdapter, &DbgAdapter::processCreated,
+            this, &CPUStack::onProcessStarted,
+            Qt::QueuedConnection);
 }
 
 void CPUStack::setupColumns()
 {
     const int charwidth = getCharWidth();
 
-    mForceColumn = 1;
+    mForceColumn = 0;
 
     ColumnDescriptor colDesc{};
     DataDescriptor dDesc{};
@@ -113,6 +117,13 @@ void CPUStack::onRegistersUpdated(const REGDUMP & regs)
     }
 
     stackDumpAt(regs.regcontext.csp, regs.regcontext.csp);
+}
+
+void CPUStack::onProcessStarted()
+{
+    mStackFrozen = false;
+    if(mFreezeAction)
+        mFreezeAction->setChecked(false);
 }
 
 void CPUStack::gotoCspSlot()

@@ -23,6 +23,7 @@ signals:
 public slots:
     void stackDumpAt(duint addr, duint csp);
     void onRegistersUpdated(const REGDUMP & regs);
+    void onProcessStarted();
     void gotoCspSlot();
     void gotoCbpSlot();
     void followDisasmSlot();
