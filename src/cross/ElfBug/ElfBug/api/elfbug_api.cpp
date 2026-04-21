@@ -231,6 +231,7 @@ protected:
     void cbBreakpoint(const ElfBug::BreakpointInfo & info) override
     {
         processPendingBreakpoints();
+        refreshMemoryMap();
         if(cb.onBreakpoint)
             cb.onBreakpoint(info.address, cb.userdata);
     }
@@ -238,6 +239,7 @@ protected:
     void cbStep() override
     {
         processPendingBreakpoints();
+        refreshMemoryMap();
         if(cb.onStep)
             cb.onStep(cb.userdata);
     }
@@ -245,6 +247,7 @@ protected:
     void cbPaused() override
     {
         processPendingBreakpoints();
+        refreshMemoryMap();
         if(cb.onPaused)
             cb.onPaused(cb.userdata);
     }
