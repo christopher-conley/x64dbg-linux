@@ -3,12 +3,13 @@
 #include <QMainWindow>
 #include <QTabWidget>
 #include <QTextBrowser>
-#include <BasicView/HexDump.h>
 #include <BasicView/Disassembly.h>
+#include <BasicView/HexDump.h>
 #include "core/DbgAdapter.h"
 #include "Gui/RegistersView.h"
 
 class QThread;
+class CPUStack;
 
 class MainWindow : public QMainWindow
 {
@@ -43,6 +44,7 @@ private:
     QTabWidget* mTabWidget = nullptr;
     Disassembly* mDisassembly = nullptr;
     HexDump* mHexDump = nullptr;
+    CPUStack* mStack = nullptr;
     RegistersView* mRegisters = nullptr;
     QTextBrowser* mLog = nullptr;
 };

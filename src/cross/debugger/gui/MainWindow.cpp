@@ -7,9 +7,10 @@
 #include <QLabel>
 #include <QFile>
 #include <QStyleFactory>
-#include <Memory/MemoryPage.h>
 #include <QThread>
+#include <Memory/MemoryPage.h>
 #include "core/LinuxArchitecture.h"
+#include "gui/CPUStack.h"
 
 static LinuxArchitecture gArch;
 
@@ -150,6 +151,7 @@ QWidget* MainWindow::createCpuTab()
     const auto memPage = new MemoryPage(0, 0, this);
     mDisassembly = new Disassembly(&gArch, false, this);
     mHexDump = new HexDump(&gArch, this, memPage);
+    mStack = new CPUStack(&gArch, mProvider, this);
     mRegisters = new RegistersView(this);
 
     {
@@ -183,6 +185,7 @@ QWidget* MainWindow::createCpuTab()
     // Allow all widgets to be freely resized by splitters
     mDisassembly->setMinimumHeight(0);
     mHexDump->setMinimumHeight(0);
+    mStack->setMinimumHeight(0);
 
     const auto topSplitter = new QSplitter(Qt::Horizontal);
     topSplitter->addWidget(mDisassembly);
@@ -190,12 +193,21 @@ QWidget* MainWindow::createCpuTab()
     topSplitter->setStretchFactor(0, 70);
     topSplitter->setStretchFactor(1, 30);
 
+    const auto bottomSplitter = new QSplitter(Qt::Horizontal);
+    bottomSplitter->addWidget(mHexDump);
+    bottomSplitter->addWidget(mStack);
+    bottomSplitter->setStretchFactor(0, 60);
+    bottomSplitter->setStretchFactor(1, 40);
+
     const auto mainSplitter = new QSplitter(Qt::Vertical);
     mainSplitter->addWidget(topSplitter);
-    mainSplitter->addWidget(mHexDump);
+    mainSplitter->addWidget(bottomSplitter);
     mainSplitter->setStretchFactor(0, 55);
     mainSplitter->setStretchFactor(1, 45);
     mainSplitter->setChildrenCollapsible(false);
+
+    connect(mStack, &CPUStack::followDisasmRequested,
+            mDisassembly, &Disassembly::gotoAddress);
 
     return mainSplitter;
 }
@@ -252,7 +264,8 @@ void MainWindow::onProcessExited(const int exitCode) const
     DbgSetMemoryProvider(nullptr);
     mDisassembly->reloadData();
     mHexDump->reloadData();
-    REGDUMP emptyDump{};
+    constexpr REGDUMP emptyDump{};
+    mStack->onRegistersUpdated(emptyDump);
     mRegisters->setRegisters(&emptyDump);
     statusBar()->showMessage(QString("Process exited with code %1").arg(exitCode));
 }
@@ -374,6 +387,9 @@ void MainWindow::loadTheme()
     config->Colors["RegistersModifiedColor"] = QColor(0xFF0000);
     config->Colors["RegistersSelectionColor"] = bgHover;
     config->Colors["RegistersExtraInfoColor"] = disabled;
+
+    config->Colors["StackCspBackgroundColor"] = QColor(0x35, 0x55, 0x8f);
+    config->Colors["StackCspColor"] = text;
 
     QColor mnemonic(0xc678dd);
     QColor call(0x61afef);
