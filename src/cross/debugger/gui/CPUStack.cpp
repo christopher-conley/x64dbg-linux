@@ -7,9 +7,7 @@
 #include <QPainter>
 
 #include <Memory/MemoryPage.h>
-#include "Bridge.h"
 #include "Configuration.h"
-#include "StringUtil.h"
 
 CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* parent)
     : HexDump(architecture, parent)
@@ -73,7 +71,7 @@ void CPUStack::setupContextMenu()
     mContextMenu->addSeparator();
 
     mFollowDisasmAction = mContextMenu->addAction(tr("Follow in Disassembly"), this, &CPUStack::followDisasmSlot);
-    mCopyAddressAction = mContextMenu->addAction(tr("Copy Address"), this, &CPUStack::copyAddressSlot);
+    mCopyAddressAction = mContextMenu->addAction(tr("Copy Address"), this, &HexDump::copyAddressSlot);
 
     mContextMenu->addSeparator();
 
@@ -147,12 +145,10 @@ void CPUStack::followDisasmSlot()
     if(!mMemPage->read(&ptr, alignedRva, sizeof(duint)))
         return;
 
-    emit followDisasmRequested(ptr);
-}
+    if(!mAdapter->isCodePtr(ptr))
+        return;
 
-void CPUStack::copyAddressSlot()
-{
-    Bridge::CopyToClipboard(ToPtrString(rvaToVa(getInitialSelection())));
+    emit followDisasmRequested(ptr);
 }
 
 void CPUStack::freezeStackSlot()

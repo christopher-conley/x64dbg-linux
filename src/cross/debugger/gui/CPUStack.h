@@ -27,7 +27,6 @@ public slots:
     void gotoCspSlot();
     void gotoCbpSlot();
     void followDisasmSlot();
-    void copyAddressSlot();
     void freezeStackSlot();
 
 protected:
