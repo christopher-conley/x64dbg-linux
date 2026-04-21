@@ -113,10 +113,14 @@ namespace ElfBug
             cbInternalError("unsupported tracee architecture (" + std::string(archName) +
                             "); only x86_64 is supported");
             kill(mainPid, SIGKILL);
-            waitpid(mainPid, nullptr, __WALL);
+            int killStatus = 0;
+            waitpid(mainPid, &killStatus, __WALL);
             mMainPid.store(0, std::memory_order_release);
             mIsRunning.store(false, std::memory_order_release);
-            cbExitProcessEvent(-1);
+            const int exitCode = WIFSIGNALED(killStatus) ? -WTERMSIG(killStatus)
+                                 : WIFEXITED(killStatus) ? WEXITSTATUS(killStatus)
+                                 : -SIGKILL;
+            cbExitProcessEvent(exitCode);
             return;
         }
 
