@@ -21,6 +21,8 @@ public:
     bool isCodePtr(duint addr) override;
     bool isValidPtr(duint addr) override;
     bool writeRegister(const char* name, duint value) override;
+    bool modBaseFromAddr(duint addr, duint & base) override;
+    bool modNameFromAddr(duint addr, char* buf, duint bufSize, bool extension) override;
 
     bool loadEngine();
     bool launch(const char* path) const;

@@ -16,6 +16,8 @@ CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* par
     setWindowTitle("Stack");
     setShowHeader(false);
 
+    mStackReturnToColor = ConfigColor("StackReturnToColor");
+
     setupColumns();
     setupContextMenu();
 
@@ -32,11 +34,9 @@ void CPUStack::setupColumns()
 {
     const int charwidth = getCharWidth();
 
-    // v1: Comments is unpopulated, stretch void* column instead.
-    mForceColumn = 0;
+    mForceColumn = 1;
 
     ColumnDescriptor colDesc{};
-    DataDescriptor dDesc{};
 
     colDesc.isData = true;
     colDesc.itemCount = 1;
@@ -56,9 +56,6 @@ void CPUStack::setupColumns()
     colDesc.isData = false;
     colDesc.itemCount = 0;
     colDesc.separator = 0;
-    dDesc.itemSize = Byte;
-    dDesc.byteMode = AsciiByte;
-    colDesc.data = dDesc;
     appendDescriptor(2000, tr("Comments"), false, colDesc);
 }
 
@@ -236,4 +233,70 @@ QString CPUStack::paintContent(QPainter* painter, const duint row, const duint c
     }
 
     return HexDump::paintContent(painter, row, column, x, y, w, h);
+}
+
+void CPUStack::getColumnRichText(const duint col, const duint rva, RichTextPainter::List & richText) const
+{
+    // Mirrors src/gui/Src/Gui/CPUStack.cpp::getColumnRichText.
+    const duint va = rvaToVa(rva);
+    const bool activeStack = (va >= mCsp);
+
+    RichTextPainter::CustomRichText_t curData;
+    curData.underline = false;
+    curData.flags = RichTextPainter::FlagColor;
+    curData.textColor = mTextColor;
+
+    if(col && mDescriptor.at(col - 1).isData)
+    {
+        HexDump::getColumnRichText(col, rva, richText);
+        if(!activeStack)
+        {
+            const QColor inactiveColor = ConfigColor("StackInactiveTextColor");
+            for(auto & rt : richText)
+            {
+                rt.flags = RichTextPainter::FlagColor;
+                rt.textColor = inactiveColor;
+            }
+        }
+        return;
+    }
+
+    QString commentText;
+    bool isReturnTo = false;
+    if(col && resolveSlotComment(rva, commentText, isReturnTo))
+    {
+        if(activeStack)
+            curData.textColor = isReturnTo ? mStackReturnToColor : mTextColor;
+        else
+            curData.textColor = ConfigColor("StackInactiveTextColor");
+        curData.text = commentText;
+        richText.push_back(curData);
+        return;
+    }
+
+    HexDump::getColumnRichText(col, rva, richText);
+}
+
+bool CPUStack::resolveSlotComment(const duint rva, QString & out, bool & isReturnTo) const
+{
+    isReturnTo = false;
+
+    duint ptr = 0;
+    if(!mMemPage->read(&ptr, rva, sizeof(duint)))
+        return false;
+
+    char modName[MAX_MODULE_SIZE] = {};
+    if(!DbgFunctions()->ModNameFromAddr(ptr, modName, false))
+        return false;
+
+    isReturnTo = DbgFunctions()->MemIsCodePage(ptr, false);
+    // Mirrors Windows "%s.%p": uppercase hex, zero-padded to pointer width, no 0x prefix.
+    // TODO: isReturnTo is a proxy (any executable pointer) until a real call-site walker lands (next commit).
+    const QString mod = QString::fromUtf8(modName);
+    const QString addr = QString("%1").arg(ptr, sizeof(duint) * 2, 16, QLatin1Char('0')).toUpper();
+    if(isReturnTo)
+        out = QString("return to %1.%2").arg(mod, addr);
+    else
+        out = QString("%1.%2").arg(mod, addr);
+    return true;
 }

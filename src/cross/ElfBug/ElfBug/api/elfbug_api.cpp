@@ -10,6 +10,7 @@
 #include <mutex>
 #include <set>
 #include <shared_mutex>
+#include <unordered_map>
 #include <vector>
 #include <fcntl.h>
 
@@ -25,9 +26,11 @@ struct ElfBugDebugger : ElfBug::Debugger
     {
         uint64_t start, end;
         bool executable;
+        std::string pathname;
     };
     mutable std::mutex mapMutex;
     std::vector<MemRegion> memoryMap;
+    std::unordered_map<std::string, uint64_t> moduleBases;
 
     mutable std::mutex bpDataMutex;
     std::set<uint64_t> breakpointAddrs;
@@ -65,13 +68,47 @@ struct ElfBugDebugger : ElfBug::Debugger
         {
             uint64_t start = 0, end = 0;
             char perms[8] = {};
-            if(sscanf(line, "%" SCNx64 "-%" SCNx64 " %4s", &start, &end, perms) == 3)
-                newMaps.push_back({start, end, perms[2] == 'x'});
+            int pathOffset = 0;
+            // %n captures the byte offset after the fixed prefix so we can take the pathname verbatim (it may contain spaces).
+            if(sscanf(line, "%" SCNx64 "-%" SCNx64 " %4s %*x %*x:%*x %*u %n",
+                      &start, &end, perms, &pathOffset) < 3)
+                continue;
+
+            std::string pathname;
+            if(pathOffset > 0 && pathOffset < static_cast<int>(sizeof(line)))
+            {
+                const char* p = line + pathOffset;
+                while(*p == ' ' || *p == '\t') ++p;
+                size_t len = strlen(p);
+                while(len > 0 && (p[len - 1] == '\n' || p[len - 1] == '\r' || p[len - 1] == ' '))
+                    --len;
+                if(len > 0 && p[0] != '[')
+                    pathname.assign(p, len);
+
+                static constexpr std::string_view deletedSuffix{" (deleted)"};
+                if(pathname.size() >= deletedSuffix.size() &&
+                        std::string_view(pathname).substr(pathname.size() - deletedSuffix.size()) == deletedSuffix)
+                {
+                    pathname.resize(pathname.size() - deletedSuffix.size());
+                }
+            }
+
+            newMaps.push_back({start, end, perms[2] == 'x', std::move(pathname)});
         }
         fclose(f);
 
         std::lock_guard lock(mapMutex);
         memoryMap = std::move(newMaps);
+
+        moduleBases.clear();
+        for(const auto& r : memoryMap)
+        {
+            if(r.pathname.empty())
+                continue;
+            auto it = moduleBases.find(r.pathname);
+            if(it == moduleBases.end() || r.start < it->second)
+                moduleBases[r.pathname] = r.start;
+        }
     }
 
     const MemRegion* findRegion(const uint64_t addr) const
@@ -85,6 +122,24 @@ struct ElfBugDebugger : ElfBug::Debugger
                 return &*it;
         }
         return nullptr;
+    }
+
+    bool modLookup(const uint64_t addr, uint64_t* baseOut, std::string* pathOut) const
+    {
+        std::lock_guard lock(mapMutex);
+        const auto* region = findRegion(addr);
+        if(!region || region->pathname.empty())
+            return false;
+
+        const auto it = moduleBases.find(region->pathname);
+        if(it == moduleBases.end())
+            return false;
+
+        if(baseOut)
+            *baseOut = it->second;
+        if(pathOut)
+            *pathOut = region->pathname;
+        return true;
     }
 
     void processPendingBreakpoints()
@@ -242,6 +297,7 @@ protected:
         {
             std::lock_guard lock(mapMutex);
             memoryMap.clear();
+            moduleBases.clear();
         }
         {
             std::lock_guard lock(bpDataMutex);
@@ -449,6 +505,67 @@ extern "C" {
 
         std::lock_guard lock(dbg->mapMutex);
         return dbg->findRegion(addr) != nullptr;
+    }
+
+    bool ElfBugModBaseFromAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base)
+    {
+        if(!dbg || !base)
+            return false;
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
+
+        uint64_t b = 0;
+        if(!dbg->modLookup(addr, &b, nullptr))
+            return false;
+        *base = b;
+        return true;
+    }
+
+    bool ElfBugModNameFromAddr(const ElfBugDebugger* dbg, const uint64_t addr,
+                               char* buf, const uint64_t bufSize, const bool extension)
+    {
+        if(!dbg || !buf || bufSize == 0)
+            return false;
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
+
+        std::string path;
+        if(!dbg->modLookup(addr, nullptr, &path))
+            return false;
+
+        const size_t slash = path.find_last_of('/');
+        std::string base = (slash == std::string::npos) ? path : path.substr(slash + 1);
+
+        if(!extension)
+        {
+            size_t soPos = std::string::npos;
+            for(size_t p = base.find(".so"); p != std::string::npos; p = base.find(".so", p + 1))
+            {
+                const size_t after = p + 3;
+                if(after == base.size() || base[after] == '.')
+                {
+                    soPos = p;
+                    break;
+                }
+            }
+
+            if(soPos != std::string::npos)
+            {
+                base.resize(soPos);
+            }
+            else
+            {
+                const size_t dot = base.find_last_of('.');
+                if(dot != std::string::npos && dot > 0)
+                    base.resize(dot);
+            }
+        }
+
+        if(base.size() + 1 > bufSize)
+            return false;
+
+        memcpy(buf, base.c_str(), base.size() + 1);
+        return true;
     }
 
     bool ElfBugSetBreakpoint(ElfBugDebugger* dbg, uint64_t addr)

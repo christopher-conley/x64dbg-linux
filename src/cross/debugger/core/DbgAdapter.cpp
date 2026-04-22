@@ -128,6 +128,20 @@ bool DbgAdapter::writeRegister(const char* name, const duint value)
     return true;
 }
 
+bool DbgAdapter::modBaseFromAddr(const duint addr, duint & base)
+{
+    uint64_t b = 0;
+    if(!ElfBugModBaseFromAddr(mDebugger, addr, &b))
+        return false;
+    base = b;
+    return true;
+}
+
+bool DbgAdapter::modNameFromAddr(const duint addr, char* buf, const duint bufSize, const bool extension)
+{
+    return ElfBugModNameFromAddr(mDebugger, addr, buf, bufSize, extension);
+}
+
 // -- Debugger control --
 
 bool DbgAdapter::launch(const char* path) const

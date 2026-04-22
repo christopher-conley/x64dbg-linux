@@ -119,6 +119,8 @@ struct MemoryProvider
     virtual bool isValidPtr(duint addr) = 0;
     virtual bool write(duint addr, const void* src, duint size) { return false; }
     virtual bool writeRegister(const char* name, duint value) { return false; }
+    virtual bool modBaseFromAddr(duint addr, duint & base) { return false; }
+    virtual bool modNameFromAddr(duint addr, char* buf, duint bufSize, bool extension) { return false; }
 };
 
 void DbgSetMemoryProvider(MemoryProvider* provider);

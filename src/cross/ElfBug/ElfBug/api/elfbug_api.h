@@ -76,6 +76,19 @@ ELFBUG_EXPORT bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, uint64_t add
 ELFBUG_EXPORT bool ElfBugMemIsCodePtr(const ElfBugDebugger* dbg, uint64_t addr);
 ELFBUG_EXPORT bool ElfBugMemIsValidPtr(const ElfBugDebugger* dbg, uint64_t addr);
 
+// Returns the lowest mapped start address among regions sharing the module
+// file path that contains `addr`. Returns 0 when `addr` is not inside any
+// file-backed region (anonymous / [heap] / [stack] / [vdso] etc.).
+ELFBUG_EXPORT bool ElfBugModBaseFromAddr(const ElfBugDebugger* dbg, uint64_t addr, uint64_t* base);
+
+// Fills `buf` with the module basename for the file-backed region containing
+// `addr`. When `extension` is false, trims the final '.' suffix (e.g. ".so",
+// ".so.6" keeps the ".6" since it's not a simple extension). Returns false
+// when `addr` is not inside any file-backed region or the basename does not
+// fit in `bufSize`.
+ELFBUG_EXPORT bool ElfBugModNameFromAddr(const ElfBugDebugger* dbg, uint64_t addr,
+        char* buf, uint64_t bufSize, bool extension);
+
 // Write a single register. Tracee must be in ptrace-stop. Returns false on unknown name.
 // Known names: "csp"/"rsp", "cip"/"rip", "rax", "rbx", "rcx", "rdx", "rsi", "rdi",
 //              "rbp", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15".

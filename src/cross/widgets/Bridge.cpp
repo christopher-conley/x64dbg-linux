@@ -98,11 +98,14 @@ DBGFUNCTIONS* DbgFunctions()
         };
         f.ModBaseFromAddr = [](duint addr) -> duint
         {
-            return 0;
+            duint base = 0;
+            if(!gMemory.load()->modBaseFromAddr(addr, base))
+                return 0;
+            return base;
         };
         f.ModNameFromAddr = [](duint addr, char* name, bool extension)
         {
-            return false;
+            return gMemory.load()->modNameFromAddr(addr, name, MAX_MODULE_SIZE, extension);
         };
         f.StringFormatInline = [](const char* format, size_t size, char* dest)
         {
