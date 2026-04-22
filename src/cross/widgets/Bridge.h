@@ -148,6 +148,7 @@ XREFTYPE DbgGetXrefTypeAt(duint addr);
 ARGTYPE DbgGetArgTypeAt(duint addr);
 LOOPTYPE DbgGetLoopTypeAt(duint addr, int depth);
 duint DbgGetBranchDestination(duint addr);
+bool DbgResolveReturnTo(duint returnAddress, duint* fromAddress);
 bool DbgIsJumpGoingToExecute(duint addr);
 bool DbgXrefGet(duint addr, XREF_INFO* info);
 void DbgReleaseEncodeTypeBuffer(void* buffer);

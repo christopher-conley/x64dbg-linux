@@ -150,6 +150,7 @@ DBGFUNCTIONS* DbgFunctions()
     return &f;
 }
 
+// TODO: resolve via per-module .dynsym lookup.
 bool DbgGetLabelAt(duint addr, SEGTYPE seg, char* label)
 {
     return false;
@@ -190,6 +191,7 @@ bool DbgMemIsValidReadPtr(duint addr)
     return gMemory.load()->isValidPtr(addr);
 }
 
+// TODO: detect printable ASCII / UTF-16LE string at addr.
 bool DbgGetStringAt(duint addr, char* str)
 {
     return false;
@@ -299,6 +301,49 @@ duint DbgGetBranchDestination(duint addr)
     if(!zydis.Disassemble(addr, data))
         return 0;
     return zydis.BranchDestination();
+}
+
+bool DbgResolveReturnTo(const duint returnAddress, duint* fromAddress)
+{
+    if(fromAddress)
+        *fromAddress = 0;
+
+    if(!DbgFunctions()->MemIsCodePage(returnAddress, false))
+        return false;
+
+    const duint regionBase = DbgMemFindBaseAddr(returnAddress, nullptr);
+    if(regionBase == 0)
+        return false;
+
+    constexpr size_t kMaxInstr = 15;
+    size_t lookback = kMaxInstr;
+    if(returnAddress - regionBase < lookback)
+        lookback = returnAddress - regionBase;
+    if(lookback < 2)
+        return false;
+
+    uint8_t buf[kMaxInstr] = {};
+    const duint readStart = returnAddress - lookback;
+    if(!DbgMemRead(readStart, buf, lookback))
+        return false;
+
+    Zydis zydis(true); // TODO: architecture
+    for(size_t k = 2; k <= lookback; ++k)
+    {
+        const duint instrAddr = returnAddress - k;
+        const uint8_t* instrBytes = buf + (lookback - k);
+        if(!zydis.Disassemble(instrAddr, instrBytes, k))
+            continue;
+        if(zydis.Size() != k)
+            continue;
+        if(!zydis.IsCall())
+            continue;
+        if(fromAddress)
+            *fromAddress = zydis.BranchDestination();
+        return true;
+    }
+
+    return false;
 }
 
 bool DbgIsJumpGoingToExecute(duint addr)

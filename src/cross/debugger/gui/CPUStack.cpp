@@ -289,14 +289,28 @@ bool CPUStack::resolveSlotComment(const duint rva, QString & out, bool & isRetur
     if(!DbgFunctions()->ModNameFromAddr(ptr, modName, false))
         return false;
 
-    isReturnTo = DbgFunctions()->MemIsCodePage(ptr, false);
-    // Mirrors Windows "%s.%p": uppercase hex, zero-padded to pointer width, no 0x prefix.
-    // TODO: isReturnTo is a proxy (any executable pointer) until a real call-site walker lands (next commit).
+    duint fromAddr = 0;
+    isReturnTo = DbgResolveReturnTo(ptr, &fromAddr);
+
     const QString mod = QString::fromUtf8(modName);
     const QString addr = QString("%1").arg(ptr, sizeof(duint) * 2, 16, QLatin1Char('0')).toUpper();
-    if(isReturnTo)
-        out = QString("return to %1.%2").arg(mod, addr);
-    else
+
+    if(!isReturnTo)
+    {
         out = QString("%1.%2").arg(mod, addr);
+        return true;
+    }
+
+    QString fromPart = QStringLiteral("???");
+    if(fromAddr != 0)
+    {
+        const QString fromAddrStr = QString("%1").arg(fromAddr, sizeof(duint) * 2, 16, QLatin1Char('0')).toUpper();
+        fromPart = fromAddrStr;
+        char fromModName[MAX_MODULE_SIZE] = {};
+        if(DbgFunctions()->ModNameFromAddr(fromAddr, fromModName, false))
+            fromPart = QString("%1.%2").arg(QString::fromUtf8(fromModName), fromAddrStr);
+    }
+
+    out = QString("return to %1.%2 from %3").arg(mod, addr, fromPart);
     return true;
 }
