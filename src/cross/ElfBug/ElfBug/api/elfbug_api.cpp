@@ -131,14 +131,16 @@ struct ElfBugDebugger : ElfBug::Debugger
         return mProcess->MemRead(static_cast<ElfBug::ptr>(addr), dest, static_cast<ElfBug::ptr>(size));
     }
 
-    bool memWrite(const uint64_t addr, const void* src, const uint64_t size) const {
+    bool memWrite(const uint64_t addr, const void* src, const uint64_t size) const
+    {
         std::shared_lock lock(mProcessMutex);
         if(!active.load(std::memory_order_acquire) || !mProcess)
             return false;
         return mProcess->MemWrite(static_cast<ElfBug::ptr>(addr), src, static_cast<ElfBug::ptr>(size));
     }
 
-    bool setRegister(const char* name, const uint64_t value) const {
+    bool setRegister(const char* name, const uint64_t value) const
+    {
         std::shared_lock lock(mProcessMutex);
         if(!active.load(std::memory_order_acquire) || !mThread)
             return false;

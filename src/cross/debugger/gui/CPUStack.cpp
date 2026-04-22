@@ -41,7 +41,7 @@ void CPUStack::setupColumns()
     colDesc.isData = true;
     colDesc.itemCount = 1;
     colDesc.separator = 0;
-    if constexpr (sizeof(duint) == 8)
+    if constexpr(sizeof(duint) == 8)
     {
         colDesc.data.itemSize = Qword;
         colDesc.data.qwordMode = HexQword;
@@ -85,7 +85,8 @@ void CPUStack::setupContextMenu()
     mFreezeAction->setCheckable(true);
 }
 
-void CPUStack::refreshActionState() const {
+void CPUStack::refreshActionState() const
+{
     const bool debugging = mCsp != 0;
 
     mRealignAction->setEnabled(debugging && (mCsp & (sizeof(duint) - 1)) != 0);
@@ -219,7 +220,7 @@ void CPUStack::mouseDoubleClickEvent(QMouseEvent* event)
 }
 
 QString CPUStack::paintContent(QPainter* painter, const duint row, const duint column, const int x, const int y,
-    const int w, const int h)
+                               const int w, const int h)
 {
     if(column == 0 && mCsp != 0)
     {
