@@ -71,9 +71,15 @@ ELFBUG_EXPORT pid_t ElfBugGetPid(const ElfBugDebugger* dbg);
 ELFBUG_EXPORT ElfBugArch ElfBugGetArch(const ElfBugDebugger* dbg);
 
 ELFBUG_EXPORT bool ElfBugMemRead(const ElfBugDebugger* dbg, uint64_t addr, void* dest, uint64_t size);
+ELFBUG_EXPORT bool ElfBugMemWrite(const ElfBugDebugger* dbg, uint64_t addr, const void* src, uint64_t size);
 ELFBUG_EXPORT bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, uint64_t addr, uint64_t* base, uint64_t* size);
 ELFBUG_EXPORT bool ElfBugMemIsCodePtr(const ElfBugDebugger* dbg, uint64_t addr);
 ELFBUG_EXPORT bool ElfBugMemIsValidPtr(const ElfBugDebugger* dbg, uint64_t addr);
+
+// Write a single register. Tracee must be in ptrace-stop. Returns false on unknown name.
+// Known names: "csp"/"rsp", "cip"/"rip", "rax", "rbx", "rcx", "rdx", "rsi", "rdi",
+//              "rbp", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15".
+ELFBUG_EXPORT bool ElfBugSetRegister(const ElfBugDebugger* dbg, const char* name, uint64_t value);
 
 ELFBUG_EXPORT bool ElfBugSetBreakpoint(ElfBugDebugger* dbg, uint64_t addr);
 ELFBUG_EXPORT bool ElfBugDeleteBreakpoint(ElfBugDebugger* dbg, uint64_t addr);

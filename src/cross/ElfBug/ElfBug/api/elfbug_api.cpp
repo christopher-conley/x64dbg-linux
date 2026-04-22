@@ -131,6 +131,44 @@ struct ElfBugDebugger : ElfBug::Debugger
         return mProcess->MemRead(static_cast<ElfBug::ptr>(addr), dest, static_cast<ElfBug::ptr>(size));
     }
 
+    bool memWrite(const uint64_t addr, const void* src, const uint64_t size) const {
+        std::shared_lock lock(mProcessMutex);
+        if(!active.load(std::memory_order_acquire) || !mProcess)
+            return false;
+        return mProcess->MemWrite(static_cast<ElfBug::ptr>(addr), src, static_cast<ElfBug::ptr>(size));
+    }
+
+    bool setRegister(const char* name, const uint64_t value) const {
+        std::shared_lock lock(mProcessMutex);
+        if(!active.load(std::memory_order_acquire) || !mThread)
+            return false;
+
+        auto & r = mThread->registers;
+        const auto v = static_cast<ElfBug::ptr>(value);
+
+        if(!strcmp(name, "csp") || !strcmp(name, "rsp"))       r.Rsp() = v;
+        else if(!strcmp(name, "cip") || !strcmp(name, "rip"))  r.Rip() = v;
+        else if(!strcmp(name, "rax"))                          r.Rax() = v;
+        else if(!strcmp(name, "rbx"))                          r.Rbx() = v;
+        else if(!strcmp(name, "rcx"))                          r.Rcx() = v;
+        else if(!strcmp(name, "rdx"))                          r.Rdx() = v;
+        else if(!strcmp(name, "rsi"))                          r.Rsi() = v;
+        else if(!strcmp(name, "rdi"))                          r.Rdi() = v;
+        else if(!strcmp(name, "rbp"))                          r.Rbp() = v;
+        else if(!strcmp(name, "r8"))                           r.R8()  = v;
+        else if(!strcmp(name, "r9"))                           r.R9()  = v;
+        else if(!strcmp(name, "r10"))                          r.R10() = v;
+        else if(!strcmp(name, "r11"))                          r.R11() = v;
+        else if(!strcmp(name, "r12"))                          r.R12() = v;
+        else if(!strcmp(name, "r13"))                          r.R13() = v;
+        else if(!strcmp(name, "r14"))                          r.R14() = v;
+        else if(!strcmp(name, "r15"))                          r.R15() = v;
+        else
+            return false;
+
+        return r.Write();
+    }
+
     ElfBugArch getArch() const
     {
         std::shared_lock lock(mProcessMutex);
@@ -355,6 +393,20 @@ extern "C" {
         if(!dbg)
             return false;
         return dbg->memRead(addr, dest, size);
+    }
+
+    bool ElfBugMemWrite(const ElfBugDebugger* dbg, const uint64_t addr, const void* src, const uint64_t size)
+    {
+        if(!dbg || !src)
+            return false;
+        return dbg->memWrite(addr, src, size);
+    }
+
+    bool ElfBugSetRegister(const ElfBugDebugger* dbg, const char* name, const uint64_t value)
+    {
+        if(!dbg || !name)
+            return false;
+        return dbg->setRegister(name, value);
     }
 
     bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base, uint64_t* size)

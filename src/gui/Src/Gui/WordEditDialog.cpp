@@ -2,6 +2,7 @@
 #include "ui_WordEditDialog.h"
 #include "ValidateExpressionThread.h"
 #include "StringUtil.h"
+#include <QRegularExpressionValidator>
 #include <Configuration.h>
 
 WordEditDialog::WordEditDialog(QWidget* parent)
@@ -18,8 +19,8 @@ WordEditDialog::WordEditDialog(QWidget* parent)
     setModal(true);
 
     // Set up default validators for numerical input
-    ui->signedLineEdit->setValidator(new QRegExpValidator(QRegExp("^-?\\d*(\\d+)?$"), this));// Optional negative, 0-9
-    ui->unsignedLineEdit->setValidator(new QRegExpValidator(QRegExp("^\\d*(\\d+)?$"), this));// No signs, 0-9
+    ui->signedLineEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^-?\\d*(\\d+)?$"), this));// Optional negative, 0-9
+    ui->unsignedLineEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^\\d*(\\d+)?$"), this));// No signs, 0-9
 
     mValidateThread = new ValidateExpressionThread(this);
     mValidateThread->setOnExpressionChangedCallback(std::bind(&WordEditDialog::validateExpression, this, std::placeholders::_1));
@@ -90,7 +91,7 @@ void WordEditDialog::expressionChanged(bool validExpression, bool validPointer, 
         unsigned char* word = (unsigned char*)&mWord;
         // ascii
         int asciiWidth = 0;
-#ifdef _WIN64
+#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__)
         hex[0] = word[7];
         hex[1] = word[6];
         hex[2] = word[5];
@@ -106,7 +107,7 @@ void WordEditDialog::expressionChanged(bool validExpression, bool validPointer, 
         hex[2] = word[1];
         hex[3] = word[0];
         asciiWidth = 4;
-#endif //_WIN64
+#endif
 
         // Save the original index for inputs
         saveCursorPositions();
@@ -156,8 +157,8 @@ void WordEditDialog::expressionChanged(bool validExpression, bool validPointer, 
 
 void WordEditDialog::on_signedLineEdit_textEdited(const QString & arg1)
 {
-    LONGLONG value;
-    if(sscanf_s(arg1.toUtf8().constData(), "%lld", &value) == 1)
+    long long value;
+    if(sscanf(arg1.toUtf8().constData(), "%lld", &value) == 1)
     {
         ui->signedLineEdit->setStyleSheet("");
         ui->btnOk->setEnabled(true);
@@ -172,8 +173,8 @@ void WordEditDialog::on_signedLineEdit_textEdited(const QString & arg1)
 
 void WordEditDialog::on_unsignedLineEdit_textEdited(const QString & arg1)
 {
-    LONGLONG value;
-    if(sscanf_s(arg1.toUtf8().constData(), "%llu", &value) == 1)
+    unsigned long long value;
+    if(sscanf(arg1.toUtf8().constData(), "%llu", &value) == 1)
     {
         ui->unsignedLineEdit->setStyleSheet("");
         ui->btnOk->setEnabled(true);

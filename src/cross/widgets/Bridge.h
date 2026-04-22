@@ -117,6 +117,8 @@ struct MemoryProvider
     virtual bool getRange(duint addr, duint & base, duint & size) = 0;
     virtual bool isCodePtr(duint addr) = 0;
     virtual bool isValidPtr(duint addr) = 0;
+    virtual bool write(duint addr, const void* src, duint size) { return false; }
+    virtual bool writeRegister(const char* name, duint value) { return false; }
 };
 
 void DbgSetMemoryProvider(MemoryProvider* provider);
@@ -133,7 +135,7 @@ bool DbgGetBookmarkAt(duint addr);
 BPXTYPE DbgGetBpxTypeAt(duint addr);
 bool DbgMemIsValidReadPtr(duint addr);
 bool DbgGetStringAt(duint addr, char* str);
-bool DbgEval(const char* expr, bool* success = nullptr);
+duint DbgEval(const char* expr, bool* success = nullptr);
 duint DbgValFromString(const char* expr);
 bool DbgCmdExec(const char* cmd);
 bool DbgCmdExecDirect(const char* cmd);

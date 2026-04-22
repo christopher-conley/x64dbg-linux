@@ -3,9 +3,9 @@
 #include <QAction>
 #include <QContextMenuEvent>
 #include <QMenu>
-#include <QMouseEvent>
 #include <QPainter>
 
+#include <Gui/WordEditDialog.h>
 #include <Memory/MemoryPage.h>
 #include "Configuration.h"
 
@@ -41,7 +41,7 @@ void CPUStack::setupColumns()
     colDesc.isData = true;
     colDesc.itemCount = 1;
     colDesc.separator = 0;
-    if(sizeof(duint) == 8)
+    if constexpr (sizeof(duint) == 8)
     {
         colDesc.data.itemSize = Qword;
         colDesc.data.qwordMode = HexQword;
@@ -66,6 +66,11 @@ void CPUStack::setupContextMenu()
 {
     mContextMenu = new QMenu(this);
 
+    mRealignAction = mContextMenu->addAction(tr("Align Stack Pointer"), this, &CPUStack::realignSlot);
+    mModifyAction = mContextMenu->addAction(tr("Modify"), this, &CPUStack::modifySlot);
+
+    mContextMenu->addSeparator();
+
     mGotoCspAction = mContextMenu->addAction(tr("Go to RSP"), this, &CPUStack::gotoCspSlot);
     mGotoCbpAction = mContextMenu->addAction(tr("Go to RBP"), this, &CPUStack::gotoCbpSlot);
 
@@ -80,10 +85,11 @@ void CPUStack::setupContextMenu()
     mFreezeAction->setCheckable(true);
 }
 
-void CPUStack::refreshActionState()
-{
+void CPUStack::refreshActionState() const {
     const bool debugging = mCsp != 0;
 
+    mRealignAction->setEnabled(debugging && (mCsp & (sizeof(duint) - 1)) != 0);
+    mModifyAction->setEnabled(debugging);
     mGotoCspAction->setEnabled(debugging);
     mGotoCbpAction->setEnabled(debugging && mCbp != 0);
     mFollowDisasmAction->setEnabled(debugging);
@@ -92,7 +98,7 @@ void CPUStack::refreshActionState()
     mFreezeAction->setChecked(mStackFrozen);
 }
 
-void CPUStack::stackDumpAt(duint addr, duint csp)
+void CPUStack::stackDumpAt(const duint addr, const duint csp)
 {
     mCsp = csp;
 
@@ -160,6 +166,31 @@ void CPUStack::freezeStackSlot()
     mFreezeAction->setChecked(mStackFrozen);
 }
 
+void CPUStack::realignSlot()
+{
+    const duint aligned = mCsp & ~static_cast<duint>(sizeof(duint) - 1);
+    mAdapter->writeRegister("csp", aligned);
+}
+
+void CPUStack::modifySlot()
+{
+    const duint selection = getInitialSelection();
+    const duint alignedRva = selection - (selection % sizeof(duint));
+
+    duint currentValue = 0;
+    if(!mMemPage->read(&currentValue, alignedRva, sizeof(duint)))
+        return;
+
+    WordEditDialog editDialog(this);
+    editDialog.setup(tr("Modify"), currentValue, sizeof(duint));
+    if(editDialog.exec() != QDialog::Accepted)
+        return;
+
+    const duint newValue = editDialog.getVal();
+    mMemPage->write(&newValue, alignedRva, sizeof(duint));
+    reloadData();
+}
+
 void CPUStack::contextMenuEvent(QContextMenuEvent* event)
 {
     refreshActionState();
@@ -187,13 +218,14 @@ void CPUStack::mouseDoubleClickEvent(QMouseEvent* event)
         emit followDisasmRequested(ptr);
 }
 
-QString CPUStack::paintContent(QPainter* painter, duint row, duint column, int x, int y, int w, int h)
+QString CPUStack::paintContent(QPainter* painter, const duint row, const duint column, const int x, const int y,
+    const int w, const int h)
 {
     if(column == 0 && mCsp != 0)
     {
         const auto bytePerRowCount = getBytePerRowCount();
-        const dsint rva = dsint(row) * dsint(bytePerRowCount) - mByteOffset;
-        const duint rowVa = rvaToVa(duint(rva));
+        const dsint rva = static_cast<dsint>(row) * static_cast<dsint>(bytePerRowCount) - mByteOffset;
+        const duint rowVa = rvaToVa(static_cast<duint>(rva));
         if(rowVa == mCsp)
         {
             const QColor background = ConfigColor("StackCspBackgroundColor");

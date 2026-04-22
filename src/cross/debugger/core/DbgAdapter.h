@@ -16,9 +16,11 @@ public:
     ~DbgAdapter() override;
 
     bool read(duint addr, void* dest, duint size) override;
+    bool write(duint addr, const void* src, duint size) override;
     bool getRange(duint addr, duint & base, duint & size) override;
     bool isCodePtr(duint addr) override;
     bool isValidPtr(duint addr) override;
+    bool writeRegister(const char* name, duint value) override;
 
     bool loadEngine();
     bool launch(const char* path) const;

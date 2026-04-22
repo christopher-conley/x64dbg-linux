@@ -62,6 +62,6 @@ void ValidateExpressionThread::run()
         {
             mOnExpressionChangedCallback(expression);
         }
-        Sleep(50);
+        QThread::msleep(50);
     }
 }

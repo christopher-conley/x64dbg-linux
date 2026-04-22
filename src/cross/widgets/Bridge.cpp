@@ -140,7 +140,7 @@ DBGFUNCTIONS* DbgFunctions()
         };
         f.MemPatch = [](duint start, const unsigned char* data, duint size)
         {
-            return false;
+            return gMemory.load()->write(start, data, size);
         };
         return f;
     }();
@@ -192,15 +192,39 @@ bool DbgGetStringAt(duint addr, char* str)
     return false;
 }
 
-bool DbgEval(const char* expr, bool* success)
+duint DbgEval(const char* expr, bool* success)
 {
-    return false;
+    if(success)
+        *success = false;
+    if(!expr)
+        return 0;
+
+    QString str = QString::fromUtf8(expr).trimmed();
+    if(str.isEmpty())
+        return 0;
+
+    bool negative = false;
+    if(str.startsWith('-'))
+    {
+        negative = true;
+        str = str.mid(1).trimmed();
+    }
+    if(str.startsWith("0x", Qt::CaseInsensitive))
+        str = str.mid(2);
+
+    bool ok = false;
+    const duint value = str.toULongLong(&ok, 16);
+    if(!ok)
+        return 0;
+
+    if(success)
+        *success = true;
+    return negative ? static_cast<duint>(0) - value : value;
 }
 
 duint DbgValFromString(const char* expr)
 {
-    // Stub: no expression evaluator yet - always returns 0
-    return 0;
+    return DbgEval(expr, nullptr);
 }
 
 bool DbgCmdExec(const char* cmd)

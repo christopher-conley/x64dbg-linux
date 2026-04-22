@@ -28,15 +28,17 @@ public slots:
     void gotoCbpSlot();
     void followDisasmSlot();
     void freezeStackSlot();
+    void realignSlot();
+    void modifySlot();
 
-protected:
+public:
     void contextMenuEvent(QContextMenuEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
 
 private:
     void setupColumns();
     void setupContextMenu();
-    void refreshActionState();
+    void refreshActionState() const;
 
     DbgAdapter* mAdapter = nullptr;
     duint mCsp = 0;
@@ -49,4 +51,6 @@ private:
     QAction* mFollowDisasmAction = nullptr;
     QAction* mCopyAddressAction = nullptr;
     QAction* mFreezeAction = nullptr;
+    QAction* mRealignAction = nullptr;
+    QAction* mModifyAction = nullptr;
 };
