@@ -265,7 +265,6 @@ void MainWindow::onProcessExited(const int exitCode) const
     mDisassembly->reloadData();
     mHexDump->reloadData();
     constexpr REGDUMP emptyDump{};
-    mStack->onRegistersUpdated(emptyDump);
     mRegisters->setRegisters(&emptyDump);
     statusBar()->showMessage(QString("Process exited with code %1").arg(exitCode));
 }

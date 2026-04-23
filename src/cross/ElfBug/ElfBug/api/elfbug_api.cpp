@@ -551,7 +551,11 @@ extern "C" {
 
             if(soPos != std::string::npos)
             {
-                base.resize(soPos);
+                const size_t after = soPos + 3;
+                if(after == base.size())
+                    base.resize(soPos);       // "libfoo.so" -> "libfoo"
+                else
+                    base.erase(soPos, 3);     // "libfoo.so.6" -> "libfoo.6"
             }
             else
             {
