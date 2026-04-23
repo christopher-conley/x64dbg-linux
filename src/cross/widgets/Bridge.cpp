@@ -199,6 +199,7 @@ bool DbgGetStringAt(duint addr, char* str)
 
 duint DbgEval(const char* expr, bool* success)
 {
+    // TODO: replace this hex-only stub with a real cross expression evaluator (breaks rsp+8, symbols, mod.main(), etc.).
     if(success)
         *success = false;
     if(!expr)

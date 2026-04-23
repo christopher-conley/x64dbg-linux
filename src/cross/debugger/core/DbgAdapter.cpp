@@ -184,14 +184,14 @@ bool DbgAdapter::toggleBreakpoint(const duint addr) const
     if(!isActive())
         return false;
 
-    if(ElfBugHasBreakpoint(mDebugger, addr))
+    if(ElfBugIsBreakpointEffective(mDebugger, addr))
         return ElfBugDeleteBreakpoint(mDebugger, addr);
     return ElfBugSetBreakpoint(mDebugger, addr);
 }
 
 bool DbgAdapter::hasBreakpoint(const duint addr) const
 {
-    return ElfBugHasBreakpoint(mDebugger, addr);
+    return ElfBugIsBreakpointEffective(mDebugger, addr);
 }
 
 BPXTYPE DbgAdapter::queryBreakpoint(duint addr)

@@ -35,7 +35,7 @@ struct ElfBugDebugger : ElfBug::Debugger
     mutable std::mutex bpDataMutex;
     std::set<uint64_t> breakpointAddrs;
 
-    std::mutex bpQueueMutex;
+    mutable std::mutex bpQueueMutex;
     struct BpRequest
     {
         uint64_t addr;
@@ -144,13 +144,8 @@ struct ElfBugDebugger : ElfBug::Debugger
 
     void processPendingBreakpoints()
     {
-        std::vector<BpRequest> pending;
-        {
-            std::lock_guard lock(bpQueueMutex);
-            pending.swap(pendingBpRequests);
-        }
-
-        for(const auto & req : pending)
+        std::lock_guard queueLock(bpQueueMutex);
+        for(const auto & req : pendingBpRequests)
         {
             if(!mProcess)
                 continue;
@@ -173,10 +168,13 @@ struct ElfBugDebugger : ElfBug::Debugger
                 }
             }
         }
+        pendingBpRequests.clear();
     }
 
     bool memRead(const uint64_t addr, void* dest, const uint64_t size) const
     {
+        if(!dest)
+            return false;
         std::shared_lock lock(mProcessMutex);
         if(!active.load(std::memory_order_acquire) || !mProcess)
         {
@@ -596,10 +594,20 @@ extern "C" {
         return true;
     }
 
-    bool ElfBugHasBreakpoint(const ElfBugDebugger* dbg, const uint64_t addr)
+    bool ElfBugIsBreakpointEffective(const ElfBugDebugger* dbg, const uint64_t addr)
     {
         if(!dbg)
             return false;
+
+        {
+            std::lock_guard lock(dbg->bpQueueMutex);
+            for(auto it = dbg->pendingBpRequests.rbegin(); it != dbg->pendingBpRequests.rend(); ++it)
+            {
+                if(it->addr == addr)
+                    return it->setOrDelete;
+            }
+        }
+
         std::lock_guard lock(dbg->bpDataMutex);
         return dbg->breakpointAddrs.count(addr) > 0;
     }

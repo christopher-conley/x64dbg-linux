@@ -131,12 +131,16 @@ void CPUStack::stackDumpAt(const duint addr, const duint csp)
 {
     mCsp = csp;
 
+    const duint viewStartVa = mMemPage->va(getTableOffsetRva());
+    const duint viewEndVa = mMemPage->va(getTableOffsetRva() + getViewableRowsCount() * getBytePerRowCount());
+    const bool isInvisible = (addr < viewStartVa) || (addr >= viewEndVa);
+
     // Window the page around addr so scrolling a few rows doesn't refetch.
     constexpr duint kWindowHalf = 0x1000;
     const duint windowBase = addr > kWindowHalf ? addr - kWindowHalf : 0;
     mMemPage->setAttributes(windowBase, kWindowHalf * 2);
 
-    printDumpAt(addr, true, true, true);
+    printDumpAt(addr, true, true, isInvisible || addr == csp);
 }
 
 void CPUStack::onRegistersUpdated(const REGDUMP & regs)
@@ -227,7 +231,7 @@ void CPUStack::modifySlot()
 
     const duint newValue = editDialog.getVal();
     mMemPage->write(&newValue, alignedRva, sizeof(duint));
-    reloadData();
+    GuiUpdateAllViews();
 }
 
 void CPUStack::copyPtrColumnSlot() const
@@ -285,21 +289,27 @@ void CPUStack::mouseDoubleClickEvent(QMouseEvent* event)
 {
     HexDump::mouseDoubleClickEvent(event);
 
-    if(event->button() != Qt::LeftButton || mCsp == 0)
+    if(event->button() != Qt::LeftButton || !DbgIsDebugging())
         return;
 
-    // Column 0 is the auto-rendered address; 1 is the first user descriptor (void*).
-    if(getColumnIndexFromX(event->pos().x()) != 1)
-        return;
-
-    const duint selection = getInitialSelection();
-    const duint alignedRva = selection - (selection % sizeof(duint));
-    duint ptr = 0;
-    if(!mMemPage->read(&ptr, alignedRva, sizeof(duint)))
-        return;
-
-    if(mAdapter->isCodePtr(ptr))
-        emit followDisasmRequested(ptr);
+    switch(getColumnIndexFromX(event->pos().x()))
+    {
+    case 0: // address column - no action (?? - cross has no RVA display toggle)
+        break;
+    case 1: // void* - edit the slot
+        modifySlot();
+        break;
+    default: // comment - follow into disassembly only if this is a return-to slot
+    {
+        const duint selection = getInitialSelection();
+        const duint alignedRva = selection - (selection % sizeof(duint));
+        QString commentText;
+        bool isReturnTo = false;
+        if(resolveSlotComment(alignedRva, commentText, isReturnTo) && isReturnTo)
+            followDisasmSlot();
+        break;
+    }
+    }
 }
 
 QString CPUStack::paintContent(QPainter* painter, const duint row, const duint column, const int x, const int y,
