@@ -92,6 +92,11 @@ bool DbgAdapter::read(const duint addr, void* dest, const duint size)
     return ElfBugMemRead(mDebugger, addr, dest, size);
 }
 
+bool DbgAdapter::write(const duint addr, const void* src, const duint size)
+{
+    return ElfBugMemWrite(mDebugger, addr, src, size);
+}
+
 bool DbgAdapter::getRange(const duint addr, duint & base, duint & size)
 {
     uint64_t b, s;
@@ -110,6 +115,31 @@ bool DbgAdapter::isCodePtr(const duint addr)
 bool DbgAdapter::isValidPtr(const duint addr)
 {
     return ElfBugMemIsValidPtr(mDebugger, addr);
+}
+
+bool DbgAdapter::writeRegister(const char* name, const duint value)
+{
+    if(!ElfBugSetRegister(mDebugger, name, value))
+        return false;
+
+    ElfBugRegisters regs = {};
+    if(ElfBugGetRegisters(mDebugger, &regs))
+        emit registersUpdated(toRegDump(regs));
+    return true;
+}
+
+bool DbgAdapter::modBaseFromAddr(const duint addr, duint & base)
+{
+    uint64_t b = 0;
+    if(!ElfBugModBaseFromAddr(mDebugger, addr, &b))
+        return false;
+    base = b;
+    return true;
+}
+
+bool DbgAdapter::modNameFromAddr(const duint addr, char* buf, const duint bufSize, const bool extension)
+{
+    return ElfBugModNameFromAddr(mDebugger, addr, buf, bufSize, extension);
 }
 
 // -- Debugger control --
@@ -154,14 +184,14 @@ bool DbgAdapter::toggleBreakpoint(const duint addr) const
     if(!isActive())
         return false;
 
-    if(ElfBugHasBreakpoint(mDebugger, addr))
+    if(ElfBugIsBreakpointEffective(mDebugger, addr))
         return ElfBugDeleteBreakpoint(mDebugger, addr);
     return ElfBugSetBreakpoint(mDebugger, addr);
 }
 
 bool DbgAdapter::hasBreakpoint(const duint addr) const
 {
-    return ElfBugHasBreakpoint(mDebugger, addr);
+    return ElfBugIsBreakpointEffective(mDebugger, addr);
 }
 
 BPXTYPE DbgAdapter::queryBreakpoint(duint addr)

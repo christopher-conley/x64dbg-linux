@@ -10,6 +10,7 @@
 #include <mutex>
 #include <set>
 #include <shared_mutex>
+#include <unordered_map>
 #include <vector>
 #include <fcntl.h>
 
@@ -25,14 +26,16 @@ struct ElfBugDebugger : ElfBug::Debugger
     {
         uint64_t start, end;
         bool executable;
+        std::string pathname;
     };
     mutable std::mutex mapMutex;
     std::vector<MemRegion> memoryMap;
+    std::unordered_map<std::string, uint64_t> moduleBases;
 
     mutable std::mutex bpDataMutex;
     std::set<uint64_t> breakpointAddrs;
 
-    std::mutex bpQueueMutex;
+    mutable std::mutex bpQueueMutex;
     struct BpRequest
     {
         uint64_t addr;
@@ -65,13 +68,47 @@ struct ElfBugDebugger : ElfBug::Debugger
         {
             uint64_t start = 0, end = 0;
             char perms[8] = {};
-            if(sscanf(line, "%" SCNx64 "-%" SCNx64 " %4s", &start, &end, perms) == 3)
-                newMaps.push_back({start, end, perms[2] == 'x'});
+            int pathOffset = 0;
+            // %n captures the byte offset after the fixed prefix so we can take the pathname verbatim (it may contain spaces).
+            if(sscanf(line, "%" SCNx64 "-%" SCNx64 " %4s %*x %*x:%*x %*u %n",
+                      &start, &end, perms, &pathOffset) < 3)
+                continue;
+
+            std::string pathname;
+            if(pathOffset > 0 && pathOffset < static_cast<int>(sizeof(line)))
+            {
+                const char* p = line + pathOffset;
+                while(*p == ' ' || *p == '\t') ++p;
+                size_t len = strlen(p);
+                while(len > 0 && (p[len - 1] == '\n' || p[len - 1] == '\r' || p[len - 1] == ' '))
+                    --len;
+                if(len > 0 && p[0] != '[')
+                    pathname.assign(p, len);
+
+                static constexpr std::string_view deletedSuffix{" (deleted)"};
+                if(pathname.size() >= deletedSuffix.size() &&
+                        std::string_view(pathname).substr(pathname.size() - deletedSuffix.size()) == deletedSuffix)
+                {
+                    pathname.resize(pathname.size() - deletedSuffix.size());
+                }
+            }
+
+            newMaps.push_back({start, end, perms[2] == 'x', std::move(pathname)});
         }
         fclose(f);
 
         std::lock_guard lock(mapMutex);
         memoryMap = std::move(newMaps);
+
+        moduleBases.clear();
+        for(const auto& r : memoryMap)
+        {
+            if(r.pathname.empty())
+                continue;
+            auto it = moduleBases.find(r.pathname);
+            if(it == moduleBases.end() || r.start < it->second)
+                moduleBases[r.pathname] = r.start;
+        }
     }
 
     const MemRegion* findRegion(const uint64_t addr) const
@@ -87,15 +124,28 @@ struct ElfBugDebugger : ElfBug::Debugger
         return nullptr;
     }
 
+    bool modLookup(const uint64_t addr, uint64_t* baseOut, std::string* pathOut) const
+    {
+        std::lock_guard lock(mapMutex);
+        const auto* region = findRegion(addr);
+        if(!region || region->pathname.empty())
+            return false;
+
+        const auto it = moduleBases.find(region->pathname);
+        if(it == moduleBases.end())
+            return false;
+
+        if(baseOut)
+            *baseOut = it->second;
+        if(pathOut)
+            *pathOut = region->pathname;
+        return true;
+    }
+
     void processPendingBreakpoints()
     {
-        std::vector<BpRequest> pending;
-        {
-            std::lock_guard lock(bpQueueMutex);
-            pending.swap(pendingBpRequests);
-        }
-
-        for(const auto & req : pending)
+        std::lock_guard queueLock(bpQueueMutex);
+        for(const auto & req : pendingBpRequests)
         {
             if(!mProcess)
                 continue;
@@ -118,10 +168,13 @@ struct ElfBugDebugger : ElfBug::Debugger
                 }
             }
         }
+        pendingBpRequests.clear();
     }
 
     bool memRead(const uint64_t addr, void* dest, const uint64_t size) const
     {
+        if(!dest)
+            return false;
         std::shared_lock lock(mProcessMutex);
         if(!active.load(std::memory_order_acquire) || !mProcess)
         {
@@ -129,6 +182,46 @@ struct ElfBugDebugger : ElfBug::Debugger
             return false;
         }
         return mProcess->MemRead(static_cast<ElfBug::ptr>(addr), dest, static_cast<ElfBug::ptr>(size));
+    }
+
+    bool memWrite(const uint64_t addr, const void* src, const uint64_t size) const
+    {
+        std::shared_lock lock(mProcessMutex);
+        if(!active.load(std::memory_order_acquire) || !mProcess)
+            return false;
+        return mProcess->MemWrite(static_cast<ElfBug::ptr>(addr), src, static_cast<ElfBug::ptr>(size));
+    }
+
+    bool setRegister(const char* name, const uint64_t value) const
+    {
+        std::shared_lock lock(mProcessMutex);
+        if(!active.load(std::memory_order_acquire) || !mThread)
+            return false;
+
+        auto & r = mThread->registers;
+        const auto v = static_cast<ElfBug::ptr>(value);
+
+        if(!strcmp(name, "csp") || !strcmp(name, "rsp"))       r.Rsp() = v;
+        else if(!strcmp(name, "cip") || !strcmp(name, "rip"))  r.Rip() = v;
+        else if(!strcmp(name, "rax"))                          r.Rax() = v;
+        else if(!strcmp(name, "rbx"))                          r.Rbx() = v;
+        else if(!strcmp(name, "rcx"))                          r.Rcx() = v;
+        else if(!strcmp(name, "rdx"))                          r.Rdx() = v;
+        else if(!strcmp(name, "rsi"))                          r.Rsi() = v;
+        else if(!strcmp(name, "rdi"))                          r.Rdi() = v;
+        else if(!strcmp(name, "rbp"))                          r.Rbp() = v;
+        else if(!strcmp(name, "r8"))                           r.R8()  = v;
+        else if(!strcmp(name, "r9"))                           r.R9()  = v;
+        else if(!strcmp(name, "r10"))                          r.R10() = v;
+        else if(!strcmp(name, "r11"))                          r.R11() = v;
+        else if(!strcmp(name, "r12"))                          r.R12() = v;
+        else if(!strcmp(name, "r13"))                          r.R13() = v;
+        else if(!strcmp(name, "r14"))                          r.R14() = v;
+        else if(!strcmp(name, "r15"))                          r.R15() = v;
+        else
+            return false;
+
+        return r.Write();
     }
 
     ElfBugArch getArch() const
@@ -202,6 +295,7 @@ protected:
         {
             std::lock_guard lock(mapMutex);
             memoryMap.clear();
+            moduleBases.clear();
         }
         {
             std::lock_guard lock(bpDataMutex);
@@ -231,6 +325,7 @@ protected:
     void cbBreakpoint(const ElfBug::BreakpointInfo & info) override
     {
         processPendingBreakpoints();
+        refreshMemoryMap();
         if(cb.onBreakpoint)
             cb.onBreakpoint(info.address, cb.userdata);
     }
@@ -238,6 +333,7 @@ protected:
     void cbStep() override
     {
         processPendingBreakpoints();
+        refreshMemoryMap();
         if(cb.onStep)
             cb.onStep(cb.userdata);
     }
@@ -245,6 +341,7 @@ protected:
     void cbPaused() override
     {
         processPendingBreakpoints();
+        refreshMemoryMap();
         if(cb.onPaused)
             cb.onPaused(cb.userdata);
     }
@@ -354,6 +451,20 @@ extern "C" {
         return dbg->memRead(addr, dest, size);
     }
 
+    bool ElfBugMemWrite(const ElfBugDebugger* dbg, const uint64_t addr, const void* src, const uint64_t size)
+    {
+        if(!dbg || !src)
+            return false;
+        return dbg->memWrite(addr, src, size);
+    }
+
+    bool ElfBugSetRegister(const ElfBugDebugger* dbg, const char* name, const uint64_t value)
+    {
+        if(!dbg || !name)
+            return false;
+        return dbg->setRegister(name, value);
+    }
+
     bool ElfBugMemFindBaseAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base, uint64_t* size)
     {
         if(!dbg || !base || !size)
@@ -394,6 +505,71 @@ extern "C" {
         return dbg->findRegion(addr) != nullptr;
     }
 
+    bool ElfBugModBaseFromAddr(const ElfBugDebugger* dbg, const uint64_t addr, uint64_t* base)
+    {
+        if(!dbg || !base)
+            return false;
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
+
+        uint64_t b = 0;
+        if(!dbg->modLookup(addr, &b, nullptr))
+            return false;
+        *base = b;
+        return true;
+    }
+
+    bool ElfBugModNameFromAddr(const ElfBugDebugger* dbg, const uint64_t addr,
+                               char* buf, const uint64_t bufSize, const bool extension)
+    {
+        if(!dbg || !buf || bufSize == 0)
+            return false;
+        if(!dbg->active.load(std::memory_order_acquire))
+            return false;
+
+        std::string path;
+        if(!dbg->modLookup(addr, nullptr, &path))
+            return false;
+
+        const size_t slash = path.find_last_of('/');
+        std::string base = (slash == std::string::npos) ? path : path.substr(slash + 1);
+
+        if(!extension)
+        {
+            size_t soPos = std::string::npos;
+            for(size_t p = base.find(".so"); p != std::string::npos; p = base.find(".so", p + 1))
+            {
+                const size_t after = p + 3;
+                if(after == base.size() || base[after] == '.')
+                {
+                    soPos = p;
+                    break;
+                }
+            }
+
+            if(soPos != std::string::npos)
+            {
+                const size_t after = soPos + 3;
+                if(after == base.size())
+                    base.resize(soPos);       // "libfoo.so" -> "libfoo"
+                else
+                    base.erase(soPos, 3);     // "libfoo.so.6" -> "libfoo.6"
+            }
+            else
+            {
+                const size_t dot = base.find_last_of('.');
+                if(dot != std::string::npos && dot > 0)
+                    base.resize(dot);
+            }
+        }
+
+        if(base.size() + 1 > bufSize)
+            return false;
+
+        memcpy(buf, base.c_str(), base.size() + 1);
+        return true;
+    }
+
     bool ElfBugSetBreakpoint(ElfBugDebugger* dbg, uint64_t addr)
     {
         if(!dbg)
@@ -418,10 +594,20 @@ extern "C" {
         return true;
     }
 
-    bool ElfBugHasBreakpoint(const ElfBugDebugger* dbg, const uint64_t addr)
+    bool ElfBugIsBreakpointEffective(const ElfBugDebugger* dbg, const uint64_t addr)
     {
         if(!dbg)
             return false;
+
+        {
+            std::lock_guard lock(dbg->bpQueueMutex);
+            for(auto it = dbg->pendingBpRequests.rbegin(); it != dbg->pendingBpRequests.rend(); ++it)
+            {
+                if(it->addr == addr)
+                    return it->setOrDelete;
+            }
+        }
+
         std::lock_guard lock(dbg->bpDataMutex);
         return dbg->breakpointAddrs.count(addr) > 0;
     }

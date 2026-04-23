@@ -302,6 +302,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 		"debugger/core/DbgAdapter.cpp"
 		"debugger/core/DbgAdapter.h"
 		"debugger/core/LinuxArchitecture.h"
+		"debugger/gui/CPUStack.cpp"
+		"debugger/gui/CPUStack.h"
 		"debugger/gui/MainWindow.cpp"
 		"debugger/gui/MainWindow.h"
 		"debugger/main.cpp"

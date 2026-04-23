@@ -62,6 +62,9 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Gui/LineEditDialog.ui
     ${widgets_SOURCE_DIR}/Gui/TypeWidget.cpp
     ${widgets_SOURCE_DIR}/Gui/TypeWidget.h
+    ${widgets_SOURCE_DIR}/Gui/WordEditDialog.cpp
+    ${widgets_SOURCE_DIR}/Gui/WordEditDialog.h
+    ${widgets_SOURCE_DIR}/Gui/WordEditDialog.ui
     ${widgets_SOURCE_DIR}/Gui/RichTextItemDelegate.cpp
     ${widgets_SOURCE_DIR}/Gui/RichTextItemDelegate.h
     ${widgets_SOURCE_DIR}/Gui/ReleaseNotesDialog.cpp
@@ -80,8 +83,12 @@ set(widgets_SOURCES
     ${widgets_SOURCE_DIR}/Utils/MenuBuilder.cpp
     ${widgets_SOURCE_DIR}/Utils/MenuBuilder.h
     ${widgets_SOURCE_DIR}/Utils/MethodInvoker.h
+    ${widgets_SOURCE_DIR}/Utils/HexValidator.cpp
+    ${widgets_SOURCE_DIR}/Utils/HexValidator.h
     ${widgets_SOURCE_DIR}/Utils/RichTextPainter.cpp
     ${widgets_SOURCE_DIR}/Utils/RichTextPainter.h
+    ${widgets_SOURCE_DIR}/Utils/ValidateExpressionThread.cpp
+    ${widgets_SOURCE_DIR}/Utils/ValidateExpressionThread.h
     ${widgets_SOURCE_DIR}/Utils/VaHistory.h
     ${widgets_SOURCE_DIR}/Gui/RegistersView.cpp
     ${widgets_SOURCE_DIR}/Gui/RegistersView.h
@@ -101,6 +108,7 @@ add_library(x64dbg::widgets ALIAS x64dbg_widgets)
 target_include_directories(x64dbg_widgets PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${widgets_SOURCE_DIR}
+    ${widgets_SOURCE_DIR}/Utils
 )
 
 source_group(TREE ${widgets_SOURCE_DIR} FILES ${widgets_SOURCES})

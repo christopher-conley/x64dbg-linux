@@ -98,11 +98,14 @@ DBGFUNCTIONS* DbgFunctions()
         };
         f.ModBaseFromAddr = [](duint addr) -> duint
         {
-            return 0;
+            duint base = 0;
+            if(!gMemory.load()->modBaseFromAddr(addr, base))
+                return 0;
+            return base;
         };
         f.ModNameFromAddr = [](duint addr, char* name, bool extension)
         {
-            return false;
+            return gMemory.load()->modNameFromAddr(addr, name, MAX_MODULE_SIZE, extension);
         };
         f.StringFormatInline = [](const char* format, size_t size, char* dest)
         {
@@ -140,13 +143,14 @@ DBGFUNCTIONS* DbgFunctions()
         };
         f.MemPatch = [](duint start, const unsigned char* data, duint size)
         {
-            return false;
+            return gMemory.load()->write(start, data, size);
         };
         return f;
     }();
     return &f;
 }
 
+// TODO: resolve via per-module .dynsym lookup.
 bool DbgGetLabelAt(duint addr, SEGTYPE seg, char* label)
 {
     return false;
@@ -187,20 +191,46 @@ bool DbgMemIsValidReadPtr(duint addr)
     return gMemory.load()->isValidPtr(addr);
 }
 
+// TODO: detect printable ASCII / UTF-16LE string at addr.
 bool DbgGetStringAt(duint addr, char* str)
 {
     return false;
 }
 
-bool DbgEval(const char* expr, bool* success)
+duint DbgEval(const char* expr, bool* success)
 {
-    return false;
+    // TODO: replace this hex-only stub with a real cross expression evaluator (breaks rsp+8, symbols, mod.main(), etc.).
+    if(success)
+        *success = false;
+    if(!expr)
+        return 0;
+
+    QString str = QString::fromUtf8(expr).trimmed();
+    if(str.isEmpty())
+        return 0;
+
+    bool negative = false;
+    if(str.startsWith('-'))
+    {
+        negative = true;
+        str = str.mid(1).trimmed();
+    }
+    if(str.startsWith("0x", Qt::CaseInsensitive))
+        str = str.mid(2);
+
+    bool ok = false;
+    const duint value = str.toULongLong(&ok, 16);
+    if(!ok)
+        return 0;
+
+    if(success)
+        *success = true;
+    return negative ? static_cast<duint>(0) - value : value;
 }
 
 duint DbgValFromString(const char* expr)
 {
-    // Stub: no expression evaluator yet - always returns 0
-    return 0;
+    return DbgEval(expr, nullptr);
 }
 
 bool DbgCmdExec(const char* cmd)
@@ -268,7 +298,7 @@ duint DbgGetBranchDestination(duint addr)
     uint8_t data[MAX_DISASM_BUFFER];
     if(!DbgMemRead(addr, data, sizeof(data)))
         return 0;
-    Zydis zydis(true); // TODO: architecture
+    Zydis zydis(sizeof(duint) == 8); // TODO: architecture plumbed per-caller
     if(!zydis.Disassemble(addr, data))
         return 0;
     return zydis.BranchDestination();

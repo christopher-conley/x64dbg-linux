@@ -94,7 +94,7 @@ namespace ElfBug
         {
         case PTRACE_EVENT_EXEC:
         {
-            // TODO: re-exec handling - clear breakpoints, refresh memory map, fire callback
+            // TODO: re-exec handling - re-detect arch and reject if no longer x86_64, clear breakpoints, refresh memory map, fire callback
             if(ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
                 cbInternalError("PTRACE_CONT failed: " + std::string(strerror(errno)));
             break;
