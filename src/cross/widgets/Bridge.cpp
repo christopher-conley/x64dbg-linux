@@ -297,13 +297,13 @@ duint DbgGetBranchDestination(duint addr)
     uint8_t data[MAX_DISASM_BUFFER];
     if(!DbgMemRead(addr, data, sizeof(data)))
         return 0;
-    Zydis zydis(true); // TODO: architecture
+    Zydis zydis(sizeof(duint) == 8); // TODO: architecture plumbed per-caller
     if(!zydis.Disassemble(addr, data))
         return 0;
     return zydis.BranchDestination();
 }
 
-bool DbgResolveReturnTo(const duint returnAddress, duint* fromAddress)
+bool DbgResolveReturnTo(const duint returnAddress, const bool disasm64, duint* fromAddress)
 {
     if(fromAddress)
         *fromAddress = 0;
@@ -327,7 +327,7 @@ bool DbgResolveReturnTo(const duint returnAddress, duint* fromAddress)
     if(!DbgMemRead(readStart, buf, lookback))
         return false;
 
-    Zydis zydis(true); // TODO: architecture
+    Zydis zydis(disasm64);
     for(size_t k = 2; k <= lookback; ++k)
     {
         const duint instrAddr = returnAddress - k;

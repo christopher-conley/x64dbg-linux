@@ -31,6 +31,10 @@ CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* par
     connect(mAdapter, &DbgAdapter::processCreated,
             this, &CPUStack::onProcessStarted,
             Qt::QueuedConnection);
+
+    connect(mAdapter, &DbgAdapter::processExited,
+            this, &CPUStack::onProcessExited,
+            Qt::QueuedConnection);
 }
 
 void CPUStack::setupColumns()
@@ -137,6 +141,16 @@ void CPUStack::onProcessStarted()
         mFreezeAction->setChecked(false);
     if(mCsp != 0)
         stackDumpAt(mCsp, mCsp);
+}
+
+void CPUStack::onProcessExited()
+{
+    mCsp = 0;
+    mCbp = 0;
+    mStackFrozen = false;
+    if(mFreezeAction)
+        mFreezeAction->setChecked(false);
+    reloadData();
 }
 
 void CPUStack::gotoCspSlot()
@@ -343,7 +357,7 @@ bool CPUStack::resolveSlotComment(const duint rva, QString & out, bool & isRetur
         return false;
 
     duint fromAddr = 0;
-    isReturnTo = DbgResolveReturnTo(ptr, &fromAddr);
+    isReturnTo = DbgResolveReturnTo(ptr, mArchitecture->disasm64(), &fromAddr);
 
     const QString mod = QString::fromUtf8(modName);
     const QString addr = QString("%1").arg(ptr, sizeof(duint) * 2, 16, QLatin1Char('0')).toUpper();
