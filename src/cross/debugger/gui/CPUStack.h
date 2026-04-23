@@ -31,6 +31,8 @@ public slots:
     void freezeStackSlot();
     void realignSlot();
     void modifySlot();
+    void copyPtrColumnSlot() const;
+    void copyCommentsColumnSlot() const;
 
 public:
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -53,7 +55,6 @@ private:
     QAction* mGotoCspAction = nullptr;
     QAction* mGotoCbpAction = nullptr;
     QAction* mFollowDisasmAction = nullptr;
-    QAction* mCopyAddressAction = nullptr;
     QAction* mFreezeAction = nullptr;
     QAction* mRealignAction = nullptr;
     QAction* mModifyAction = nullptr;

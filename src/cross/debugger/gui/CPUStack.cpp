@@ -1,5 +1,7 @@
 #include "CPUStack.h"
 
+#include <vector>
+
 #include <QAction>
 #include <QContextMenuEvent>
 #include <QMenu>
@@ -8,6 +10,7 @@
 #include <Gui/WordEditDialog.h>
 #include <Memory/MemoryPage.h>
 #include "Configuration.h"
+#include "StringUtil.h"
 
 CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* parent)
     : HexDump(architecture, parent)
@@ -74,7 +77,13 @@ void CPUStack::setupContextMenu()
     mContextMenu->addSeparator();
 
     mFollowDisasmAction = mContextMenu->addAction(tr("Follow in Disassembly"), this, &CPUStack::followDisasmSlot);
-    mCopyAddressAction = mContextMenu->addAction(tr("Copy Address"), this, &HexDump::copyAddressSlot);
+
+    QMenu* copyMenu = mContextMenu->addMenu(tr("&Copy"));
+    copyMenu->addAction(tr("&Selection"), this, &HexDump::copySelectionSlot);
+    copyMenu->addAction(tr("&Address"), this, &HexDump::copyAddressSlot);
+    const QString ptrName = sizeof(duint) == 8 ? tr("&QWORD") : tr("&DWORD");
+    copyMenu->addAction(ptrName, this, &CPUStack::copyPtrColumnSlot);
+    copyMenu->addAction(tr("&Comments"), this, &CPUStack::copyCommentsColumnSlot);
 
     mContextMenu->addSeparator();
 
@@ -91,7 +100,6 @@ void CPUStack::refreshActionState() const
     mGotoCspAction->setEnabled(debugging);
     mGotoCbpAction->setEnabled(debugging && mCbp != 0);
     mFollowDisasmAction->setEnabled(debugging);
-    mCopyAddressAction->setEnabled(true);
     mFreezeAction->setEnabled(debugging);
     mFreezeAction->setChecked(mStackFrozen);
 }
@@ -187,6 +195,51 @@ void CPUStack::modifySlot()
     const duint newValue = editDialog.getVal();
     mMemPage->write(&newValue, alignedRva, sizeof(duint));
     reloadData();
+}
+
+void CPUStack::copyPtrColumnSlot() const
+{
+    constexpr duint wordSize = sizeof(duint);
+    const dsint selStart = getSelectionStart();
+    const dsint selLen = getSelectionEnd() - selStart + 1;
+    const duint wordCount = selLen / wordSize;
+    if(wordCount == 0)
+        return;
+
+    std::vector<duint> data(wordCount);
+    mMemPage->read(data.data(), selStart, wordCount * wordSize);
+
+    QString clipboard;
+    for(duint i = 0; i < wordCount; i++)
+    {
+        if(i > 0)
+            clipboard += "\r\n";
+        clipboard += ToPtrString(data[i]);
+    }
+    Bridge::CopyToClipboard(clipboard);
+}
+
+void CPUStack::copyCommentsColumnSlot() const
+{
+    constexpr duint wordSize = sizeof(duint);
+    const dsint selStart = getSelectionStart();
+    const dsint selLen = getSelectionEnd() - selStart + 1;
+
+    QString clipboard;
+    for(dsint i = 0; i < selLen; i += wordSize)
+    {
+        constexpr duint commentsColumn = 2;
+        RichTextPainter::List richText;
+        getColumnRichText(commentsColumn, selStart + i, richText);
+        QString colText;
+        for(const auto & r : richText)
+            colText += r.text;
+
+        if(i > 0)
+            clipboard += "\r\n";
+        clipboard += colText;
+    }
+    Bridge::CopyToClipboard(clipboard);
 }
 
 void CPUStack::contextMenuEvent(QContextMenuEvent* event)
