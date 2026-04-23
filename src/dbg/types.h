@@ -153,7 +153,7 @@ namespace Types
         void Enum(std::vector<Summary> & typeList) const;
         std::string StructUnionPtrType(const std::string & alias) const;
 
-    private:
+private:
         uint32_t currentTypeId = 100;
         std::unordered_map<uint32_t, TypeBase*> typeIdMap;
 
