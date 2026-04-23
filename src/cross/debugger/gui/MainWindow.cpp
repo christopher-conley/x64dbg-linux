@@ -387,8 +387,15 @@ void MainWindow::loadTheme()
     config->Colors["RegistersSelectionColor"] = bgHover;
     config->Colors["RegistersExtraInfoColor"] = disabled;
 
-    config->Colors["StackCspBackgroundColor"] = QColor(0x35, 0x55, 0x8f);
-    config->Colors["StackCspColor"] = text;
+    config->Colors["StackCspBackgroundColor"] = Qt::transparent;
+    config->Colors["StackCspColor"] = QColor(0xA6F93E);
+    config->Colors["StackAddressColor"] = QColor(0xA0A0A0);
+    config->Colors["StackAddressBackgroundColor"] = Qt::transparent;
+    config->Colors["StackSelectedAddressColor"] = text;
+    config->Colors["StackSelectedAddressBackgroundColor"] = Qt::transparent;
+    config->Colors["StackInactiveTextColor"] = QColor(0xA0A0A0);
+    config->Colors["StackSelectionColor"] = bgHover;
+    config->Colors["StackReturnToColor"] = QColor(0xF55F86);
 
     QColor mnemonic(0xc678dd);
     QColor call(0x61afef);

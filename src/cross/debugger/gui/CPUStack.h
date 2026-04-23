@@ -20,6 +20,7 @@ public:
 
     QString paintContent(QPainter* painter, duint row, duint column, int x, int y, int w, int h) override;
     void getColumnRichText(duint col, duint rva, RichTextPainter::List & richText) const override;
+    void updateColors() override;
 
 signals:
     void followDisasmRequested(duint addr);
@@ -56,6 +57,13 @@ private:
     bool mStackFrozen = false;
 
     QColor mStackReturnToColor;
+    QColor mStackCspColor;
+    QColor mStackCspBackgroundColor;
+    QColor mStackAddressColor;
+    QColor mStackAddressBackgroundColor;
+    QColor mStackSelectedAddressColor;
+    QColor mStackSelectedAddressBackgroundColor;
+    QColor mStackInactiveTextColor;
 
     QMenu* mContextMenu = nullptr;
     QAction* mGotoCspAction = nullptr;

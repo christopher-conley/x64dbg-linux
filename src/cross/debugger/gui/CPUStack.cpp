@@ -21,7 +21,7 @@ CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* par
     setWindowTitle("Stack");
     setShowHeader(false);
 
-    mStackReturnToColor = ConfigColor("StackReturnToColor");
+    CPUStack::updateColors();
 
     setupColumns();
     setupContextMenu();
@@ -95,6 +95,23 @@ void CPUStack::setupContextMenu()
 
     mFreezeAction = mContextMenu->addAction(tr("Freeze Stack"), this, &CPUStack::freezeStackSlot);
     mFreezeAction->setCheckable(true);
+}
+
+void CPUStack::updateColors()
+{
+    HexDump::updateColors();
+
+    mBackgroundColor = ConfigColor("StackBackgroundColor");
+    mTextColor = ConfigColor("StackTextColor");
+    mSelectionColor = ConfigColor("StackSelectionColor");
+    mStackReturnToColor = ConfigColor("StackReturnToColor");
+    mStackCspColor = ConfigColor("StackCspColor");
+    mStackCspBackgroundColor = ConfigColor("StackCspBackgroundColor");
+    mStackAddressColor = ConfigColor("StackAddressColor");
+    mStackAddressBackgroundColor = ConfigColor("StackAddressBackgroundColor");
+    mStackSelectedAddressColor = ConfigColor("StackSelectedAddressColor");
+    mStackSelectedAddressBackgroundColor = ConfigColor("StackSelectedAddressBackgroundColor");
+    mStackInactiveTextColor = ConfigColor("StackInactiveTextColor");
 }
 
 void CPUStack::refreshActionState() const
@@ -288,17 +305,38 @@ void CPUStack::mouseDoubleClickEvent(QMouseEvent* event)
 QString CPUStack::paintContent(QPainter* painter, const duint row, const duint column, const int x, const int y,
                                const int w, const int h)
 {
-    if(column == 0 && mCsp != 0)
+    const auto bytePerRowCount = getBytePerRowCount();
+    const dsint rva = static_cast<dsint>(row) * static_cast<dsint>(bytePerRowCount) - mByteOffset;
+    const duint va = rvaToVa(static_cast<duint>(rva));
+    const bool rowSelected = isSelected(rva);
+
+    if(rowSelected)
+        painter->fillRect(QRect(x, y, w, h), QBrush(mSelectionColor));
+
+    if(column == 0)
     {
-        const auto bytePerRowCount = getBytePerRowCount();
-        const dsint rva = static_cast<dsint>(row) * static_cast<dsint>(bytePerRowCount) - mByteOffset;
-        const duint rowVa = rvaToVa(static_cast<duint>(rva));
-        if(rowVa == mCsp)
+        QColor background;
+        QColor textColor;
+        if(va == mCsp && mCsp != 0)
         {
-            const QColor background = ConfigColor("StackCspBackgroundColor");
-            if(background.alpha())
-                painter->fillRect(QRect(x, y, w, h), QBrush(background));
+            background = mStackCspBackgroundColor;
+            textColor = mStackCspColor;
         }
+        else if(rowSelected)
+        {
+            background = mStackSelectedAddressBackgroundColor;
+            textColor = mStackSelectedAddressColor;
+        }
+        else
+        {
+            background = mStackAddressBackgroundColor;
+            textColor = mStackAddressColor;
+        }
+        if(background.alpha())
+            painter->fillRect(QRect(x, y, w, h), QBrush(background));
+        painter->setPen(QPen(textColor));
+        painter->drawText(QRect(x + 4, y, w - 4, h), Qt::AlignVCenter | Qt::AlignLeft, makeAddrText(va));
+        return {};
     }
 
     return HexDump::paintContent(painter, row, column, x, y, w, h);
@@ -320,11 +358,10 @@ void CPUStack::getColumnRichText(const duint col, const duint rva, RichTextPaint
         HexDump::getColumnRichText(col, rva, richText);
         if(!activeStack)
         {
-            const QColor inactiveColor = ConfigColor("StackInactiveTextColor");
             for(auto & rt : richText)
             {
                 rt.flags = RichTextPainter::FlagColor;
-                rt.textColor = inactiveColor;
+                rt.textColor = mStackInactiveTextColor;
             }
         }
         return;
@@ -337,7 +374,7 @@ void CPUStack::getColumnRichText(const duint col, const duint rva, RichTextPaint
         if(activeStack)
             curData.textColor = isReturnTo ? mStackReturnToColor : mTextColor;
         else
-            curData.textColor = ConfigColor("StackInactiveTextColor");
+            curData.textColor = mStackInactiveTextColor;
         curData.text = commentText;
         richText.push_back(curData);
         return;
