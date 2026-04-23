@@ -188,7 +188,8 @@ void CPUStack::freezeStackSlot()
     mFreezeAction->setChecked(mStackFrozen);
 }
 
-void CPUStack::realignSlot() const {
+void CPUStack::realignSlot() const
+{
     const duint aligned = mCsp & ~static_cast<duint>(sizeof(duint) - 1);
     mAdapter->writeRegister("csp", aligned);
 }
@@ -418,7 +419,7 @@ bool CPUStack::resolveReturnTo(const duint returnAddress, duint & fromAddress) c
 
     const duint prevVa = readStart + prevOffset;
     const Instruction_t instr = mDisasm->DisassembleAt(buf.data() + prevOffset, readSize - prevOffset,
-                                                       readStart, prevOffset, false);
+                                readStart, prevOffset, false);
     if(instr.length <= 0)
         return false;
     if(prevVa + static_cast<duint>(instr.length) != returnAddress)
