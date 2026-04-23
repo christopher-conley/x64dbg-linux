@@ -2,6 +2,7 @@
 #include "ui_WordEditDialog.h"
 #include "ValidateExpressionThread.h"
 #include "StringUtil.h"
+#include <cinttypes>
 #include <QRegularExpressionValidator>
 #include <Configuration.h>
 
@@ -91,23 +92,26 @@ void WordEditDialog::expressionChanged(bool validExpression, bool validPointer, 
         unsigned char* word = (unsigned char*)&mWord;
         // ascii
         int asciiWidth = 0;
-#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__)
-        hex[0] = word[7];
-        hex[1] = word[6];
-        hex[2] = word[5];
-        hex[3] = word[4];
-        hex[4] = word[3];
-        hex[5] = word[2];
-        hex[6] = word[1];
-        hex[7] = word[0];
-        asciiWidth = 8;
-#else //x86
-        hex[0] = word[3];
-        hex[1] = word[2];
-        hex[2] = word[1];
-        hex[3] = word[0];
-        asciiWidth = 4;
-#endif
+        if constexpr(sizeof(duint) == 8)
+        {
+            hex[0] = word[7];
+            hex[1] = word[6];
+            hex[2] = word[5];
+            hex[3] = word[4];
+            hex[4] = word[3];
+            hex[5] = word[2];
+            hex[6] = word[1];
+            hex[7] = word[0];
+            asciiWidth = 8;
+        }
+        else
+        {
+            hex[0] = word[3];
+            hex[1] = word[2];
+            hex[2] = word[1];
+            hex[3] = word[0];
+            asciiWidth = 4;
+        }
 
         // Save the original index for inputs
         saveCursorPositions();
@@ -157,8 +161,8 @@ void WordEditDialog::expressionChanged(bool validExpression, bool validPointer, 
 
 void WordEditDialog::on_signedLineEdit_textEdited(const QString & arg1)
 {
-    long long value;
-    if(sscanf(arg1.toUtf8().constData(), "%lld", &value) == 1)
+    int64_t value;
+    if(sscanf(arg1.toUtf8().constData(), "%" SCNd64, &value) == 1)
     {
         ui->signedLineEdit->setStyleSheet("");
         ui->btnOk->setEnabled(true);
@@ -173,8 +177,8 @@ void WordEditDialog::on_signedLineEdit_textEdited(const QString & arg1)
 
 void WordEditDialog::on_unsignedLineEdit_textEdited(const QString & arg1)
 {
-    unsigned long long value;
-    if(sscanf(arg1.toUtf8().constData(), "%llu", &value) == 1)
+    uint64_t value;
+    if(sscanf(arg1.toUtf8().constData(), "%" SCNu64, &value) == 1)
     {
         ui->unsignedLineEdit->setStyleSheet("");
         ui->btnOk->setEnabled(true);

@@ -303,49 +303,6 @@ duint DbgGetBranchDestination(duint addr)
     return zydis.BranchDestination();
 }
 
-bool DbgResolveReturnTo(const duint returnAddress, const bool disasm64, duint* fromAddress)
-{
-    if(fromAddress)
-        *fromAddress = 0;
-
-    if(!DbgFunctions()->MemIsCodePage(returnAddress, false))
-        return false;
-
-    const duint regionBase = DbgMemFindBaseAddr(returnAddress, nullptr);
-    if(regionBase == 0)
-        return false;
-
-    constexpr size_t kMaxInstr = 15;
-    size_t lookback = kMaxInstr;
-    if(returnAddress - regionBase < lookback)
-        lookback = returnAddress - regionBase;
-    if(lookback < 2)
-        return false;
-
-    uint8_t buf[kMaxInstr] = {};
-    const duint readStart = returnAddress - lookback;
-    if(!DbgMemRead(readStart, buf, lookback))
-        return false;
-
-    Zydis zydis(disasm64);
-    for(size_t k = 2; k <= lookback; ++k)
-    {
-        const duint instrAddr = returnAddress - k;
-        const uint8_t* instrBytes = buf + (lookback - k);
-        if(!zydis.Disassemble(instrAddr, instrBytes, k))
-            continue;
-        if(zydis.Size() != k)
-            continue;
-        if(!zydis.IsCall())
-            continue;
-        if(fromAddress)
-            *fromAddress = zydis.BranchDestination();
-        return true;
-    }
-
-    return false;
-}
-
 bool DbgIsJumpGoingToExecute(duint addr)
 {
     return false; // TODO

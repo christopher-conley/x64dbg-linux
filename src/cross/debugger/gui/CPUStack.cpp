@@ -7,6 +7,7 @@
 #include <QMenu>
 #include <QPainter>
 
+#include <Disassembler/QZydis.h>
 #include <Gui/WordEditDialog.h>
 #include <Memory/MemoryPage.h>
 #include "Configuration.h"
@@ -14,6 +15,7 @@
 
 CPUStack::CPUStack(Architecture* architecture, DbgAdapter* adapter, QWidget* parent)
     : HexDump(architecture, parent)
+    , mDisasm(std::make_unique<QZydis>(MAX_MODULE_SIZE, architecture))
     , mAdapter(adapter)
 {
     setWindowTitle("Stack");
@@ -186,8 +188,7 @@ void CPUStack::freezeStackSlot()
     mFreezeAction->setChecked(mStackFrozen);
 }
 
-void CPUStack::realignSlot()
-{
+void CPUStack::realignSlot() const {
     const duint aligned = mCsp & ~static_cast<duint>(sizeof(duint) - 1);
     mAdapter->writeRegister("csp", aligned);
 }
@@ -356,8 +357,8 @@ bool CPUStack::resolveSlotComment(const duint rva, QString & out, bool & isRetur
     if(!DbgFunctions()->ModNameFromAddr(ptr, modName, false))
         return false;
 
-    duint fromAddr = 0;
-    isReturnTo = DbgResolveReturnTo(ptr, mArchitecture->disasm64(), &fromAddr);
+    duint fromAddr;
+    isReturnTo = resolveReturnTo(ptr, fromAddr);
 
     const QString mod = QString::fromUtf8(modName);
     const QString addr = QString("%1").arg(ptr, sizeof(duint) * 2, 16, QLatin1Char('0')).toUpper();
@@ -379,5 +380,52 @@ bool CPUStack::resolveSlotComment(const duint rva, QString & out, bool & isRetur
     }
 
     out = QString("return to %1.%2 from %3").arg(mod, addr, fromPart);
+    return true;
+}
+
+bool CPUStack::resolveReturnTo(const duint returnAddress, duint & fromAddress) const
+{
+    fromAddress = 0;
+
+    if(!DbgFunctions()->MemIsCodePage(returnAddress, false))
+        return false;
+
+    duint regionSize = 0;
+    const duint regionBase = DbgMemFindBaseAddr(returnAddress, &regionSize);
+    if(regionBase == 0)
+        return false;
+
+    constexpr size_t kLookback = 64;
+    const duint maxBack = returnAddress - regionBase;
+    const size_t lookback = maxBack < kLookback ? static_cast<size_t>(maxBack) : kLookback;
+    if(lookback < 2)
+        return false;
+
+    constexpr size_t kExtra = 16;
+    const duint readStart = returnAddress - lookback;
+    size_t readSize = lookback + kExtra;
+    const duint regionEnd = regionBase + regionSize;
+    if(readStart + readSize > regionEnd)
+        readSize = regionEnd - readStart;
+
+    std::vector<uint8_t> buf(readSize);
+    if(!DbgMemRead(readStart, buf.data(), readSize))
+        return false;
+
+    const duint prevOffset = mDisasm->DisassembleBack(buf.data(), readStart, readSize, lookback, 1);
+    if(prevOffset >= lookback)
+        return false;
+
+    const duint prevVa = readStart + prevOffset;
+    const Instruction_t instr = mDisasm->DisassembleAt(buf.data() + prevOffset, readSize - prevOffset,
+                                                       readStart, prevOffset, false);
+    if(instr.length <= 0)
+        return false;
+    if(prevVa + static_cast<duint>(instr.length) != returnAddress)
+        return false;
+    if(instr.branchType != Instruction_t::Call)
+        return false;
+
+    fromAddress = instr.branchDestination;
     return true;
 }

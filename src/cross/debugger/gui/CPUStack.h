@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <BasicView/HexDump.h>
 #include "core/DbgAdapter.h"
 
@@ -8,6 +10,7 @@ class QAction;
 class QContextMenuEvent;
 class QMouseEvent;
 class QPainter;
+class QZydis;
 
 class CPUStack : public HexDump
 {
@@ -30,7 +33,7 @@ public slots:
     void gotoCbpSlot();
     void followDisasmSlot();
     void freezeStackSlot();
-    void realignSlot();
+    void realignSlot() const;
     void modifySlot();
     void copyPtrColumnSlot() const;
     void copyCommentsColumnSlot() const;
@@ -44,7 +47,9 @@ private:
     void setupContextMenu();
     void refreshActionState() const;
     bool resolveSlotComment(duint rva, QString & out, bool & isReturnTo) const;
+    bool resolveReturnTo(duint returnAddress, duint & fromAddress) const;
 
+    std::unique_ptr<QZydis> mDisasm;
     DbgAdapter* mAdapter = nullptr;
     duint mCsp = 0;
     duint mCbp = 0;
