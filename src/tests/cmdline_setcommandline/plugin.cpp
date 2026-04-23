@@ -6,6 +6,7 @@
 #include "_plugins.h"
 #include "bridgemain.h"
 
+
 namespace
 {
     int gPluginHandle = 0;
@@ -102,7 +103,7 @@ extern "C" __declspec(dllexport) bool pluginit(PLUG_INITSTRUCT* initStruct)
 {
     initStruct->pluginVersion = 1;
     initStruct->sdkVersion = PLUG_SDKVERSION;
-    strncpy_s(initStruct->pluginName, sizeof(initStruct->pluginName), "CmdlineSetCommandline", _TRUNCATE);
+    strncpy_s(initStruct->pluginName, sizeof(initStruct->pluginName), X64DBG_TEST_NAME, _TRUNCATE);
     gPluginHandle = initStruct->pluginHandle;
     _plugin_registercommand(gPluginHandle, "cmdlinesetup", cbCmdlineSetup, true);
     _plugin_registercommand(gPluginHandle, "cmdlineassert", cbCmdlineAssert, true);

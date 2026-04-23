@@ -5,6 +5,7 @@
 
 #include "_plugins.h"
 
+
 namespace
 {
     int gPluginHandle = 0;
@@ -54,7 +55,7 @@ extern "C" __declspec(dllexport) bool pluginit(PLUG_INITSTRUCT* initStruct)
 {
     initStruct->pluginVersion = 1;
     initStruct->sdkVersion = PLUG_SDKVERSION;
-    strncpy_s(initStruct->pluginName, sizeof(initStruct->pluginName), "GuardPageMonitor", _TRUNCATE);
+    strncpy_s(initStruct->pluginName, sizeof(initStruct->pluginName), X64DBG_TEST_NAME, _TRUNCATE);
     gPluginHandle = initStruct->pluginHandle;
     _plugin_registercallback(gPluginHandle, CB_INITDEBUG, cbPlugin);
     _plugin_registercallback(gPluginHandle, CB_EXCEPTION, cbPlugin);
