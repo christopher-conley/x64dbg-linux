@@ -70,6 +70,7 @@ function(qt_executable tgt)
     if(WIN32 AND TARGET ${QT_PACKAGE}::windeployqt)
         add_custom_command(TARGET ${tgt} POST_BUILD
             COMMAND ${QT_PACKAGE}::windeployqt
+                --force
                 --no-translations
                 --no-compiler-runtime
                 --no-system-d3d-compiler
