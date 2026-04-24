@@ -66,17 +66,33 @@ function(qt_executable tgt)
     endif()
     target_link_libraries(${tgt} PRIVATE ${QT_LIBRARIES})
 
-    # Run windeployqt after build to copy Qt DLLs next to the executable
+    # Run windeployqt after build to copy Qt DLLs next to the executable.
+    # Only do this once per runtime output directory to avoid multiple targets
+    # racing to deploy the same Qt files into the same location.
     if(WIN32 AND TARGET ${QT_PACKAGE}::windeployqt)
-        add_custom_command(TARGET ${tgt} POST_BUILD
-            COMMAND ${QT_PACKAGE}::windeployqt
-                --force
-                --no-translations
-                --no-compiler-runtime
-                --no-system-d3d-compiler
-                --no-opengl-sw
-                "$<TARGET_FILE:${tgt}>"
-            COMMENT "Running windeployqt on ${tgt}..."
-        )
+        get_target_property(_qt_runtime_output_dir ${tgt} RUNTIME_OUTPUT_DIRECTORY)
+        if(NOT _qt_runtime_output_dir)
+            set(_qt_runtime_output_dir "${CMAKE_CURRENT_BINARY_DIR}")
+        endif()
+
+        get_property(_qt_deployed_dirs GLOBAL PROPERTY X64DBG_QT_DEPLOYED_DIRS)
+        if(NOT _qt_deployed_dirs)
+            set(_qt_deployed_dirs "")
+        endif()
+
+        list(FIND _qt_deployed_dirs "${_qt_runtime_output_dir}" _qt_deploy_dir_index)
+        if(_qt_deploy_dir_index EQUAL -1)
+            add_custom_command(TARGET ${tgt} POST_BUILD
+                COMMAND ${QT_PACKAGE}::windeployqt
+                    --force
+                    --no-translations
+                    --no-compiler-runtime
+                    --no-system-d3d-compiler
+                    --no-opengl-sw
+                    "$<TARGET_FILE:${tgt}>"
+                COMMENT "Running windeployqt on ${tgt}..."
+            )
+            set_property(GLOBAL APPEND PROPERTY X64DBG_QT_DEPLOYED_DIRS "${_qt_runtime_output_dir}")
+        endif()
     endif()
 endfunction()
