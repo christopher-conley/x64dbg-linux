@@ -1051,7 +1051,7 @@ DebugStatusLabel[state="paused"] {
 }
 
 DebugStatusLabel[state="running"] {
-    color: #000000;
+    color: #f0f0f0;
     /*background-color: #c0c0c0;*/
 }
 
