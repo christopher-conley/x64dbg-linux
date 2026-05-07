@@ -92,7 +92,6 @@ void CPUDisassembly::mouseDoubleClickEvent(QMouseEvent* event)
         {
             mRvaDisplayMode = RvaDisplayRelative;
             mRvaDisplayBase = mSelectedVa;
-            mRvaDisplayPageBase = getBase();
         }
         else if(mRvaDisplayMode == RvaDisplayRelative)
             mRvaDisplayMode = RvaDisplayModule;

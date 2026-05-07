@@ -2064,9 +2064,6 @@ void Disassembly::disassembleAt(duint va, bool history, duint newTableOffset)
     mMemPage->setAttributes(base, size);
     mDisasm->getEncodeMap()->setMemoryRegion(base);
 
-    if(mRvaDisplayMode != RvaDisplayDisabled && mMemPage->getBase() != mRvaDisplayPageBase)
-        mRvaDisplayMode = RvaDisplayDisabled;
-
     setRowCount(size);
 
     // Selects disassembled instruction

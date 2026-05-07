@@ -256,7 +256,6 @@ protected:
     };
     RvaDisplayMode mRvaDisplayMode = RvaDisplayDisabled;
     duint mRvaDisplayBase;
-    dsint mRvaDisplayPageBase;
     bool mHighlightingMode;
     MemoryPage* mMemPage;
     QZydis* mDisasm;
