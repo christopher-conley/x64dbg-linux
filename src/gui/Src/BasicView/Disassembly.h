@@ -248,7 +248,13 @@ protected:
     QPen mConditionalFalsePen;
 
     // Misc
-    bool mRvaDisplayEnabled;
+    enum RvaDisplayMode
+    {
+        RvaDisplayDisabled = 0,
+        RvaDisplayRelative,
+        RvaDisplayModule,
+    };
+    RvaDisplayMode mRvaDisplayMode = RvaDisplayDisabled;
     duint mRvaDisplayBase;
     dsint mRvaDisplayPageBase;
     bool mHighlightingMode;
