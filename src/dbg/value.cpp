@@ -1065,6 +1065,9 @@ bool setregister(const char* string, duint value)
     case MAKE_WORD_INTO_INT(RIP):
         titanIndex = UE_RIP;
         break;
+    case MAKE_WORD_INTO_INT(R8):
+        titanIndex = UE_R8;
+        break;
     case MAKE_WORD_INTO_INT(R9):
         titanIndex = UE_R9;
         break;
@@ -1208,6 +1211,11 @@ bool setregister(const char* string, duint value)
 #ifdef _WIN64
     switch(string_int)
     {
+    case MAKE_WORD_INTO_INT(R8D):
+    case MAKE_WORD_INTO_INT(R8W):
+    case MAKE_WORD_INTO_INT(R8B):
+        titanIndex = UE_R8;
+        break;
     case MAKE_WORD_INTO_INT(R9D):
     case MAKE_WORD_INTO_INT(R9W):
     case MAKE_WORD_INTO_INT(R9B):
