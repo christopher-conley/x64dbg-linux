@@ -87,14 +87,16 @@ void CPUDisassembly::mouseDoubleClickEvent(QMouseEvent* event)
     case ColAddress: //address
     {
         dsint mSelectedVa = rvaToVa(getInitialSelection());
-        if(mRvaDisplayEnabled && mSelectedVa == mRvaDisplayBase)
-            mRvaDisplayEnabled = false;
-        else
+        // Cycle: Disabled -> Relative -> Module -> Disabled
+        if(mRvaDisplayMode == RvaDisplayDisabled || mSelectedVa != mRvaDisplayBase)
         {
-            mRvaDisplayEnabled = true;
+            mRvaDisplayMode = RvaDisplayRelative;
             mRvaDisplayBase = mSelectedVa;
-            mRvaDisplayPageBase = getBase();
         }
+        else if(mRvaDisplayMode == RvaDisplayRelative)
+            mRvaDisplayMode = RvaDisplayModule;
+        else
+            mRvaDisplayMode = RvaDisplayDisabled;
         reloadData();
     }
     break;
