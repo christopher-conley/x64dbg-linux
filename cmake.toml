@@ -206,6 +206,7 @@ msvc.link-options = [
     "/DELAYLOAD:$<TARGET_FILE_NAME:bridge>",
     "/NOIMPLIB",
     "/NOEXP",
+    "/LARGEADDRESSAWARE",
 ]
 msvc.link-libraries = [
     "Delayimp",
@@ -253,6 +254,9 @@ sources = [
 ]
 link-libraries = [
     "::bridge",
+]
+msvc.link-options = [
+    "/LARGEADDRESSAWARE",
 ]
 dependencies = ["exe"]
 

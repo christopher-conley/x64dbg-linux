@@ -998,6 +998,7 @@ if(MSVC) # msvc
 		"/DELAYLOAD:$<TARGET_FILE_NAME:bridge>"
 		"/NOIMPLIB"
 		"/NOEXP"
+		"/LARGEADDRESSAWARE"
 	)
 endif()
 
@@ -1117,6 +1118,12 @@ endif()
 target_link_libraries(headless PRIVATE
 	bridge
 )
+
+if(MSVC) # msvc
+	target_link_options(headless PRIVATE
+		"/LARGEADDRESSAWARE"
+	)
+endif()
 
 add_dependencies(headless
 	exe
