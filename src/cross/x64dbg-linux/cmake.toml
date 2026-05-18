@@ -1,0 +1,85 @@
+# Reference: https://build-cpp.github.io/cmkr/cmake-toml
+[cmake]
+version = "3.19"
+cmkr-include = "../../../cmake/cmkr.cmake"
+
+[project]
+name = "x64dbg-linux"
+
+[conditions]
+linux = "CMAKE_SYSTEM_NAME STREQUAL \"Linux\""
+
+[options]
+ELFBUG_BUILD_TESTS = false
+
+[find-package.Threads]
+
+[target.x64dbg-linux]
+type = "executable"
+condition = "linux"
+sources = [
+    "main/main.cpp",
+    "core/DbgAdapter.cpp",
+    "core/DbgAdapter.h",
+    "core/LinuxArchitecture.h",
+    "gui/CPUStack.cpp",
+    "gui/CPUStack.h",
+    "gui/MainWindow.cpp",
+    "gui/MainWindow.h",
+    "resources/icons.qrc",
+]
+private-include-directories = [
+    ".",
+]
+link-libraries = [
+    "Threads::Threads",
+]
+
+compile-features = ["cxx_std_20"]
+
+cmake-after = """
+# Add ElfBug sources directly (avoiding source_group issue with parent dir files)
+set(ELFBUG_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/api/elfbug_api.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/core/Debugger.Loop.Process.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/core/Debugger.Loop.Signal.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/core/Debugger.Loop.Thread.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/core/Debugger.Loop.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/core/Debugger.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/process/Breakpoint.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/process/Memory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/process/Process.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/process/ProcessArch.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/thread/HardwareBreakpoint.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/thread/Registers.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug/ElfBug/thread/Thread.cpp"
+)
+
+target_sources(x64dbg-linux PRIVATE ${ELFBUG_SOURCES})
+
+target_include_directories(x64dbg-linux PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug"
+)
+
+# Find Qt5 and include widgets
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Svg WebSockets)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../widgets/Qt.cmake")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../widgets" "${CMAKE_CURRENT_BINARY_DIR}/widgets")
+
+# Link Qt and widgets
+target_link_libraries(x64dbg-linux PRIVATE
+    Qt5::Core
+    Qt5::Widgets
+    Qt5::Gui
+    Qt5::Svg
+    Qt5::WebSockets
+    x64dbg::widgets
+)
+
+# Set Qt properties
+set_target_properties(x64dbg-linux PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+)
+"""
