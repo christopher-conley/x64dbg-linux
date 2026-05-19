@@ -1,4 +1,5 @@
 #include "core/DbgAdapter.h"
+#include "core/LinuxThreadManager.h"
 #include <cassert>
 
 static REGDUMP toRegDump(const ElfBugRegisters & regs)
@@ -192,6 +193,18 @@ bool DbgAdapter::toggleBreakpoint(const duint addr) const
 bool DbgAdapter::hasBreakpoint(const duint addr) const
 {
     return ElfBugIsBreakpointEffective(mDebugger, addr);
+}
+
+void DbgAdapter::setThreadManager(X64DbgLinux::ThreadManager* manager)
+{
+    mThreadManager = manager;
+}
+
+void DbgAdapter::setCurrentThread(pid_t tid)
+{
+    if (mThreadManager) {
+        mThreadManager->setCurrentThread(tid);
+    }
 }
 
 BPXTYPE DbgAdapter::queryBreakpoint(duint addr)

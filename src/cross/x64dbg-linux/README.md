@@ -12,23 +12,19 @@ x64dbg 的 Linux 移植版本，基于 ElfBug 调试引擎和 Qt5 GUI 框架。
 ## 目录结构
 
 ```
-src/cross/x64dbg-linux/
-├── cmake.toml              # cmkr 构建配置
-├── CMakeLists.txt          # CMake 入口（由 cmkr 生成）
-├── Dockerfile              # Docker 构建环境
-├── build-appimage.sh       # AppImage 打包脚本
-├── main/                   # 程序入口
-│   └── main.cpp
-├── core/                   # 调试核心
-│   ├── DbgAdapter.cpp/h    # ElfBug 适配层
-│   └── LinuxArchitecture.h
-├── gui/                    # 图形界面
-│   ├── MainWindow.cpp/h    # 主窗口
-│   └── CPUStack.cpp/h      # 堆栈视图
-├── bridge/                 # 桥接层（预留）
-├── commands/               # 命令系统（预留）
-├── plugins/                # 插件系统（预留）
-└── resources/              # 资源文件（预留）
+src/cross/
+├── cmake.toml              # 统一构建配置（包含 x64dbg-linux）
+├── x64dbg-linux/           # x64dbg-linux 源代码
+│   ├── main/               # 程序入口
+│   ├── core/               # 调试核心
+│   ├── gui/                # 图形界面
+│   ├── resources/          # 资源文件
+│   ├── build-docker.sh     # Docker 构建脚本
+│   ├── Dockerfile          # Docker 构建环境
+│   └── build-appimage.sh   # AppImage 打包脚本
+├── ElfBug/                 # 调试引擎
+├── widgets/                # GUI 组件库
+└── debugger/               # 参考实现
 ```
 
 ## 构建
@@ -37,19 +33,10 @@ src/cross/x64dbg-linux/
 
 ```bash
 cd src/cross/x64dbg-linux
-
-# 构建 Docker 镜像
-docker build -t x64dbg-linux-builder .
-
-# 运行容器并编译
-docker run --rm \
-    -v $(pwd)/../..:/build \
-    -w /build \
-    x64dbg-linux-builder \
-    bash -c "cd src/cross/x64dbg-linux && cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build --target x64dbg-linux"
+./build-docker.sh
 
 # 输出二进制
-./build/x64dbg-linux
+../build/x64dbg-linux
 ```
 
 ### 方法 2: 本地构建
@@ -62,7 +49,7 @@ docker run --rm \
 - libelf-dev, libdw-dev, libunwind-dev
 
 ```bash
-cd src/cross/x64dbg-linux
+cd src/cross
 
 # 配置
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -85,7 +72,7 @@ cd src/cross/x64dbg-linux
 docker run --rm \
     -v $(pwd)/../..:/build \
     -w /build \
-    x64dbg-linux-builder \
+    x64dbg-linux-build \
     bash -c "cd src/cross/x64dbg-linux && ./build-appimage.sh"
 
 # 方法 2: 本地打包（需要 linuxdeploy）
@@ -100,8 +87,8 @@ docker run --rm \
 ./build-appimage.sh [选项]
 
 环境变量:
-  BUILD_DIR       构建目录 (默认: ./build)
-  OUTPUT          输出文件名 (默认: ./build/x64dbg-linux-x86_64.AppImage)
+  BUILD_DIR       构建目录 (默认: ../build)
+  OUTPUT          输出文件名 (默认: ../build/x64dbg-linux-x86_64.AppImage)
 
 示例:
   # 默认打包
@@ -119,11 +106,11 @@ docker run --rm \
 docker run -it --rm \
     -v $(pwd)/../..:/build \
     -w /build \
-    x64dbg-linux-builder \
+    x64dbg-linux-build \
     bash
 
 # 在容器内
-cd src/cross/x64dbg-linux
+cd src/cross
 cmake -B build -G Ninja
 cmake --build build --target x64dbg-linux
 ```
@@ -146,7 +133,7 @@ rm -rf build/
 ### 构建系统
 
 - **cmkr**: 基于 TOML 的 CMake 生成器
-- **cmake.toml**: 主构建配置文件
+- **cmake.toml**: 主构建配置文件（在 src/cross/ 目录）
 - **CMakeLists.txt**: 由 cmkr 自动生成，不要手动编辑
 
 ### 调试引擎
@@ -165,6 +152,9 @@ ElfBug 提供以下功能：
 - Disassembly（Zydis 反汇编）
 - HexDump（十六进制查看）
 - RegistersView（寄存器显示）
+- ThreadsView（线程列表）
+- BreakpointsView（断点管理）
+- SymbolsView（符号浏览器）
 - 暗黑主题支持
 
 ## 与 Windows 版本的差异

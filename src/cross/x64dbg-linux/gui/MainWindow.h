@@ -8,6 +8,13 @@
 #include "core/DbgAdapter.h"
 #include "Gui/RegistersView.h"
 
+// Forward declarations for Phase 3 views
+namespace X64DbgLinux {
+    class ThreadsView;
+    class BreakpointsView;
+    class SymbolsView;
+}
+
 class QThread;
 class CPUStack;
 
@@ -47,4 +54,9 @@ private:
     CPUStack* mStack = nullptr;
     RegistersView* mRegisters = nullptr;
     QTextBrowser* mLog = nullptr;
+
+    // Phase 3 GUI components
+    X64DbgLinux::ThreadsView* mThreadsView = nullptr;
+    X64DbgLinux::BreakpointsView* mBreakpointsView = nullptr;
+    X64DbgLinux::SymbolsView* mSymbolsView = nullptr;
 };

@@ -11,6 +11,9 @@
 #include <Memory/MemoryPage.h>
 #include "core/LinuxArchitecture.h"
 #include "gui/CPUStack.h"
+#include "gui/ThreadsView.h"
+#include "gui/BreakpointsView.h"
+#include "gui/SymbolsView.h"
 
 static LinuxArchitecture gArch;
 
@@ -130,6 +133,29 @@ void MainWindow::setupTabs()
     mLog->setFont(ConfigFont("Log"));
     mTabWidget->addTab(mLog, icon("log"), tr("Log"));
 
+    // Create Breakpoints view
+    mBreakpointsView = new X64DbgLinux::BreakpointsView(this);
+    mTabWidget->addTab(mBreakpointsView, icon("breakpoint"), tr("Breakpoints"));
+    connect(mBreakpointsView, &X64DbgLinux::BreakpointsView::gotoBreakpointRequested,
+            mDisassembly, &Disassembly::gotoAddress);
+
+    // Create Threads view
+    mThreadsView = new X64DbgLinux::ThreadsView(this);
+    mTabWidget->addTab(mThreadsView, icon("arrow-threads"), tr("Threads"));
+    connect(mThreadsView, &X64DbgLinux::ThreadsView::threadSelected,
+            this, [this](pid_t tid) {
+                if (mProvider) {
+                    mProvider->setCurrentThread(tid);
+                }
+            });
+
+    // Create Symbols view
+    mSymbolsView = new X64DbgLinux::SymbolsView(this);
+    mTabWidget->addTab(mSymbolsView, icon("pdb"), tr("Symbols"));
+    connect(mSymbolsView, &X64DbgLinux::SymbolsView::gotoSymbolRequested,
+            mDisassembly, &Disassembly::gotoAddress);
+
+    // Memory map placeholder
     auto makePlaceholder = [this](const QString & text)
     {
         const auto label = new QLabel(text, this);
@@ -137,11 +163,8 @@ void MainWindow::setupTabs()
         label->setFont(ConfigFont("Log"));
         return label;
     };
-
-    mTabWidget->addTab(makePlaceholder(tr("Breakpoints view - not yet implemented")), icon("breakpoint"), tr("Breakpoints"));
     mTabWidget->addTab(makePlaceholder(tr("Memory map view - not yet implemented")), icon("memory-map"), tr("Memory Map"));
     mTabWidget->addTab(makePlaceholder(tr("Call stack view - not yet implemented")), icon("callstack"), tr("Call Stack"));
-    mTabWidget->addTab(makePlaceholder(tr("Threads view - not yet implemented")), icon("arrow-threads"), tr("Threads"));
 
     onLogMessage("[x64dbg] Ready. Open an ELF binary to begin debugging.");
 }

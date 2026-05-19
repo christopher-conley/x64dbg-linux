@@ -5,6 +5,11 @@
 #include "RegisterContext.h"
 #include "Bridge.h"
 
+// Forward declaration
+namespace X64DbgLinux {
+    class ThreadManager;
+}
+
 Q_DECLARE_METATYPE(REGDUMP)
 
 class DbgAdapter : public QObject, public MemoryProvider
@@ -30,7 +35,7 @@ public:
     void Continue() const;
     void StepInto() const;
     void Pause() const;
-    bool Stop() const; //discardable
+    bool Stop() const;
 
     [[nodiscard]] bool isActive() const;
     [[nodiscard]] bool isEngineLoaded() const { return mDebugger != nullptr; }
@@ -38,6 +43,10 @@ public:
 
     [[nodiscard]] bool toggleBreakpoint(duint addr) const;
     [[nodiscard]] bool hasBreakpoint(duint addr) const;
+
+    // Thread management
+    void setThreadManager(X64DbgLinux::ThreadManager* manager);
+    void setCurrentThread(pid_t tid);
 
 signals:
     void processCreated(duint entryPoint);
@@ -63,4 +72,5 @@ private:
 
     ElfBugDebugger* mDebugger = nullptr;
     duint mEntryPoint = 0;
+    X64DbgLinux::ThreadManager* mThreadManager = nullptr;
 };

@@ -3,10 +3,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-BUILD_DIR="$SCRIPT_DIR/build"
+BUILD_DIR="$REPO_ROOT/src/cross/build"
 
-# Build
-cmake -G Ninja -B "$BUILD_DIR" -S "$SCRIPT_DIR" -DCMAKE_BUILD_TYPE=Release
+# Build (using merged cmake.toml in src/cross)
+cmake -G Ninja -B "$BUILD_DIR" -S "$REPO_ROOT/src/cross" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$BUILD_DIR" --target x64dbg-linux
 
 # Create AppDir structure

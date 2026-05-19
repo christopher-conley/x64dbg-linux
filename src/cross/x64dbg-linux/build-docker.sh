@@ -20,16 +20,18 @@ else
 fi
 
 # Run the build with the entire repository mounted
+# Build in src/cross directory (merged cmake.toml)
 docker run --rm \
     -v "$REPO_ROOT:/build" \
-    -w /build/src/cross/x64dbg-linux \
+    -w /build/src/cross \
     x64dbg-linux-build \
     bash -c "
         rm -rf build && \
         mkdir -p build && \
         cd build && \
-        cmake /build/src/cross/x64dbg-linux -G Ninja -DCMAKE_BUILD_TYPE=Release && \
-        cmake --build .
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release && \
+        cmake --build . --target x64dbg-linux
     "
 
 echo "Build complete!"
+echo "Executable: src/cross/build/x64dbg-linux"

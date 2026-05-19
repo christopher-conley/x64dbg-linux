@@ -122,3 +122,30 @@ link-libraries = [
 
 [subdir."ElfBug/tests"]
 condition = "elfbug-tests"
+
+# x64dbg-linux GUI debugger (merged from x64dbg-linux/cmake.toml)
+[target.x64dbg-linux]
+type = "qt_executable"
+condition = "linux"
+sources = [
+    "x64dbg-linux/main/*.cpp",
+    "x64dbg-linux/core/*.cpp",
+    "x64dbg-linux/core/*.h",
+    "x64dbg-linux/gui/*.cpp",
+    "x64dbg-linux/gui/*.h",
+    "x64dbg-linux/resources/icons.qrc",
+]
+private-include-directories = [
+    "x64dbg-linux",
+]
+link-libraries = [
+    "Threads::Threads",
+    "Qt5::Core",
+    "Qt5::Widgets",
+    "Qt5::Gui",
+    "Qt5::Svg",
+    "Qt5::WebSockets",
+    "x64dbg::widgets",
+    "::ElfBug",
+]
+compile-features = ["cxx_std_20"]

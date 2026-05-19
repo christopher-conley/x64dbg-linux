@@ -336,3 +336,70 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 	endif()
 
 endif()
+# Target: x64dbg-linux
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
+	set(x64dbg-linux_SOURCES
+		cmake.toml
+		"x64dbg-linux/core/DbgAdapter.cpp"
+		"x64dbg-linux/core/DbgAdapter.h"
+		"x64dbg-linux/core/ExceptionHandler.cpp"
+		"x64dbg-linux/core/ExceptionHandler.h"
+		"x64dbg-linux/core/HardwareBreakpointManager.cpp"
+		"x64dbg-linux/core/HardwareBreakpointManager.h"
+		"x64dbg-linux/core/LinuxArchitecture.h"
+		"x64dbg-linux/core/LinuxThreadManager.cpp"
+		"x64dbg-linux/core/LinuxThreadManager.h"
+		"x64dbg-linux/core/MemoryBreakpointManager.cpp"
+		"x64dbg-linux/core/MemoryBreakpointManager.h"
+		"x64dbg-linux/core/SymbolProvider.cpp"
+		"x64dbg-linux/core/SymbolProvider.h"
+		"x64dbg-linux/gui/BreakpointsView.cpp"
+		"x64dbg-linux/gui/BreakpointsView.h"
+		"x64dbg-linux/gui/CPUStack.cpp"
+		"x64dbg-linux/gui/CPUStack.h"
+		"x64dbg-linux/gui/MainWindow.cpp"
+		"x64dbg-linux/gui/MainWindow.h"
+		"x64dbg-linux/gui/SymbolsView.cpp"
+		"x64dbg-linux/gui/SymbolsView.h"
+		"x64dbg-linux/gui/ThreadsView.cpp"
+		"x64dbg-linux/gui/ThreadsView.h"
+		"x64dbg-linux/main/main.cpp"
+		"x64dbg-linux/resources/icons.qrc"
+	)
+
+	qt_executable(x64dbg-linux ${x64dbg-linux_SOURCES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${x64dbg-linux_SOURCES})
+
+	target_compile_features(x64dbg-linux PRIVATE
+		cxx_std_20
+	)
+
+	target_compile_features(x64dbg-linux PRIVATE
+		cxx_std_20
+	)
+
+	target_include_directories(x64dbg-linux PRIVATE
+		x64dbg-linux
+	)
+
+	if(NOT TARGET ElfBug)
+		message(FATAL_ERROR "Target \"ElfBug\" referenced by \"x64dbg-linux\" does not exist!")
+	endif()
+
+	target_link_libraries(x64dbg-linux PRIVATE
+		Threads::Threads
+		Qt5::Core
+		Qt5::Widgets
+		Qt5::Gui
+		Qt5::Svg
+		Qt5::WebSockets
+		x64dbg::widgets
+		ElfBug
+	)
+
+	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+	if(NOT CMKR_VS_STARTUP_PROJECT)
+		set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT x64dbg-linux)
+	endif()
+
+endif()
