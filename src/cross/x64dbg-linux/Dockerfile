@@ -51,6 +51,13 @@ RUN wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/contin
 RUN wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage" \
     -O /usr/local/bin/linuxdeploy-plugin-qt && chmod +x /usr/local/bin/linuxdeploy-plugin-qt
 
+# cmkr (using zip instead of deb)
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
+RUN wget -q "https://github.com/build-cpp/cmkr/releases/download/v0.2.35/cmkr-linux.zip" \
+    -O /tmp/cmkr.zip && unzip -q /tmp/cmkr.zip -d /tmp/cmkr && \
+    cp /tmp/cmkr/cmkr /usr/local/bin/cmkr && chmod +x /usr/local/bin/cmkr && \
+    rm -rf /tmp/cmkr /tmp/cmkr.zip
+
 ENV APPIMAGE_EXTRACT_AND_RUN=1
 
 WORKDIR /build

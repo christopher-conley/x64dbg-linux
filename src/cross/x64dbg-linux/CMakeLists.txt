@@ -36,13 +36,32 @@ project(x64dbg-linux
 # Packages
 find_package(Threads REQUIRED)
 
+find_package(Qt5 REQUIRED
+	COMPONENTS
+		Core
+		Widgets
+		Gui
+		Svg
+		WebSockets
+)
+
 # Target: x64dbg-linux
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # NOTE: unnamed condition
 	set(x64dbg-linux_SOURCES
 		cmake.toml
 		"core/DbgAdapter.cpp"
 		"core/DbgAdapter.h"
+		"core/ExceptionHandler.cpp"
+		"core/ExceptionHandler.h"
+		"core/HardwareBreakpointManager.cpp"
+		"core/HardwareBreakpointManager.h"
 		"core/LinuxArchitecture.h"
+		"core/LinuxThreadManager.cpp"
+		"core/LinuxThreadManager.h"
+		"core/MemoryBreakpointManager.cpp"
+		"core/MemoryBreakpointManager.h"
+		"core/SymbolProvider.cpp"
+		"core/SymbolProvider.h"
 		"gui/CPUStack.cpp"
 		"gui/CPUStack.h"
 		"gui/MainWindow.cpp"
@@ -66,6 +85,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # linux
 
 	target_link_libraries(x64dbg-linux PRIVATE
 		Threads::Threads
+		Qt5::Core
+		Qt5::Widgets
+		Qt5::Gui
+		Qt5::Svg
+		Qt5::WebSockets
 	)
 
 	get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
@@ -97,18 +121,12 @@ target_include_directories(x64dbg-linux PRIVATE
 	    "${CMAKE_CURRENT_SOURCE_DIR}/../ElfBug"
 	)
 	
-# Find Qt5 and include widgets
-	find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Svg WebSockets)
+# Include widgets
 	include("${CMAKE_CURRENT_SOURCE_DIR}/../widgets/Qt.cmake")
 	add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../widgets" "${CMAKE_CURRENT_BINARY_DIR}/widgets")
 	
-# Link Qt and widgets
+# Link widgets
 	target_link_libraries(x64dbg-linux PRIVATE
-	    Qt5::Core
-	    Qt5::Widgets
-	    Qt5::Gui
-	    Qt5::Svg
-	    Qt5::WebSockets
 	    x64dbg::widgets
 	)
 	
