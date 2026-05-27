@@ -1,9 +1,13 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
+#include <optional>
 #include <ElfBug/api/elfbug_api.h>
 #include "RegisterContext.h"
 #include "Bridge.h"
+#include "HardwareBreakpointManager.h"
+#include "MemoryBreakpointManager.h"
 
 // Forward declaration
 namespace X64DbgLinux {
@@ -34,15 +38,33 @@ public:
     void Start() const;
     void Continue() const;
     void StepInto() const;
+    void StepOver() const;
     void Pause() const;
     bool Stop() const;
 
     [[nodiscard]] bool isActive() const;
     [[nodiscard]] bool isEngineLoaded() const { return mDebugger != nullptr; }
     [[nodiscard]] duint entryPoint() const { return mEntryPoint; }
+    [[nodiscard]] pid_t getPid() const;
 
     [[nodiscard]] bool toggleBreakpoint(duint addr) const;
     [[nodiscard]] bool hasBreakpoint(duint addr) const;
+
+    // Hardware breakpoint management
+    bool setHardwareBreakpoint(int slot, uint64_t addr, X64DbgLinux::HardwareBreakpointManager::Type type,
+                               X64DbgLinux::HardwareBreakpointManager::Size size);
+    bool clearHardwareBreakpoint(int slot);
+    bool enableHardwareBreakpoint(int slot);
+    bool disableHardwareBreakpoint(int slot);
+    std::optional<int> findFreeHardwareBreakpointSlot() const;
+    void clearAllHardwareBreakpoints();
+
+    // Memory breakpoint management
+    bool setMemoryBreakpoint(uint64_t addr, size_t size, X64DbgLinux::MemoryBreakpointType type);
+    bool removeMemoryBreakpoint(uint64_t addr);
+    bool enableMemoryBreakpoint(uint64_t addr);
+    bool disableMemoryBreakpoint(uint64_t addr);
+    void clearAllMemoryBreakpoints();
 
     // Thread management
     void setThreadManager(X64DbgLinux::ThreadManager* manager);
@@ -73,4 +95,8 @@ private:
     ElfBugDebugger* mDebugger = nullptr;
     duint mEntryPoint = 0;
     X64DbgLinux::ThreadManager* mThreadManager = nullptr;
+
+    // Hardware and memory breakpoint managers
+    std::unique_ptr<X64DbgLinux::HardwareBreakpointManager> mHwBpManager;
+    std::unique_ptr<X64DbgLinux::MemoryBreakpointManager> mMemBpManager;
 };

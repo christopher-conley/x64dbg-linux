@@ -8,11 +8,13 @@
 #include "core/DbgAdapter.h"
 #include "Gui/RegistersView.h"
 
-// Forward declarations for Phase 3 views
+// Forward declarations for Phase 3/6 views
 namespace X64DbgLinux {
     class ThreadsView;
     class BreakpointsView;
     class SymbolsView;
+    class MemoryMapView;
+    class CallStackView;
 }
 
 class QThread;
@@ -59,4 +61,8 @@ private:
     X64DbgLinux::ThreadsView* mThreadsView = nullptr;
     X64DbgLinux::BreakpointsView* mBreakpointsView = nullptr;
     X64DbgLinux::SymbolsView* mSymbolsView = nullptr;
+
+    // Phase 6 GUI components
+    X64DbgLinux::MemoryMapView* mMemoryMapView = nullptr;
+    X64DbgLinux::CallStackView* mCallStackView = nullptr;
 };

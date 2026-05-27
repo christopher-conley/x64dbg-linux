@@ -1,6 +1,10 @@
 #include "core/DbgAdapter.h"
 #include "core/LinuxThreadManager.h"
 #include <cassert>
+#include <cstring>
+
+// Zydis for instruction decoding
+#include <Zydis/Zydis.h>
 
 static REGDUMP toRegDump(const ElfBugRegisters & regs)
 {
@@ -55,8 +59,13 @@ DbgAdapter::~DbgAdapter()
 {
     DbgSetBreakpointQuery(nullptr);
     sInstance.store(nullptr);
-    if(mDebugger)
+    if (mDebugger)
         ElfBugDestroy(mDebugger);
+    // Clear all breakpoints before destroying managers
+    if (mHwBpManager)
+        mHwBpManager->clearAllBreakpoints();
+    if (mMemBpManager)
+        mMemBpManager->clearAllBreakpoints();
 }
 
 bool DbgAdapter::loadEngine()
@@ -81,6 +90,10 @@ bool DbgAdapter::loadEngine()
         emit logMessage("[x64dbg] ElfBugCreate failed");
         return false;
     }
+
+    // Initialize hardware and memory breakpoint managers
+    mHwBpManager = std::make_unique<X64DbgLinux::HardwareBreakpointManager>();
+    mMemBpManager = std::make_unique<X64DbgLinux::MemoryBreakpointManager>();
 
     emit logMessage("[x64dbg] Engine loaded");
     return true;
@@ -165,6 +178,73 @@ void DbgAdapter::StepInto() const
     ElfBugStepInto(mDebugger);
 }
 
+void DbgAdapter::StepOver() const
+{
+    if(!mDebugger || !isActive())
+        return;
+
+    // Get current RIP
+    ElfBugRegisters regs = {};
+    if(!ElfBugGetRegisters(mDebugger, &regs))
+    {
+        // Fallback to step into if we can't get registers
+        ElfBugStepInto(mDebugger);
+        return;
+    }
+
+    const uint64_t rip = regs.rip;
+
+    // Read instruction bytes at RIP
+    uint8_t buffer[16]; // Max x86_64 instruction length is 15 bytes
+    if(!ElfBugMemRead(mDebugger, rip, buffer, sizeof(buffer)))
+    {
+        // Fallback to step into if we can't read memory
+        ElfBugStepInto(mDebugger);
+        return;
+    }
+
+    // Decode instruction using Zydis
+    ZydisDecoder decoder;
+    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+
+    ZydisDecodedInstruction instruction;
+    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+
+    if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, buffer, sizeof(buffer), &instruction, operands)))
+    {
+        // Failed to decode, fallback to step into
+        ElfBugStepInto(mDebugger);
+        return;
+    }
+
+    // Check if this is a CALL instruction
+    const bool isCall = (instruction.meta.category == ZYDIS_CATEGORY_CALL) ||
+                        (instruction.mnemonic == ZYDIS_MNEMONIC_CALL);
+
+    if(isCall)
+    {
+        // Calculate address of next instruction
+        const uint64_t nextAddr = rip + instruction.length;
+
+        // Set temporary breakpoint at next instruction
+        if(ElfBugSetBreakpoint(mDebugger, nextAddr))
+        {
+            // Continue execution - will stop at the temporary breakpoint
+            ElfBugContinue(mDebugger);
+        }
+        else
+        {
+            // Failed to set breakpoint, fallback to step into
+            ElfBugStepInto(mDebugger);
+        }
+    }
+    else
+    {
+        // Not a call, use normal step into
+        ElfBugStepInto(mDebugger);
+    }
+}
+
 void DbgAdapter::Pause() const
 {
     ElfBugPause(mDebugger);
@@ -180,6 +260,13 @@ bool DbgAdapter::isActive() const
     return ElfBugGetPid(mDebugger) > 0;
 }
 
+pid_t DbgAdapter::getPid() const
+{
+    if(!mDebugger)
+        return 0;
+    return ElfBugGetPid(mDebugger);
+}
+
 bool DbgAdapter::toggleBreakpoint(const duint addr) const
 {
     if(!isActive())
@@ -193,6 +280,87 @@ bool DbgAdapter::toggleBreakpoint(const duint addr) const
 bool DbgAdapter::hasBreakpoint(const duint addr) const
 {
     return ElfBugIsBreakpointEffective(mDebugger, addr);
+}
+
+// Hardware breakpoint management
+bool DbgAdapter::setHardwareBreakpoint(int slot, uint64_t addr,
+                                       X64DbgLinux::HardwareBreakpointManager::Type type,
+                                       X64DbgLinux::HardwareBreakpointManager::Size size)
+{
+    if (!mHwBpManager || !isActive())
+        return false;
+    mHwBpManager->setTarget(getPid());
+    return mHwBpManager->setBreakpoint(slot, addr, type, size);
+}
+
+bool DbgAdapter::clearHardwareBreakpoint(int slot)
+{
+    if (!mHwBpManager)
+        return false;
+    return mHwBpManager->clearBreakpoint(slot);
+}
+
+bool DbgAdapter::enableHardwareBreakpoint(int slot)
+{
+    if (!mHwBpManager)
+        return false;
+    return mHwBpManager->enableBreakpoint(slot);
+}
+
+bool DbgAdapter::disableHardwareBreakpoint(int slot)
+{
+    if (!mHwBpManager)
+        return false;
+    return mHwBpManager->disableBreakpoint(slot);
+}
+
+std::optional<int> DbgAdapter::findFreeHardwareBreakpointSlot() const
+{
+    if (!mHwBpManager)
+        return std::nullopt;
+    return mHwBpManager->findFreeSlot();
+}
+
+void DbgAdapter::clearAllHardwareBreakpoints()
+{
+    if (mHwBpManager)
+        mHwBpManager->clearAllBreakpoints();
+}
+
+// Memory breakpoint management
+bool DbgAdapter::setMemoryBreakpoint(uint64_t addr, size_t size, X64DbgLinux::MemoryBreakpointType type)
+{
+    if (!mMemBpManager || !isActive())
+        return false;
+    mMemBpManager->setTarget(getPid());
+    return mMemBpManager->setMemoryBreakpoint(addr, size, type);
+}
+
+bool DbgAdapter::removeMemoryBreakpoint(uint64_t addr)
+{
+    if (!mMemBpManager)
+        return false;
+    return mMemBpManager->removeMemoryBreakpoint(addr);
+}
+
+bool DbgAdapter::enableMemoryBreakpoint(uint64_t addr)
+{
+    if (!mMemBpManager)
+        return false;
+    return mMemBpManager->enableMemoryBreakpoint(addr);
+}
+
+bool DbgAdapter::disableMemoryBreakpoint(uint64_t addr)
+{
+    if (!mMemBpManager)
+        return false;
+    return mMemBpManager->disableMemoryBreakpoint(addr);
+}
+
+void DbgAdapter::clearAllMemoryBreakpoints()
+{
+    if (mMemBpManager)
+        mMemBpManager->clearAllBreakpoints();
 }
 
 void DbgAdapter::setThreadManager(X64DbgLinux::ThreadManager* manager)
@@ -228,12 +396,26 @@ void DbgAdapter::onCreateProcess(const pid_t pid, const uint64_t entryPoint, voi
 {
     auto* self = static_cast<DbgAdapter*>(userdata);
     self->mEntryPoint = entryPoint;
+
+    // Set target PID for breakpoint managers
+    if (self->mHwBpManager)
+        self->mHwBpManager->setTarget(pid);
+    if (self->mMemBpManager)
+        self->mMemBpManager->setTarget(pid);
+
     emit self->logMessage(QString("[x64dbg] Process created: PID %1").arg(pid));
 }
 
 void DbgAdapter::onExitProcess(const int exitCode, void* userdata)
 {
     auto* self = static_cast<DbgAdapter*>(userdata);
+
+    // Clear breakpoints and target PID
+    if (self->mHwBpManager)
+        self->mHwBpManager->setTarget(0);
+    if (self->mMemBpManager)
+        self->mMemBpManager->setTarget(0);
+
     emit self->logMessage(QString("[x64dbg] Process exited: %1").arg(exitCode));
     emit self->processExited(exitCode);
 }

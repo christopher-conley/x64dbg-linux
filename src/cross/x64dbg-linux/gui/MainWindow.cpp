@@ -14,6 +14,8 @@
 #include "gui/ThreadsView.h"
 #include "gui/BreakpointsView.h"
 #include "gui/SymbolsView.h"
+#include "gui/MemoryMapView.h"
+#include "gui/CallStackView.h"
 
 static LinuxArchitecture gArch;
 
@@ -155,16 +157,17 @@ void MainWindow::setupTabs()
     connect(mSymbolsView, &X64DbgLinux::SymbolsView::gotoSymbolRequested,
             mDisassembly, &Disassembly::gotoAddress);
 
-    // Memory map placeholder
-    auto makePlaceholder = [this](const QString & text)
-    {
-        const auto label = new QLabel(text, this);
-        label->setAlignment(Qt::AlignCenter);
-        label->setFont(ConfigFont("Log"));
-        return label;
-    };
-    mTabWidget->addTab(makePlaceholder(tr("Memory map view - not yet implemented")), icon("memory-map"), tr("Memory Map"));
-    mTabWidget->addTab(makePlaceholder(tr("Call stack view - not yet implemented")), icon("callstack"), tr("Call Stack"));
+    // Create Memory Map view
+    mMemoryMapView = new X64DbgLinux::MemoryMapView(this);
+    mTabWidget->addTab(mMemoryMapView, icon("memory-map"), tr("Memory Map"));
+    connect(mMemoryMapView, &X64DbgLinux::MemoryMapView::gotoAddressRequested,
+            mDisassembly, &Disassembly::gotoAddress);
+
+    // Create Call Stack view
+    mCallStackView = new X64DbgLinux::CallStackView(this);
+    mTabWidget->addTab(mCallStackView, icon("callstack"), tr("Call Stack"));
+    connect(mCallStackView, &X64DbgLinux::CallStackView::gotoAddressRequested,
+            mDisassembly, &Disassembly::gotoAddress);
 
     onLogMessage("[x64dbg] Ready. Open an ELF binary to begin debugging.");
 }
@@ -279,6 +282,16 @@ void MainWindow::onProcessCreated(const duint entryPoint) const
 {
     onLogMessage(QString("[x64dbg] Process attached, entry: 0x%1").arg(entryPoint, 0, 16));
     mHexDump->printDumpAt(entryPoint);
+
+    // Set target PID for views that need it
+    if(mProvider && mProvider->isActive())
+    {
+        pid_t pid = mProvider->getPid();
+        if(mMemoryMapView)
+            mMemoryMapView->setTargetPid(pid);
+        if(mCallStackView)
+            mCallStackView->setTargetPid(pid);
+    }
 }
 
 void MainWindow::onProcessExited(const int exitCode) const
@@ -311,8 +324,8 @@ void MainWindow::onStepInto() const
 
 void MainWindow::onStepOver() const
 {
-    onLogMessage("[x64dbg] Step-over not implemented, using step-into");
-    onStepInto();
+    if(mProvider && mProvider->isActive())
+        mProvider->StepOver();
 }
 
 void MainWindow::onToggleBreakpoint() const
