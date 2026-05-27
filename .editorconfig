@@ -1,16 +1,35 @@
-; Top-most EditorConfig file
 root = true
 
-; Windows-style newlines
+# All files
 [*]
-end_of_line = crlf
-trim_trailing_whitespace = true
-
-; Tab indentation
-[*.{cpp,h}]
-indent_style = space
-tab_width = 4
-
-[{CMakeLists.txt,*.cmake,cmake.toml}]
-indent_style = space
 end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# C++ source files
+[*.{cpp,h,hpp}]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+# CMake files
+[{CMakeLists.txt,*.cmake}]
+indent_style = space
+indent_size = 4
+
+# Shell scripts
+[*.sh]
+end_of_line = lf
+indent_style = space
+indent_size = 4
+
+# TOML files
+[*.toml]
+indent_style = space
+indent_size = 4
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off

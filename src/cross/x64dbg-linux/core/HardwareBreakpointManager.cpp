@@ -2,11 +2,29 @@
 #include <sys/ptrace.h>
 #include <sys/user.h>
 #include <cstring>
+#include <cerrno>
 
 namespace X64DbgLinux {
 
+// Offsets for debug registers in struct user (x86_64)
+// These are the byte offsets in the user area for each debug register
+static constexpr size_t DR0_OFFSET = offsetof(struct user, u_debugreg[0]);
+static constexpr size_t DR1_OFFSET = offsetof(struct user, u_debugreg[1]);
+static constexpr size_t DR2_OFFSET = offsetof(struct user, u_debugreg[2]);
+static constexpr size_t DR3_OFFSET = offsetof(struct user, u_debugreg[3]);
+static constexpr size_t DR6_OFFSET = offsetof(struct user, u_debugreg[6]);
+static constexpr size_t DR7_OFFSET = offsetof(struct user, u_debugreg[7]);
+
+void HardwareBreakpointManager::setTarget(pid_t pid) {
+    m_targetPid = pid;
+}
+
 bool HardwareBreakpointManager::setBreakpoint(int slot, uint64_t addr, Type type, Size size) {
     if (slot < 0 || slot >= MAX_HW_BREAKPOINTS) {
+        return false;
+    }
+
+    if (m_targetPid == 0) {
         return false;
     }
 
@@ -38,6 +56,10 @@ bool HardwareBreakpointManager::setBreakpoint(int slot, uint64_t addr, Type type
 
 bool HardwareBreakpointManager::clearBreakpoint(int slot) {
     if (slot < 0 || slot >= MAX_HW_BREAKPOINTS) {
+        return false;
+    }
+
+    if (m_targetPid == 0) {
         return false;
     }
 
@@ -74,6 +96,10 @@ bool HardwareBreakpointManager::enableBreakpoint(int slot) {
         return false;
     }
 
+    if (m_targetPid == 0) {
+        return false;
+    }
+
     if (m_breakpoints[slot] == 0) {
         return false; // No breakpoint set
     }
@@ -96,6 +122,10 @@ bool HardwareBreakpointManager::enableBreakpoint(int slot) {
 
 bool HardwareBreakpointManager::disableBreakpoint(int slot) {
     if (slot < 0 || slot >= MAX_HW_BREAKPOINTS) {
+        return false;
+    }
+
+    if (m_targetPid == 0) {
         return false;
     }
 
@@ -142,11 +172,13 @@ std::optional<int> HardwareBreakpointManager::findFreeSlot() const {
 }
 
 void HardwareBreakpointManager::clearAllBreakpoints() {
-    DebugRegisters regs;
-    if (readDebugRegisters(regs)) {
-        regs.dr0 = regs.dr1 = regs.dr2 = regs.dr3 = 0;
-        regs.dr7 = 0;
-        writeDebugRegisters(regs);
+    if (m_targetPid != 0) {
+        DebugRegisters regs;
+        if (readDebugRegisters(regs)) {
+            regs.dr0 = regs.dr1 = regs.dr2 = regs.dr3 = 0;
+            regs.dr7 = 0;
+            writeDebugRegisters(regs);
+        }
     }
 
     for (int i = 0; i < MAX_HW_BREAKPOINTS; i++) {
@@ -156,33 +188,63 @@ void HardwareBreakpointManager::clearAllBreakpoints() {
 }
 
 bool HardwareBreakpointManager::readDebugRegisters(DebugRegisters& regs) const {
-    // On Linux, we need to use PTRACE_PEEKUSER to read debug registers
-    // This requires the target process to be stopped
-    // For now, return cached values
-    regs.dr0 = m_breakpoints[0];
-    regs.dr1 = m_breakpoints[1];
-    regs.dr2 = m_breakpoints[2];
-    regs.dr3 = m_breakpoints[3];
-    regs.dr6 = 0;
-    regs.dr7 = 0;
-
-    // Build DR7 from cached state
-    for (int i = 0; i < MAX_HW_BREAKPOINTS; i++) {
-        if (m_enabled[i] && m_breakpoints[i] != 0) {
-            regs.dr7 |= (0x1ULL << (i * 2));  // Local enable
-        }
+    if (m_targetPid == 0) {
+        return false;
     }
+
+    // Use PTRACE_PEEKUSER to read debug registers
+    errno = 0;
+    regs.dr0 = ptrace(PTRACE_PEEKUSER, m_targetPid, DR0_OFFSET, nullptr);
+    if (errno != 0) return false;
+
+    errno = 0;
+    regs.dr1 = ptrace(PTRACE_PEEKUSER, m_targetPid, DR1_OFFSET, nullptr);
+    if (errno != 0) return false;
+
+    errno = 0;
+    regs.dr2 = ptrace(PTRACE_PEEKUSER, m_targetPid, DR2_OFFSET, nullptr);
+    if (errno != 0) return false;
+
+    errno = 0;
+    regs.dr3 = ptrace(PTRACE_PEEKUSER, m_targetPid, DR3_OFFSET, nullptr);
+    if (errno != 0) return false;
+
+    errno = 0;
+    regs.dr6 = ptrace(PTRACE_PEEKUSER, m_targetPid, DR6_OFFSET, nullptr);
+    if (errno != 0) return false;
+
+    errno = 0;
+    regs.dr7 = ptrace(PTRACE_PEEKUSER, m_targetPid, DR7_OFFSET, nullptr);
+    if (errno != 0) return false;
 
     return true;
 }
 
 bool HardwareBreakpointManager::writeDebugRegisters(const DebugRegisters& regs) const {
-    // On Linux, we need to use PTRACE_POKEUSER to write debug registers
-    // This requires the target process to be stopped
-    // The actual implementation would use PTRACE_POKEUSER with offsets:
-    // offsetof(struct user, u_debugreg[0]) for DR0, etc.
-    // For now, just cache the values
-    (void)regs; // Suppress unused warning
+    if (m_targetPid == 0) {
+        return false;
+    }
+
+    // Use PTRACE_POKEUSER to write debug registers
+    if (ptrace(PTRACE_POKEUSER, m_targetPid, DR0_OFFSET, regs.dr0) == -1) {
+        return false;
+    }
+    if (ptrace(PTRACE_POKEUSER, m_targetPid, DR1_OFFSET, regs.dr1) == -1) {
+        return false;
+    }
+    if (ptrace(PTRACE_POKEUSER, m_targetPid, DR2_OFFSET, regs.dr2) == -1) {
+        return false;
+    }
+    if (ptrace(PTRACE_POKEUSER, m_targetPid, DR3_OFFSET, regs.dr3) == -1) {
+        return false;
+    }
+    if (ptrace(PTRACE_POKEUSER, m_targetPid, DR6_OFFSET, regs.dr6) == -1) {
+        return false;
+    }
+    if (ptrace(PTRACE_POKEUSER, m_targetPid, DR7_OFFSET, regs.dr7) == -1) {
+        return false;
+    }
+
     return true;
 }
 

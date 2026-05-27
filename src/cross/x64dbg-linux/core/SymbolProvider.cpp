@@ -10,6 +10,8 @@
 namespace X64DbgLinux {
 
 bool SymbolProvider::loadModule(const std::string& path, uint64_t base) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     ModuleInfo module;
     module.path = path;
     module.base = base;
@@ -31,10 +33,13 @@ bool SymbolProvider::loadModule(const std::string& path, uint64_t base) {
 }
 
 void SymbolProvider::unloadModule(uint64_t base) {
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_modules.erase(base);
 }
 
 std::optional<SymbolInfo> SymbolProvider::getSymbolAt(uint64_t addr) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     // Find which module contains this address
     for (const auto& [base, module] : m_modules) {
         if (addr >= base && addr < base + module.size) {
@@ -52,6 +57,8 @@ std::optional<SymbolInfo> SymbolProvider::getSymbolAt(uint64_t addr) {
 }
 
 std::vector<SymbolInfo> SymbolProvider::getSymbolsInRange(uint64_t start, uint64_t end) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     std::vector<SymbolInfo> result;
 
     for (const auto& [base, module] : m_modules) {
@@ -69,6 +76,7 @@ std::vector<SymbolInfo> SymbolProvider::getSymbolsInRange(uint64_t start, uint64
 }
 
 std::optional<SourceLineInfo> SymbolProvider::getSourceLine(uint64_t addr) {
+    std::lock_guard<std::mutex> lock(m_mutex);
     // DWARF parsing would go here
     // For now, return empty
     (void)addr;
@@ -76,6 +84,8 @@ std::optional<SourceLineInfo> SymbolProvider::getSourceLine(uint64_t addr) {
 }
 
 std::optional<ModuleInfo> SymbolProvider::getModuleInfo(uint64_t addr) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     for (const auto& [base, module] : m_modules) {
         if (addr >= base && addr < base + module.size) {
             return module;
@@ -85,6 +95,8 @@ std::optional<ModuleInfo> SymbolProvider::getModuleInfo(uint64_t addr) {
 }
 
 std::vector<ModuleInfo> SymbolProvider::getAllModules() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     std::vector<ModuleInfo> result;
     for (const auto& [base, module] : m_modules) {
         result.push_back(module);
@@ -93,6 +105,8 @@ std::vector<ModuleInfo> SymbolProvider::getAllModules() const {
 }
 
 std::optional<uint64_t> SymbolProvider::resolveSymbol(const std::string& name, const std::string& module) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     for (const auto& [base, mod] : m_modules) {
         if (!module.empty() && mod.name != module) {
             continue;
@@ -108,6 +122,7 @@ std::optional<uint64_t> SymbolProvider::resolveSymbol(const std::string& name, c
 }
 
 void SymbolProvider::clearAll() {
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_modules.clear();
 }
 

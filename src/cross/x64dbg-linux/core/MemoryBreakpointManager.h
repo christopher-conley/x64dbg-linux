@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <optional>
+#include <sys/types.h>
 
 namespace X64DbgLinux {
 
@@ -24,6 +25,9 @@ struct MemoryBreakpoint {
 
 class MemoryBreakpointManager {
 public:
+    // Set target process for memory breakpoint operations
+    void setTarget(pid_t pid);
+
     // Set a memory breakpoint
     bool setMemoryBreakpoint(uint64_t addr, size_t size, MemoryBreakpointType type);
 
@@ -53,12 +57,13 @@ private:
     // Set memory protection
     bool setMemoryProtection(uint64_t addr, size_t size, int prot);
 
-    // Get current memory protection
+    // Get current memory protection from target process
     bool getMemoryProtection(uint64_t addr, int& prot) const;
 
     // Find breakpoint containing address
     std::optional<MemoryBreakpoint> findBreakpoint(uint64_t addr) const;
 
+    pid_t m_targetPid = 0;
     std::unordered_map<uint64_t, MemoryBreakpoint> m_breakpoints;
     mutable std::mutex m_mutex;
 };

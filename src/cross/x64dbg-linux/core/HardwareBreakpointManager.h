@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <optional>
+#include <sys/types.h>
 
 namespace X64DbgLinux {
 
@@ -20,6 +21,9 @@ public:
         Dword = 3,
         Qword = 3  // x64
     };
+
+    // Set target process for hardware breakpoint operations
+    void setTarget(pid_t pid);
 
     // Set hardware breakpoint in specified slot (0-3)
     bool setBreakpoint(int slot, uint64_t addr, Type type, Size size);
@@ -60,6 +64,7 @@ private:
     uint64_t encodeDr7(int slot, Type type, Size size, bool enabled) const;
     void decodeDr7(uint64_t dr7, int slot, bool& enabled, Type& type, Size& size) const;
 
+    pid_t m_targetPid = 0;
     uint64_t m_breakpoints[4] = {0, 0, 0, 0};
     bool m_enabled[4] = {false, false, false, false};
 };

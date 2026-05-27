@@ -8,8 +8,16 @@
 
 namespace X64DbgLinux {
 
+void MemoryBreakpointManager::setTarget(pid_t pid) {
+    m_targetPid = pid;
+}
+
 bool MemoryBreakpointManager::setMemoryBreakpoint(uint64_t addr, size_t size, MemoryBreakpointType type) {
     std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_targetPid == 0) {
+        return false;
+    }
 
     // Check if breakpoint already exists
     if (m_breakpoints.count(addr)) {
@@ -186,8 +194,13 @@ bool MemoryBreakpointManager::setMemoryProtection(uint64_t addr, size_t size, in
 }
 
 bool MemoryBreakpointManager::getMemoryProtection(uint64_t addr, int& prot) const {
-    // Read /proc/self/maps to get protection
-    std::ifstream maps("/proc/self/maps");
+    if (m_targetPid == 0) {
+        return false;
+    }
+
+    // Read /proc/[pid]/maps to get protection of target process
+    std::string mapsPath = "/proc/" + std::to_string(m_targetPid) + "/maps";
+    std::ifstream maps(mapsPath);
     if (!maps.is_open()) {
         return false;
     }

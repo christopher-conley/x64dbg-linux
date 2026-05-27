@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <unordered_map>
+#include <mutex>
 
 namespace X64DbgLinux {
 
@@ -70,6 +71,7 @@ private:
     // Dynamic symbol table parsing
     bool parseDynsym(const std::string& path, ModuleInfo& module);
 
+    mutable std::mutex m_mutex;
     std::unordered_map<uint64_t, ModuleInfo> m_modules;
 };
 

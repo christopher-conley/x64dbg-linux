@@ -2,6 +2,7 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <sys/user.h>
+#include <unistd.h>
 #include <cstring>
 
 namespace X64DbgLinux {
@@ -46,12 +47,33 @@ bool ThreadManager::suspendThread(pid_t tid) {
         return false;
     }
 
+    // Send interrupt signal to stop the thread
     if (ptrace(PTRACE_INTERRUPT, tid, nullptr, nullptr) == -1) {
         return false;
     }
 
+    // Use WNOHANG to avoid blocking indefinitely
+    // Try multiple times with short delay for the thread to stop
     int status;
-    if (waitpid(tid, &status, __WALL) == -1) {
+    bool stopped = false;
+    for (int retry = 0; retry < 100; retry++) {
+        pid_t result = waitpid(tid, &status, WNOHANG | __WALL);
+        if (result == tid) {
+            if (WIFSTOPPED(status)) {
+                stopped = true;
+                break;
+            }
+        } else if (result == 0) {
+            // Thread hasn't stopped yet, wait a bit
+            usleep(1000); // 1ms
+        } else {
+            // Error
+            return false;
+        }
+    }
+
+    if (!stopped) {
+        // Thread didn't stop in time
         return false;
     }
 
