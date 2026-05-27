@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <ElfBug/api/elfbug_api.h>
 #include "RegisterContext.h"
 #include "Bridge.h"
@@ -38,7 +39,7 @@ public:
     void Start() const;
     void Continue() const;
     void StepInto() const;
-    void StepOver() const;
+    void StepOver();
     void Pause() const;
     bool Stop() const;
 
@@ -92,6 +93,22 @@ private:
 
     void emitStoppedState(const QString & reason);
 
+    // Instruction cache for performance optimization
+    struct CachedInstruction {
+        uint64_t length;
+        bool isCall;
+        uint64_t timestamp;
+    };
+
+    std::optional<CachedInstruction> getCachedInstruction(uint64_t addr) const;
+    void cacheInstruction(uint64_t addr, uint64_t length, bool isCall);
+    void clearInstructionCache();
+    void pruneInstructionCache();
+
+    // Configuration
+    static constexpr size_t MAX_CACHE_SIZE = 1024;
+    static constexpr uint64_t CACHE_TTL_MS = 5000; // 5 seconds
+
     ElfBugDebugger* mDebugger = nullptr;
     duint mEntryPoint = 0;
     X64DbgLinux::ThreadManager* mThreadManager = nullptr;
@@ -99,4 +116,8 @@ private:
     // Hardware and memory breakpoint managers
     std::unique_ptr<X64DbgLinux::HardwareBreakpointManager> mHwBpManager;
     std::unique_ptr<X64DbgLinux::MemoryBreakpointManager> mMemBpManager;
+
+    // Instruction cache for Step Over optimization
+    mutable std::unordered_map<uint64_t, CachedInstruction> mInstructionCache;
+    mutable std::mutex mCacheMutex;
 };

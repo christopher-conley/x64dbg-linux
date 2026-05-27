@@ -2,6 +2,7 @@
 #include "core/LinuxThreadManager.h"
 #include <cassert>
 #include <cstring>
+#include <chrono>
 
 // Zydis for instruction decoding
 #include <Zydis/Zydis.h>
@@ -178,7 +179,7 @@ void DbgAdapter::StepInto() const
     ElfBugStepInto(mDebugger);
 }
 
-void DbgAdapter::StepOver() const
+void DbgAdapter::StepOver()
 {
     if(!mDebugger || !isActive())
         return;
@@ -187,23 +188,30 @@ void DbgAdapter::StepOver() const
     ElfBugRegisters regs = {};
     if(!ElfBugGetRegisters(mDebugger, &regs))
     {
-        // Fallback to step into if we can't get registers
         ElfBugStepInto(mDebugger);
         return;
     }
 
     const uint64_t rip = regs.rip;
 
-    // Read instruction bytes at RIP
-    uint8_t buffer[16]; // Max x86_64 instruction length is 15 bytes
-    if(!ElfBugMemRead(mDebugger, rip, buffer, sizeof(buffer)))
+    // Check instruction cache first
+    auto cached = getCachedInstruction(rip);
+    if(cached && !cached->isCall)
     {
-        // Fallback to step into if we can't read memory
+        // Not a call, use step into (no need to decode again)
         ElfBugStepInto(mDebugger);
         return;
     }
 
-    // Decode instruction using Zydis
+    // Read instruction bytes
+    uint8_t buffer[16];
+    if(!ElfBugMemRead(mDebugger, rip, buffer, sizeof(buffer)))
+    {
+        ElfBugStepInto(mDebugger);
+        return;
+    }
+
+    // Decode instruction
     ZydisDecoder decoder;
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
 
@@ -212,35 +220,29 @@ void DbgAdapter::StepOver() const
 
     if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, buffer, sizeof(buffer), &instruction, operands)))
     {
-        // Failed to decode, fallback to step into
         ElfBugStepInto(mDebugger);
         return;
     }
 
-    // Check if this is a CALL instruction
+    // Cache the result
     const bool isCall = (instruction.meta.category == ZYDIS_CATEGORY_CALL) ||
                         (instruction.mnemonic == ZYDIS_MNEMONIC_CALL);
+    cacheInstruction(rip, instruction.length, isCall);
 
     if(isCall)
     {
-        // Calculate address of next instruction
         const uint64_t nextAddr = rip + instruction.length;
-
-        // Set temporary breakpoint at next instruction
         if(ElfBugSetBreakpoint(mDebugger, nextAddr))
         {
-            // Continue execution - will stop at the temporary breakpoint
             ElfBugContinue(mDebugger);
         }
         else
         {
-            // Failed to set breakpoint, fallback to step into
             ElfBugStepInto(mDebugger);
         }
     }
     else
     {
-        // Not a call, use normal step into
         ElfBugStepInto(mDebugger);
     }
 }
@@ -416,6 +418,9 @@ void DbgAdapter::onExitProcess(const int exitCode, void* userdata)
     if (self->mMemBpManager)
         self->mMemBpManager->setTarget(0);
 
+    // Clear instruction cache
+    self->clearInstructionCache();
+
     emit self->logMessage(QString("[x64dbg] Process exited: %1").arg(exitCode));
     emit self->processExited(exitCode);
 }
@@ -462,4 +467,66 @@ void DbgAdapter::onDebugString(const char* text, void* userdata)
 {
     auto* self = static_cast<DbgAdapter*>(userdata);
     emit self->logMessage(QString("[dbg] %1").arg(text));
+}
+
+// Instruction cache implementation
+std::optional<DbgAdapter::CachedInstruction> DbgAdapter::getCachedInstruction(uint64_t addr) const
+{
+    std::lock_guard<std::mutex> lock(mCacheMutex);
+
+    auto it = mInstructionCache.find(addr);
+    if(it == mInstructionCache.end())
+        return std::nullopt;
+
+    // Check if cache entry is expired
+    auto now = std::chrono::steady_clock::now().time_since_epoch().count() / 1000000; // ms
+    if(now - it->second.timestamp > CACHE_TTL_MS)
+    {
+        mInstructionCache.erase(it);
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
+void DbgAdapter::cacheInstruction(uint64_t addr, uint64_t length, bool isCall)
+{
+    std::lock_guard<std::mutex> lock(mCacheMutex);
+
+    // Prune cache if too large
+    if(mInstructionCache.size() >= MAX_CACHE_SIZE)
+    {
+        pruneInstructionCache();
+    }
+
+    auto now = std::chrono::steady_clock::now().time_since_epoch().count() / 1000000;
+    mInstructionCache[addr] = {length, isCall, static_cast<uint64_t>(now)};
+}
+
+void DbgAdapter::clearInstructionCache()
+{
+    std::lock_guard<std::mutex> lock(mCacheMutex);
+    mInstructionCache.clear();
+}
+
+void DbgAdapter::pruneInstructionCache()
+{
+    // Remove oldest 25% of entries
+    if(mInstructionCache.empty())
+        return;
+
+    std::vector<std::pair<uint64_t, uint64_t>> entries; // addr, timestamp
+    for(const auto& [addr, info] : mInstructionCache)
+    {
+        entries.emplace_back(addr, info.timestamp);
+    }
+
+    std::sort(entries.begin(), entries.end(),
+        [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    size_t toRemove = entries.size() / 4;
+    for(size_t i = 0; i < toRemove && i < entries.size(); ++i)
+    {
+        mInstructionCache.erase(entries[i].first);
+    }
 }
